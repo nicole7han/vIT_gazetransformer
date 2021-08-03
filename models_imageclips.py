@@ -15,8 +15,6 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 from utils_imageclips import *
 
 
-
-
 class ExtractFeatures(nn.Module):
     """Extracts embeddings of segmented humans' heads and bodies from the input images."""
     

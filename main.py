@@ -9,8 +9,6 @@ import torch.multiprocessing
 
 # torch.multiprocessing.set_sharing_strategy('file_system')
 
-
-sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
 from models_imageclips import *
 from train_model_imageclips import *
 

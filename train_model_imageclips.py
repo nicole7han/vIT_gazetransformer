@@ -10,17 +10,12 @@ import torch, os, sys
 from numpy import unravel_index
 import numpy as np
 
-sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
+# sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
 from utils_imageclips import *
 
 
-# sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
-# from model_patches_training.utils_imageclips import *
-
-
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
-          e_start, num_e,
-          lbd, b_size=128):
+          e_start, num_e, lbd, b_size=128):
     LOSS = []
 
     test_data = GazeDataloader(ann_path, test_img_path, test_bbx_path)
@@ -36,22 +31,18 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         train_dataiter = iter(train_dataloader)
 
         loss_iter = []
-        for images_name, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno in train_dataiter:
+        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno in train_dataiter:
             opt.zero_grad()
-            h_crops, b_crops, g_crops, masks, gaze_maps = \
+            images, h_crops, b_crops, g_crops, masks, gaze_maps = \
+                images.to(device), \
                 h_crops.to(device), \
                 b_crops.to(device), \
                 g_crops.to(device), \
                 masks.to(device), \
                 gaze_maps.to(device)
 
-            # transform images_name to ASCII
-            images_name_asc = [str2ASCII(name) for name in images_name]
-            images_name_asc = torch.tensor(images_name_asc).to(device)
-            flips = torch.tensor(flips).to(device)
-
-            b_size = images_name_asc.shape[0]
-            out_map = model(images_name_asc, flips, h_crops, b_crops, masks)  # model prediction of gaze map
+            b_size = images.shape[0]
+            out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
 
             gt_map = gaussian_smooth(gaze_maps.detach(), 21, 5)
             gt_map = gt_map + .05  # smooth
@@ -107,25 +98,23 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             # check with test images
             model.eval()
             with torch.no_grad():
-                images_name, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno = test_dataiter.next()
-                h_crops, b_crops, g_crops, masks, gaze_maps = \
+                images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno = test_dataiter.next()
+                images, h_crops, b_crops, g_crops, masks, gaze_maps = \
+                    images.to(device), \
                     h_crops.to(device), \
                     b_crops.to(device), \
                     g_crops.to(device), \
                     masks.to(device), \
                     gaze_maps.to(device)
 
-                images_name_asc = [str2ASCII(name) for name in images_name]
-                images_name_asc = torch.tensor(images_name_asc).to(device)
-                flips = torch.tensor(flips).to(device)
-                test_b_size = images_name_asc.shape[0]
+                test_b_size = images.shape[0]
 
                 gt_map = gaussian_smooth(gaze_maps.detach(), 21, 5)
                 gt_map = gt_map + .05  # smooth
                 gt_map_sums = gt_map.view(test_b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
                 gt_map = (gt_map.view(test_b_size, 1, -1) / gt_map_sums).view(test_b_size, 1, 64, 64)
                 gt_map = gt_map.to(device)
-                out_map = model(images_name_asc, flips, h_crops, b_crops, masks)  # model prediction of gaze map
+                out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
 
                 map_loss = criterion(out_map.float(), gt_map.float())
                 vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
