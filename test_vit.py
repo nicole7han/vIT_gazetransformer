@@ -109,3 +109,16 @@ for i in range(7):  # visualize the 100th rows of attention matrices in the 0-7t
     attn_heatmap = attention_matrix[i, patch_idx, 1:].reshape((14, 14)).detach().cpu().numpy()
     ax = fig.add_subplot(2, 4, i+2)
     ax.imshow(attn_heatmap)
+
+
+
+imagenet_labels = dict(enumerate(open('ilsvrc2012_wordnet_lemmas.txt')))
+
+print("Classification head: ", model.head)
+result = model.head(transformer_output)
+result_label_id = int(torch.argmax(result))
+plt.plot(result.detach().cpu().numpy()[0])
+plt.title("Classification result")
+plt.xlabel("class id")
+print("Inference result : id = {}, label name = {}".format(
+    result_label_id, imagenet_labels[result_label_id]))

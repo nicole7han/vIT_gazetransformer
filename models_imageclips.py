@@ -12,10 +12,7 @@ from PIL import Image
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
-# from utils_imageclips import *
-sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
-from model_patches_training.utils_imageclips import *
+from utils_imageclips import *
 
 
 class ExtractFeatures(nn.Module):
@@ -137,16 +134,32 @@ class Gaze_Transformer(nn.Module):
                 m.bias.data.zero_()
                 
                 
-    def forward(self, images_name_asc,flips,h_crops,b_crops,masks):
+    def forward(self, images,h_crops,b_crops,masks):
         self.vit.eval()
+        b_size = images.shape[0]
+        cls_tokens = torch.cat([self.vit.cls_token]*b_size)
+        patches = self.vit.patch_embed(images)
+        pos_embed = self.vit.pos_embed
+        transformer_input = torch.cat((cls_tokens, patches), dim=1) + pos_embed
+        attention = self.vit.blocks[0].attn
+        transformer_input_expanded = attention.qkv(transformer_input)[0]
 
-        #
+        # Split qkv into mulitple q, k, and v vectors for multi-head attantion
+        qkv = transformer_input_expanded.reshape(197, 3, 12, 64)  # (N=197, (qkv), H=12, D/H=64)
+        q = qkv[:, 0].permute(1, 0, 2)  # (H=12, N=197, D/H=64)
+        k = qkv[:, 1].permute(1, 0, 2)  # (H=12, N=197, D/H=64)
+        kT = k.permute(0, 2, 1)  # (H=12, D/H=64, N=197)
+        attention_matrix = q @ kT
 
 
+        ### IDEA: use viT to get each patch feature
+        # get vit feature from each patch
+        vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
+        img_vit_feature = vit_feature_extractor(images)
 
+        # convolve binary masks
 
-
-
+        # multiply img_vit_feature to binary masks to get spatial related vit feature
 
 
 

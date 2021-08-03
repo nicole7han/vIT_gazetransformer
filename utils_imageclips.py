@@ -342,4 +342,4 @@ class GazeDataloader(Dataset):
             return
 
 
-        return img, flip, h_crop, b_crop, g_crop, masks, gaze_map, img_anno
+        return name, img, flip, h_crop, b_crop, g_crop, masks, gaze_map, img_anno
