@@ -51,7 +51,7 @@ def visualize_dataset(images_name, images, h_crops, b_crops, g_crops, img_annos,
     g1 = np.transpose(g_crops[idx, :, :, :].detach().cpu().numpy(), (1, 2, 0)).copy()
     ex, ey, gx, gy = img_annos['eye_x'][idx], img_annos['eye_y'][idx], img_annos['gaze_x'][idx], img_annos['gaze_y'][
         idx]
-    img1 = cv2.arrowedLine(img1, (int(ex * 256), int(ey * 256)), (int(gx * 256), int(gy * 256)), color=[255, 255, 255],
+    img1 = cv2.arrowedLine(img1, (int(ex * 224), int(ey * 224)), (int(gx * 224), int(gy * 224)), color=[255, 255, 255],
                            thickness=3)
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
@@ -70,7 +70,7 @@ def visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=0):
     if idx is None:
         idx = np.random.randint(0, len(images_name))
     img_name = images_name[idx]
-    img = Image.fromarray(plt.imread(img_name)).resize((256, 256))
+    img = Image.fromarray(plt.imread(img_name)).resize((224, 224))
 
     gaze_maps = gaussian_smooth(gaze_maps, 21, 5)
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
@@ -306,8 +306,8 @@ class GazeDataloader(Dataset):
 
             # print('transform images start {}'.format(img_name))
             # create gaze map of size 64x64
-            gaze_map = torch.zeros([256, 256])
-            gaze_map[int(y_l * 256):int(y_h * 256), int(x_l * 256):int(x_h * 256)] = 1
+            gaze_map = torch.zeros([224, 224])
+            gaze_map[int(y_l * 224):int(y_h * 224), int(x_l * 224):int(x_h * 224)] = 1
             gaze_map = gaze_map.numpy()
 
             flip = random.random() > .5  # random flip images and corresponding
@@ -319,16 +319,16 @@ class GazeDataloader(Dataset):
                 g_crop = np.fliplr(g_crop)
                 gaze_map = np.fliplr(gaze_map)
                 # create binary masks for head, body, gaze location
-                masks = torch.zeros([2, 256, 256])
-                masks[0, ::][int(h_y * 256):int((h_y + h_h) * 256), int((1 - h_x - h_w) * 256):int((1 - h_x) * 256)] = 1
-                masks[1, ::][int(b_y * 256):int((b_y + b_h) * 256), int((1 - b_x - b_w) * 256):int((1 - b_x) * 256)] = 1
+                masks = torch.zeros([2, 224, 224])
+                masks[0, ::][int(h_y * 224):int((h_y + h_h) * 224), int((1 - h_x - h_w) * 224):int((1 - h_x) * 224)] = 1
+                masks[1, ::][int(b_y * 224):int((b_y + b_h) * 224), int((1 - b_x - b_w) * 224):int((1 - b_x) * 224)] = 1
                 img_anno['eye_x'] = 1 - img_anno['eye_x']
                 img_anno['gaze_x'] = 1 - img_anno['gaze_x']
             else:
                 # create binary masks for head, body, gaze location
-                masks = torch.zeros([2, 256, 256])  # head, body, gaze location
-                masks[0, ::][int(h_y * 256):int((h_y + h_h) * 256), int(h_x * 256):int((h_x + h_w) * 256)] = 1
-                masks[1, ::][int(b_y * 256):int((b_y + b_h) * 256), int(b_x * 256):int((b_x + b_w) * 256)] = 1
+                masks = torch.zeros([2, 224, 224])  # head, body, gaze location
+                masks[0, ::][int(h_y * 224):int((h_y + h_h) * 224), int(h_x * 224):int((h_x + h_w) * 224)] = 1
+                masks[1, ::][int(b_y * 224):int((b_y + b_h) * 224), int(b_x * 224):int((b_x + b_w) * 224)] = 1
 
             gaze_map = self.resize(Image.fromarray(gaze_map))
             h_crop = self.transform(Image.fromarray(h_crop))
