@@ -2,6 +2,7 @@ import os, math, sys
 import torch
 import torch.nn.functional as F
 from torch import nn
+import torchvision.transforms as T
 import torchvision.models as models
 import timm
 from timm.data import resolve_data_config
@@ -138,6 +139,17 @@ class Gaze_Transformer(nn.Module):
                 
     def forward(self, images_name_asc,flips,h_crops,b_crops,masks):
         self.vit.eval()
+
+        #
+
+
+
+
+
+
+
+
+
         config = resolve_data_config({}, model=self.vit)
         transform = create_transform(**config)
 

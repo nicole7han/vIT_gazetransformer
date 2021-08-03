@@ -211,7 +211,6 @@ class GazeDataloader(Dataset):
         self.bbx_path = bbx_path
         self.img_paths = []
         self.mode = self.img_path.split("/")[-1]
-        # self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
 
         img_folder_list = os.listdir(self.img_path)
         img_folder_list = [f for f in img_folder_list if not f.startswith('.')]
@@ -223,11 +222,17 @@ class GazeDataloader(Dataset):
             if len(img_list) > 0:
                 self.img_paths += img_list
 
+        # self.transform = transforms.Compose([
+        #     transforms.Resize([256, 256]),
+        #     transforms.ToTensor(),
+        #     # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        # ])
         self.transform = transforms.Compose([
-            transforms.Resize([256, 256]),
+            transforms.Resize([224, 224]),
             transforms.ToTensor(),
-            # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
+
         self.resize = transforms.Compose([
             transforms.Resize([64, 64]),
             transforms.ToTensor(),
@@ -240,7 +245,7 @@ class GazeDataloader(Dataset):
     def __getitem__(self, idx):
         try:
             name = self.img_paths[idx]
-            # img = Image.open(name)
+            img = Image.open(name)
         except:
             print(self.img_paths[idx])
         # config = resolve_data_config({}, model=self.vit)
@@ -308,7 +313,7 @@ class GazeDataloader(Dataset):
             flip = random.random() > .5  # random flip images and corresponding
             if flip:
                 # print('{} random flip'.format(img_name))
-                # img = img.transpose(Image.FLIP_LEFT_RIGHT)
+                img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 h_crop = np.fliplr(h_crop)
                 b_crop = np.fliplr(b_crop)
                 g_crop = np.fliplr(g_crop)
@@ -329,11 +334,12 @@ class GazeDataloader(Dataset):
             h_crop = self.transform(Image.fromarray(h_crop))
             b_crop = self.transform(Image.fromarray(b_crop))
             g_crop = self.transform(Image.fromarray(g_crop))
-            # img = self.transform(img)
+            img = self.transform(img)
 
         except:
             print(name)
             print('{} no data'.format(img_name))
             return
 
-        return name, flip, h_crop, b_crop, g_crop, masks, gaze_map, img_anno
+
+        return img, flip, h_crop, b_crop, g_crop, masks, gaze_map, img_anno
