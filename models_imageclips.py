@@ -15,6 +15,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 from utils_imageclips import *
 
 
+
+
 class ExtractFeatures(nn.Module):
     """Extracts embeddings of segmented humans' heads and bodies from the input images."""
     
@@ -48,21 +50,17 @@ class SpatialAttention(nn.Module):
     """Extracts spatial attention from heads and body masks."""
     def __init__(self):
         super(SpatialAttention, self).__init__()
-        
-        self.conv1 = nn.Conv2d(in_channels=2, out_channels=32, kernel_size=5)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5)
-        self.bnorm1 = nn.BatchNorm2d(32)
-        self.bnorm2 = nn.BatchNorm2d(64)
-        self.d1 = nn.Linear(64*61*61, 512)
+        self.project = nn.Conv2d(in_channels=2, out_channels=768, kernel_size=16, stride=16)
+        self.norm = nn.Identity()
+        # self.conv1 = nn.Conv2d(in_channels=2, out_channels=32, kernel_size=5)
+        # self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5)
+        # self.bnorm1 = nn.BatchNorm2d(32)
+        # self.bnorm2 = nn.BatchNorm2d(64)
+        # self.d1 = nn.Linear(64*61*61, 512)
     
     def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x),2)) # b_size x 2 x 256 x 256 -> b_size x 32 x 126 x 126
-        x = self.bnorm1(x)
-        x = F.relu(F.max_pool2d(self.conv2(x),2)) # b_size x 32 x 126 x 126 -> b_size x 64 x 61 x 61
-        x = self.bnorm2(x)
-        x = x.flatten(start_dim = 1)
-        x = self.d1(x)
-        x = F.relu(x)
+        x = self.project(x).flatten(2).transpose(1, 2)
+        x = self.norm(x)
         return x
 
 
@@ -71,35 +69,28 @@ class GazePredictor(nn.Module):
     """Predict final gaze estimation"""
     def __init__(self):
         super(GazePredictor, self).__init__()
-        self.vit_encoder = nn.Sequential(
+        self.mlp1 = nn.Sequential(
             nn.Linear(768, 512, bias=True),
             nn.GELU(),
-            nn.Dropout(.5),
+            nn.Dropout(.1),
         )
-        self.mpl1 = nn.Sequential( #shared weights for each patch, across channels
+        self.mlp2 = nn.Sequential( #shared weights for each patch, across channels
             nn.Linear(512, 64, bias=True),
             nn.GELU(),
-            nn.Dropout(.5),
-            # nn.Linear(128, 64, bias=True),
-            # nn.GELU(),
-            # nn.Dropout(.5),
+            nn.Dropout(.1),
         )
-        self.mpl2 = nn.Sequential(#shared weights for each channel, across patches
-            nn.Linear(198, 64, bias=True),
+        self.mlp3 = nn.Sequential(#shared weights for each channel, across patches
+            nn.Linear(196, 64, bias=True),
             nn.GELU(),
-            nn.Dropout(.5)
+            nn.Dropout(.1)
         )
-        self.fc = nn.Linear(64*64, 4096, bias=True)
+        self.fc = nn.Linear(4096, 4096, bias=True)
         self.softmax = nn.Softmax(dim=1)
         
-    def forward(self, vis_feature, spa_attention, vit_feature):
-        spa_atten = spa_attention.unsqueeze(-1)
-        x = self.vit_encoder(vit_feature) #b_sizex196x512   # resize vit feature
-        x = torch.cat((vis_feature.permute(0,2,1), x),1) #b_sizex198x512   # concatenate image feature and vit feature
-        x = (x * spa_atten.permute(0,2,1)) #b_sizex198x512    # multiply to mask feature
-        x = self.mpl1(x) #b_sizex198x64  # reduce dimension of each patch
-        x = x.permute(0, 2, 1)  #b_sizex64x198
-        x = torch.flatten(self.mpl2(x),1) #b_sizex64x64
+    def forward(self, feature_attn):
+        x = self.mlp1(feature_attn) # [b_size, 14x14, 512]
+        x = self.mlp2(x).permute(0,2,1) # [b_size, 14x14, 64]
+        x = torch.flatten(self.mlp3(x),1)
         x = self.fc(x)
         x = self.softmax(x).view(x.shape[0], 1, 64, 64)
 
@@ -107,22 +98,16 @@ class GazePredictor(nn.Module):
 
 
 
-
 class Gaze_Transformer(nn.Module):
     """Main Model"""
-    def __init__(self):
+    def __init__(self, img_size=224, patch_size=16, num_patches=14*14, embed_dim=768):
         super(Gaze_Transformer, self).__init__()
-        self.extractor = ExtractFeatures()
+        # self.extractor = ExtractFeatures()
         self.spa_net = SpatialAttention()
         self.gaze_pred = GazePredictor()
         self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
         self.softmax = nn.Softmax(dim=1)
 
-        ''' vision transformer
-        inputs = feature_extractor(images=image, return_tensors="pt")
-        outputs = model(**inputs)
-        ast_hidden_states = outputs.last_hidden_state
-        '''
 
         # Initialize weights
         for m in self.modules():
@@ -136,62 +121,36 @@ class Gaze_Transformer(nn.Module):
                 
     def forward(self, images,h_crops,b_crops,masks):
         self.vit.eval()
-        b_size = images.shape[0]
-        cls_tokens = torch.cat([self.vit.cls_token]*b_size)
-        patches = self.vit.patch_embed(images)
-        pos_embed = self.vit.pos_embed
-        transformer_input = torch.cat((cls_tokens, patches), dim=1) + pos_embed
-        attention = self.vit.blocks[0].attn
-        transformer_input_expanded = attention.qkv(transformer_input)[0]
-
-        # Split qkv into mulitple q, k, and v vectors for multi-head attantion
-        qkv = transformer_input_expanded.reshape(197, 3, 12, 64)  # (N=197, (qkv), H=12, D/H=64)
-        q = qkv[:, 0].permute(1, 0, 2)  # (H=12, N=197, D/H=64)
-        k = qkv[:, 1].permute(1, 0, 2)  # (H=12, N=197, D/H=64)
-        kT = k.permute(0, 2, 1)  # (H=12, D/H=64, N=197)
-        attention_matrix = q @ kT
+        # b_size = images.shape[0]
+        # cls_tokens = torch.cat([self.vit.cls_token]*b_size)
+        # patches = self.vit.patch_embed(images)
+        #
+        # transformer_input = torch.cat((cls_tokens, patches), dim=1) + pos_embed
+        # attention = self.vit.blocks[0].attn
+        # transformer_input_expanded = attention.qkv(transformer_input)[0]
+        #
+        # # Split qkv into mulitple q, k, and v vectors for multi-head attantion
+        # qkv = transformer_input_expanded.reshape(197, 3, 12, 64)  # (N=197, (qkv), H=12, D/H=64)
+        # q = qkv[:, 0].permute(1, 0, 2)  # (H=12, N=197, D/H=64)
+        # k = qkv[:, 1].permute(1, 0, 2)  # (H=12, N=197, D/H=64)
+        # kT = k.permute(0, 2, 1)  # (H=12, D/H=64, N=197)
+        # attention_matrix = q @ kT
 
 
         ### IDEA: use viT to get each patch feature
+        pos_embed = self.vit.pos_embed
+
         # get vit feature from each patch
         vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
-        img_vit_feature = vit_feature_extractor(images)
+        img_vit_feature = vit_feature_extractor(images) # [b_size, 14 x 14, 768]
 
         # convolve binary masks
-
+        spatial_attn = self.spa_net(masks)  # [b_size, 14 x 14, 768]
+        spatial_attn = spatial_attn + pos_embed[0,1:,].unsqueeze(0)
         # multiply img_vit_feature to binary masks to get spatial related vit feature
-
-
-
-        config = resolve_data_config({}, model=self.vit)
-        transform = create_transform(**config)
-
-        # resnet visual feature
-        h_o, b_o = self.extractor(h_crops), self.extractor(b_crops)
-        vis_feature = torch.cat((h_o, b_o), 2) # concatenated visual features
-        vis_feature = vis_feature.squeeze(-1)
-        vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
-        # b_size x 512 x 2
-        
-        # spatial feature
-        spa_attention = self.spa_net(masks) # b_size x 512
-        b_size = images_name_asc.shape[0]
-        vit_feature = torch.zeros((b_size, 196, 768))
-        for i in range(b_size): # get PIL images to get visiontransformer input
-            name = ASCII2str(images_name_asc[i])
-            flip = flips[i]
-            try:
-                img = Image.open(name)
-            except:
-                img = Image.open("gaze_video_data/transformer_all_img/{}".format(name))
-
-            if flip:
-                img = img.transpose(Image.FLIP_LEFT_RIGHT)
-            inputs = transform(img).unsqueeze(0)
-            img_vit_feature = vit_feature_extractor(inputs.to(device)) #input size 3x384x384
-            vit_feature[i,::] = img_vit_feature
+        feature_attn = img_vit_feature * spatial_attn # [b_size, 14 x 14, 768]
 
         # visual feature x spatial attention 
-        gaze_map = self.gaze_pred(vis_feature.to(device), spa_attention.to(device), vit_feature.to(device))
+        gaze_map = self.gaze_pred(feature_attn)
     
         return gaze_map
