@@ -30,8 +30,8 @@ def main():
                         help='training batch size, (default:30)')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='learning rate, (default:1e-4)')
-    parser.add_argument('--lbd', type=float, default=.9,
-                        help='map loss weight, (default:.9)')
+    parser.add_argument('--lbd', type=float, default=.7,
+                        help='map loss weight, (default:.7)')
     args = parser.parse_args()
 
     ann_path = "/mnt/bhd/nicoleh/gazetransformer/data/annotations"

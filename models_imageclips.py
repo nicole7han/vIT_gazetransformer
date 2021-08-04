@@ -84,16 +84,16 @@ class GazePredictor(nn.Module):
         )
         self.fc = nn.Linear(4096, 4096, bias=True)
         self.softmax = nn.Softmax(dim=1)
-        
+        self.logsoftmax = nn.LogSoftmax(dim=1)
+
     def forward(self, feature_attn):
         x = self.mlp1(feature_attn) # [b_size, 14x14, 512]
         x = self.mlp2(x).permute(0,2,1) # [b_size, 14x14, 64]
         x = torch.flatten(self.mlp3(x),1)
-        x = self.fc(x)
-        x = self.softmax(x).view(x.shape[0], 1, 64, 64)
+        x = self.fc(x) + .05 # add floor
+        x = self.softmax(x).view(x.shape[0], 1, 64, 64) #likelihood
 
         return x
-
 
 
 class Gaze_Transformer(nn.Module):
@@ -138,13 +138,14 @@ class Gaze_Transformer(nn.Module):
         ### IDEA: use viT to get each patch feature
         pos_embed = self.vit.pos_embed
 
-        # get vit feature from each patch
+        # get image vit feature from each 14x14 patch
         vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
         img_vit_feature = vit_feature_extractor(images) # [b_size, 14 x 14, 768]
 
         # convolve binary masks
         spatial_attn = self.spa_net(masks)  # [b_size, 14 x 14, 768]
         spatial_attn = spatial_attn + pos_embed[0,1:,].unsqueeze(0)
+
         # multiply img_vit_feature to binary masks to get spatial related vit feature
         feature_attn = img_vit_feature * spatial_attn # [b_size, 14 x 14, 768]
 

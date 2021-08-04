@@ -7,9 +7,8 @@ Created on Wed Mar 24 16:08:54 2021
 """
 
 import torch, os, sys
+from torch import nn
 from numpy import unravel_index
-import numpy as np
-
 # sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
 from utils_imageclips import *
 
@@ -17,7 +16,7 @@ from utils_imageclips import *
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
           e_start, num_e, lbd, b_size=128):
     LOSS = []
-
+    softmax = nn.Softmax(dim=1)
     test_data = GazeDataloader(ann_path, test_img_path, test_bbx_path)
     test_dataloader = DataLoader(test_data, batch_size=b_size, shuffle=True, num_workers=4, pin_memory=True)
     test_dataiter = iter(test_dataloader)
@@ -44,14 +43,13 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             b_size = images.shape[0]
             out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
 
-            gt_map = gaussian_smooth(gaze_maps.detach(), 21, 5)
-            gt_map = gt_map + .05  # smooth
-            gt_map_sums = gt_map.view(b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-            gt_map = (gt_map.view(b_size, 1, -1) / gt_map_sums).view(b_size, 1, 64, 64)
-            gt_map = gt_map.to(device)
+            # gt_map = gaussian_smooth(gaze_maps.detach(), 21, 5)
+            # gt_map = (gt_map + .05).view(b_size, -1, 1)  # smooth
+            # gt_map = softmax(gt_map).view(b_size, 1, 64, 64)
+            # gt_map = gt_map.to(device)
 
             # loss between probabilty maps
-            map_loss = criterion(out_map.float(), gt_map.float())
+            map_loss = criterion(out_map.float(), gaze_maps.float())
 
             # angle loss
             vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
@@ -73,7 +71,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             if torch.isnan(torch.tensor(ang_loss)):
                 print("ang_loss nan")
             # loss
-            loss = lbd * map_loss + (1 - lbd) * ang_loss * .00001
+            loss = lbd * map_loss + (1 - lbd) * ang_loss * .01
 
             loss.backward()
             opt.step()
