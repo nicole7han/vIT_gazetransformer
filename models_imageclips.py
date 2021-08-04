@@ -153,3 +153,12 @@ class Gaze_Transformer(nn.Module):
         gaze_map = self.gaze_pred(feature_attn)
     
         return gaze_map
+
+
+m = nn.Sigmoid() # initialize sigmoid layer
+loss = nn.BCELoss() # initialize loss function
+input = torch.randn(3, requires_grad=True) # give some random input
+target = torch.empty(3).random_(2) # create some ground truth values
+x = m(input)
+output = loss(x, target) # forward pass
+print('loss = {}'.format(output))

@@ -43,10 +43,9 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             b_size = images.shape[0]
             out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
 
-            # gt_map = gaussian_smooth(gaze_maps.detach(), 21, 5)
-            # gt_map = (gt_map + .05).view(b_size, -1, 1)  # smooth
-            # gt_map = softmax(gt_map).view(b_size, 1, 64, 64)
-            # gt_map = gt_map.to(device)
+            gaze_maps[gaze_maps>0] = 1
+            gaze_maps[gaze_maps==1] = 1-.05 #label smoothing
+            gaze_maps[gaze_maps==0] = .05
 
             # loss between probabilty maps
             map_loss = criterion(out_map.float(), gaze_maps.float())
