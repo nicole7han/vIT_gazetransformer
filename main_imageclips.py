@@ -102,8 +102,8 @@ lr = .0001
 beta1 = .9
 lmbda = .0001
 opt = optim.Adam(model.parameters(), lr=lr, betas = (beta1, .999))
-criterion = nn.BCELoss(reduction='mean')
-# criterion = nn.MSELoss()
+# criterion = nn.BCELoss(reduction='mean')
+criterion = nn.MSELoss()
 e_start = 0
 
 # checkpoint = torch.load('models/model_epoch{}.pt'.format(e_start), map_location='cpu')

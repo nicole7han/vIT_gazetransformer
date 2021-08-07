@@ -47,8 +47,8 @@ def main():
     lr = args.lr * args.b_size / 128
     beta1 = .9
     opt = optim.Adam(model.parameters(), lr=lr, betas=(beta1, .999))
-    # criterion = nn.MSELoss()
-    criterion = nn.BCELoss(reduction='mean')
+    criterion = nn.MSELoss()
+    # criterion = nn.BCELoss(reduction='mean')
 
     if args.resume:
         checkpoint = torch.load('models/viTmodel_epoch{}.pt'.format(args.e_start), map_location='cpu')

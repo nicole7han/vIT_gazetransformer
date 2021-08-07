@@ -46,31 +46,32 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             gaze_maps[gaze_maps>0] = 1
             gaze_maps[gaze_maps==1] = 1-.05 #label smoothing
             gaze_maps[gaze_maps==0] = .05
+            gaze_maps = gaussian_smooth(gaze_maps.detach(), 21, 5).to(device)
 
             # loss between probabilty maps
-            map_loss = criterion(out_map.float(), gaze_maps.float())
+            loss = criterion(out_map.float(), gaze_maps.float())
 
-            # angle loss
-            vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
-            gaze_pred = [unravel_index(out_map.cpu()[i, 0, ::].argmax(), out_map.cpu()[i, 0, ::].shape) for i in
-                         range(b_size)]
-            gaze_pred = np.array(gaze_pred) / out_map[0, 0, ::].shape[0]
-            vec2 = (torch.from_numpy(gaze_pred[:, 1]) - img_anno['eye_x'],
-                    torch.from_numpy(gaze_pred[:, 0]) - img_anno['eye_y'])
-            ang_loss = 0
-            for i in range(b_size):
-                v1, v2 = [vec1[0][i] * 1000, vec1[1][i] * 1000], [vec2[0][i] * 1000, vec2[1][i] * 1000]
-                unit_vector_1 = v1 / np.linalg.norm(v1)
-                unit_vector_2 = v2 / np.linalg.norm(v2)
-                dot_product = np.dot(unit_vector_1, unit_vector_2)
-                angle = np.arccos(dot_product) * 180 / np.pi
-                if torch.isnan(torch.tensor(angle)) == False:
-                    ang_loss += angle  # angle in degrees
-            ang_loss /= b_size
-            if torch.isnan(torch.tensor(ang_loss)):
-                print("ang_loss nan")
+            # # angle loss
+            # vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
+            # gaze_pred = [unravel_index(out_map.cpu()[i, 0, ::].argmax(), out_map.cpu()[i, 0, ::].shape) for i in
+            #              range(b_size)]
+            # gaze_pred = np.array(gaze_pred) / out_map[0, 0, ::].shape[0]
+            # vec2 = (torch.from_numpy(gaze_pred[:, 1]) - img_anno['eye_x'],
+            #         torch.from_numpy(gaze_pred[:, 0]) - img_anno['eye_y'])
+            # ang_loss = 0
+            # for i in range(b_size):
+            #     v1, v2 = [vec1[0][i] * 1000, vec1[1][i] * 1000], [vec2[0][i] * 1000, vec2[1][i] * 1000]
+            #     unit_vector_1 = v1 / np.linalg.norm(v1)
+            #     unit_vector_2 = v2 / np.linalg.norm(v2)
+            #     dot_product = np.dot(unit_vector_1, unit_vector_2)
+            #     angle = np.arccos(dot_product) * 180 / np.pi
+            #     if torch.isnan(torch.tensor(angle)) == False:
+            #         ang_loss += angle  # angle in degrees
+            # ang_loss /= b_size
+            # if torch.isnan(torch.tensor(ang_loss)):
+            #     print("ang_loss nan")
             # loss
-            loss = lbd * map_loss + (1 - lbd) * ang_loss * .01
+            # loss = lbd * map_loss + (1 - lbd) * ang_loss * .01
 
             loss.backward()
             opt.step()
@@ -86,7 +87,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             # check with train images
             try:
                 for i in range(5):
-                    visualize_result(images_name, flips, g_crops, gt_map, out_map, idx=i)
+                    visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=i)
                     plt.savefig('outputs/viTtrain_epoch{}_plot{}.jpg'.format(e, i + 1))
                     plt.close('all')
             except:
@@ -106,29 +107,30 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
 
                 test_b_size = images.shape[0]
 
-                gt_map = gaussian_smooth(gaze_maps.detach(), 21, 5)
-                gt_map = gt_map + .05  # smooth
-                gt_map_sums = gt_map.view(test_b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-                gt_map = (gt_map.view(test_b_size, 1, -1) / gt_map_sums).view(test_b_size, 1, 64, 64)
-                gt_map = gt_map.to(device)
-                out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
+                gaze_maps[gaze_maps > 0] = 1
+                gaze_maps[gaze_maps == 1] = 1 - .05  # label smoothing
+                gaze_maps[gaze_maps == 0] = .05
+                gaze_maps = gaussian_smooth(gaze_maps.detach(), 21, 5).to(device)
 
-                map_loss = criterion(out_map.float(), gt_map.float())
-                vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
-                gaze_pred = [unravel_index(out_map.cpu()[i, 0, ::].argmax(), out_map.cpu()[i, 0, ::].shape) for i in
-                             range(test_b_size)]
-                gaze_pred = np.array(gaze_pred) / out_map[0, 0, ::].shape[0]
-                vec2 = (torch.from_numpy(gaze_pred[:, 0]) - img_anno['eye_x'],
-                        torch.from_numpy(gaze_pred[:, 1]) - img_anno['eye_y'])
-                ang_loss = 0
-                for i in range(test_b_size):
-                    v1, v2 = [vec1[0][i] * 1000, vec1[1][i] * 1000], [vec2[0][i] * 1000, vec2[1][i] * 1000]
-                    unit_vector_1 = v1 / np.linalg.norm(v1)
-                    unit_vector_2 = v2 / np.linalg.norm(v2)
-                    dot_product = np.dot(unit_vector_1, unit_vector_2)
-                    ang_loss += (np.arccos(dot_product) * 180 / np.pi)  # angle in degrees
-                ang_loss /= test_b_size
-                test_loss = lbd * map_loss + (1 - lbd) * ang_loss * .00001
+                # loss between probabilty maps
+                test_loss = criterion(out_map.float(), gaze_maps.float())
+
+                # map_loss = criterion(out_map.float(), gaze_maps.float())
+                # vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
+                # gaze_pred = [unravel_index(out_map.cpu()[i, 0, ::].argmax(), out_map.cpu()[i, 0, ::].shape) for i in
+                #              range(test_b_size)]
+                # gaze_pred = np.array(gaze_pred) / out_map[0, 0, ::].shape[0]
+                # vec2 = (torch.from_numpy(gaze_pred[:, 0]) - img_anno['eye_x'],
+                #         torch.from_numpy(gaze_pred[:, 1]) - img_anno['eye_y'])
+                # ang_loss = 0
+                # for i in range(test_b_size):
+                #     v1, v2 = [vec1[0][i] * 1000, vec1[1][i] * 1000], [vec2[0][i] * 1000, vec2[1][i] * 1000]
+                #     unit_vector_1 = v1 / np.linalg.norm(v1)
+                #     unit_vector_2 = v2 / np.linalg.norm(v2)
+                #     dot_product = np.dot(unit_vector_1, unit_vector_2)
+                #     ang_loss += (np.arccos(dot_product) * 180 / np.pi)  # angle in degrees
+                # ang_loss /= test_b_size
+                # test_loss = lbd * map_loss + (1 - lbd) * ang_loss * .00001
 
                 PATH = "models/viTmodel_epoch{}.pt".format(e)
                 torch.save({
@@ -141,7 +143,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
 
                 try:
                     for i in range(5):
-                        visualize_result(images_name, flips, g_crops, gt_map, out_map, idx=i)
+                        visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=i)
                         plt.savefig('outputs/viTtest_epoch{}_plot{}.jpg'.format(e, i + 1))
                         plt.close('all')
                 except:
