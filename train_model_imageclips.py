@@ -106,6 +106,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     gaze_maps.to(device)
 
                 test_b_size = images.shape[0]
+                out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
 
                 gaze_maps[gaze_maps > 0] = 1
                 gaze_maps[gaze_maps == 1] = 1 - .05  # label smoothing
