@@ -114,8 +114,8 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                 gaze_maps[gaze_maps == 1] = 1 - .05  # label smoothing
                 gaze_maps[gaze_maps == 0] = .05
                 gaze_maps = gaussian_smooth(gaze_maps.detach(), 21, 5).to(device)
-                gt_map_sums = gaze_maps.view(b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-                gaze_maps = (gaze_maps.view(b_size, 1, -1) / gt_map_sums).view(b_size, 1, 64, 64)
+                gt_map_sums = gaze_maps.view(test_b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
+                gaze_maps = (gaze_maps.view(test_b_size, 1, -1) / gt_map_sums).view(test_b_size, 1, 64, 64)
 
                 # loss between probabilty maps
                 test_loss = criterion(out_map.float(), gaze_maps.float())
