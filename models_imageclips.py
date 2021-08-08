@@ -22,8 +22,8 @@ class ExtractFeatures(nn.Module):
         super(ExtractFeatures, self).__init__()
         # Load the pretrained model
         self.model = models.resnet18(pretrained=True)
-#        self.layer = model._modules.get('avgpool')
-               
+        self.shortcut = nn.Identity()
+        self.pool = nn.AvgPool2d(2)
         
     def forward(self, inputs):
         """Applies extractfetures module.
@@ -38,9 +38,10 @@ class ExtractFeatures(nn.Module):
         with torch.no_grad():
             if len(inputs.shape)==3: #if it's just one image
                 inputs = inputs.unsqueeze(0)
+            residual = self.shortcut(inputs)
             extractor = torch.nn.Sequential(*list(self.model.children())[:-1])
-            inputs_o = extractor(inputs)
-        return inputs_o
+            x = extractor(inputs)
+        return x
 
 
 
@@ -147,18 +148,9 @@ class Gaze_Transformer(nn.Module):
         spatial_attn = spatial_attn + pos_embed[0,1:,].unsqueeze(0)
 
         # multiply img_vit_feature to binary masks to get spatial related vit feature
-        feature_attn = img_vit_feature * spatial_attn # [b_size, 14 x 14, 768]
+        feature_attn = img_vit_feature + img_vit_feature * spatial_attn # [b_size, 14 x 14, 768]
 
         # visual feature x spatial attention 
         gaze_map = self.gaze_pred(feature_attn)
     
         return gaze_map
-
-
-m = nn.Sigmoid() # initialize sigmoid layer
-loss = nn.BCELoss() # initialize loss function
-input = torch.randn(3, requires_grad=True) # give some random input
-target = torch.empty(3).random_(2) # create some ground truth values
-x = m(input)
-output = loss(x, target) # forward pass
-print('loss = {}'.format(output))
