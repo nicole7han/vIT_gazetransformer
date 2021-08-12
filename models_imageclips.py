@@ -120,6 +120,8 @@ class Gaze_Transformer(nn.Module):
                 
     def forward(self, images,h_crops,b_crops,masks):
         self.vit.eval()
+        for param in self.vit.parameters():
+            param.requires_grad = False
         # b_size = images.shape[0]
         # cls_tokens = torch.cat([self.vit.cls_token]*b_size)
         # patches = self.vit.patch_embed(images)
