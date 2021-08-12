@@ -44,22 +44,25 @@ class ExtractFeatures(nn.Module):
         return x
 
 
-
 class SpatialAttention(nn.Module):
     """Extracts spatial attention from heads and body masks."""
+
     def __init__(self):
         super(SpatialAttention, self).__init__()
         self.project = nn.Conv2d(in_channels=2, out_channels=768, kernel_size=16, stride=16)
         self.norm = nn.Identity()
-        # self.conv1 = nn.Conv2d(in_channels=2, out_channels=32, kernel_size=5)
-        # self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5)
-        # self.bnorm1 = nn.BatchNorm2d(32)
-        # self.bnorm2 = nn.BatchNorm2d(64)
-        # self.d1 = nn.Linear(64*61*61, 512)
-    
-    def forward(self, x):
+        self.mpl = nn.Sequential(
+            nn.Linear(196, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1),
+            nn.ReLU(),
+        )
+        # self.conv1 = nn.Conv2d(in_channels=768, out_channels=384, kernel_size=5)
+
+    def forward(self, x, pos_embed):
         x = self.project(x).flatten(2).transpose(1, 2)
-        x = self.norm(x)
+        x += pos_embed[0, 1:, ].unsqueeze(0)  # [b_size, 14x14, 768]
+        x = self.mpl(x.transpose(1, 2)).transpose(1, 2)  # [b_size,  1, 768]
         return x
 
 
@@ -145,12 +148,11 @@ class Gaze_Transformer(nn.Module):
         vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
         img_vit_feature = vit_feature_extractor(images) # [b_size, 14 x 14, 768]
 
-        # convolve binary masks
-        spatial_attn = self.spa_net(masks)  # [b_size, 14 x 14, 768]
-        spatial_attn = spatial_attn + pos_embed[0,1:,].unsqueeze(0)
+        # binary masks feature
+        spatial_attn = self.spa_net(masks, pos_embed)  # [b_size, 1, 768]
 
         # multiply img_vit_feature to binary masks to get spatial related vit feature
-        feature_attn = img_vit_feature + img_vit_feature * spatial_attn # [b_size, 14 x 14, 768]
+        feature_attn = img_vit_feature * spatial_attn # [b_size, 14 x 14, 768]
 
         # visual feature x spatial attention 
         gaze_map = self.gaze_pred(feature_attn)
