@@ -71,30 +71,41 @@ class GazePredictor(nn.Module):
     """Predict final gaze estimation"""
     def __init__(self):
         super(GazePredictor, self).__init__()
-        self.mlp1 = nn.Sequential(
-            nn.Linear(768, 512, bias=True),
+        self.deconvs = nn.Sequential(
+            nn.ConvTranspose2d(768, 512, 2, stride=2),
+            nn.GELU(),
+            nn.ConvTranspose2d(512, 64, 2, stride=2),
+            nn.GELU(),
+            nn.ConvTranspose2d(64, 1, 2, stride=2),
+            nn.GELU(),
+        )
+        self.mpl = nn.Sequential(
+            nn.Linear(112 * 112, 64 * 64,  bias=True),
             nn.GELU(),
             nn.Dropout(.1),
         )
-        self.mlp2 = nn.Sequential( #shared weights for each patch, across channels
-            nn.Linear(512, 64, bias=True),
-            nn.GELU(),
-            nn.Dropout(.1),
-        )
-        self.mlp3 = nn.Sequential(#shared weights for each channel, across patches
-            nn.Linear(196, 64, bias=True),
-            nn.GELU(),
-            nn.Dropout(.1)
-        )
-        self.fc = nn.Linear(4096, 4096, bias=True)
-        self.softmax = nn.Softmax(dim=1)
-        self.logsoftmax = nn.LogSoftmax(dim=1)
+
+        # self.mlp1 = nn.Sequential(
+        #     nn.Linear(768, 512, bias=True),
+        #     nn.GELU(),
+        #     nn.Dropout(.1),
+        #     nn.Linear(512, 64, bias=True),
+        #     nn.GELU(),
+        #     nn.Dropout(.1),
+        #     nn.Linear(64, 1, bias=True),
+        # )
+        # self.fc = nn.Linear(4096, 4096, bias=True)
+        self.softmax = nn.Softmax(dim=2)
+        # self.logsoftmax = nn.LogSoftmax(dim=1)
 
     def forward(self, feature_attn):
-        x = self.mlp1(feature_attn) # [b_size, 14x14, 512]
-        x = self.mlp2(x).permute(0,2,1) # [b_size, 14x14, 64]
-        x = torch.flatten(self.mlp3(x),1)
-        x = self.fc(x) + .05 # add floor
+        x = feature_attn.permute(0,2,1).view(feature_attn.shape[0], -1, 14, 14) # [b_size, 768, 14, 14]
+        x = torch.flatten(self.deconvs(x),1) # [b_size, 14x14]
+        x = self.mpl(x).unsqueeze(1) # [b_size, 1, 14x14]
+
+        # x = self.mlp1(feature_attn) # [b_size, 14x14, 1]
+        # x = x.squeeze(2)
+        # x = self.fc(x) + .05 # add floor
         x = self.softmax(x).view(x.shape[0], 1, 64, 64) #likelihood
 
         return x
