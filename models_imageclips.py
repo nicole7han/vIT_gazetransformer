@@ -61,7 +61,7 @@ class SpatialAttention(nn.Module):
 
     def forward(self, x, pos_embed):
         x = self.project(x).flatten(2).transpose(1, 2)
-        x += pos_embed[0, 1:, ].unsqueeze(0)  # [b_size, 14x14, 768]
+        x += pos_embed[0, 1:, ].unsqueeze(0)  # [b_size, 14x14, 768] add positional embedding to the mask projection
         x = self.mpl(x.transpose(1, 2)).transpose(1, 2)  # [b_size,  1, 768]
         return x
 
@@ -160,7 +160,11 @@ class Gaze_Transformer(nn.Module):
         img_vit_feature = vit_feature_extractor(images) # [b_size, 14 x 14, 768]
 
         # binary masks feature
-        spatial_attn = self.spa_net(masks, pos_embed)  # [b_size, 1, 768]
+        h_mask, b_mask = masks[:,0,::], masks[:,1,::]
+        h_vit_feature = vit_feature_extractor(torch.stack([h_mask,h_mask,h_mask],dim=1))
+        b_vit_feature = vit_feature_extractor(torch.stack([b_mask,b_mask,b_mask],dim=1))
+        spatial_attn = h_vit_feature + b_vit_feature
+        # spatial_attn = self.spa_net(masks, pos_embed)  # [b_size, 1, 768]
 
         # multiply img_vit_feature to binary masks to get spatial related vit feature
         feature_attn = img_vit_feature * spatial_attn # [b_size, 14 x 14, 768]

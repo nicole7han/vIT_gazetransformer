@@ -4,8 +4,8 @@ from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
-epoch=60
 model = Gaze_Transformer()
+epoch=60
 checkpoint = torch.load('{}/models_vit_small/viTmodel_epoch{}.pt'.format(basepath,epoch), map_location='cpu')
 checkpoint['train_loss']
 checkpoint['test_loss']

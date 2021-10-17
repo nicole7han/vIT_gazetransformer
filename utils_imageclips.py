@@ -88,6 +88,33 @@ def visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=0):
     axs[1, 1].title.set_text('gazed mask (prediction)')
 
 
+
+def visualize_vitpatch(img_vit_feature,spatial_attn, idx=0)
+    # img_vit_feature [b_size, 14x14, 768]
+    # spatial_attn [b_size, 1, 768]
+    fig = plt.figure(figsize=(12, 12))
+    for i in range(14): #row
+        for j in range(14): # column
+            patch = img_vit_feature[idx, i*14+j,:]
+            patch = patch.reshape((24, 32)).detach().cpu().numpy()
+            ax = fig.add_subplot(14, 14, i*14+j+1)
+            ax.axes.get_xaxis().set_visible(False)
+            ax.axes.get_yaxis().set_visible(False)
+            ax.imshow(patch)
+
+    feature_attn = img_vit_feature * spatial_attn
+    fig = plt.figure(figsize=(12, 12))
+    for i in range(14): #row
+        for j in range(14): # column
+            patch = feature_attn[idx, i*14+j,:]
+            patch = patch.reshape((24, 32)).detach().cpu().numpy()
+            ax = fig.add_subplot(14, 14, i*14+j+1)
+            ax.axes.get_xaxis().set_visible(False)
+            ax.axes.get_yaxis().set_visible(False)
+            ax.imshow(patch)
+
+
+
 def plot_gaze(h_yxhw, b_yxhw, gaze_start, pred_gaze, gt_gaze, image, gaze_map, out_map_s, idx=0):
     '''
     :param h_yxhw: head bounding box (y, x, h, w)
