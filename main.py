@@ -34,11 +34,12 @@ def main():
                         help='map loss weight, (default:.7)')
     args = parser.parse_args()
 
-    ann_path = "/mnt/bhd/nicoleh/gazetransformer/data/annotations"
-    train_img_path = "/mnt/bhd/nicoleh/gazetransformer/data/train"
-    train_bbx_path = "/mnt/bhd/nicoleh/gazetransformer/data/train_bbox"
-    test_img_path = "/mnt/bhd/nicoleh/gazetransformer/data/test"
-    test_bbx_path = "/mnt/bhd/nicoleh/gazetransformer/data/test_bbox"
+    basepath = os.path.abspath(os.curdir)
+    ann_path = "{}/data/annotations".format(basepath)
+    train_img_path = "{}/data/train".format(basepath)
+    train_bbx_path = "{}/data/train_bbox".format(basepath)
+    test_img_path = "{}/data/test".format(basepath)
+    test_bbx_path = "{}/data/test_bbox".format(basepath)
 
     # train model
     print('loading model')

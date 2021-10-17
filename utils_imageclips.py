@@ -89,7 +89,7 @@ def visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=0):
 
 
 
-def visualize_vitpatch(img_vit_feature,spatial_attn, idx=0)
+def visualize_vitpatch(img_vit_feature,spatial_attn, idx=0):
     # img_vit_feature [b_size, 14x14, 768]
     # spatial_attn [b_size, 1, 768]
     fig = plt.figure(figsize=(12, 12))
