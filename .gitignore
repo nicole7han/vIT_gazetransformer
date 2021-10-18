@@ -1,2 +1,6 @@
 
 .DS_Store
+*.npy
+*.jpg
+*.json
+*.xlsx
