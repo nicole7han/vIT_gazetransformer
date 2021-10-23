@@ -89,7 +89,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             try:
                 for i in range(5):
                     visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=i)
-                    plt.savefig('outputs/viTtrain_epoch{}_plot{}.jpg'.format(e, i + 1))
+                    plt.savefig('outputs/ResviTtrain_epoch{}_plot{}.jpg'.format(e, i + 1))
                     plt.close('all')
             except:
                 pass
