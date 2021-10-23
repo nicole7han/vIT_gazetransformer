@@ -2,7 +2,6 @@ import os, math, sys
 import torch
 import torch.nn.functional as F
 from torch import nn
-import torchvision.transforms as T
 import torchvision.models as models
 import timm
 from timm.data import resolve_data_config
@@ -12,19 +11,45 @@ from PIL import Image
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+# sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
+# from utils_imageclips import *
+sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
+from model_patches_training.utils_imageclips import *
 from utils_imageclips import *
 
+#
+#
+# class ResidualBlock(nn.Module):
+#     def __init__(self, in_channels, out_channels, stride=1):
+#         super(ResidualBlock, self).__init__()
+#         self.bn1 = nn.BatchNorm2d(out_channels)
+#         self.relu = nn.ReLU(inplace=True)
+#         self.conv2 = conv3x3(out_channels, out_channels)
+#         self.bn2 = nn.BatchNorm2d(out_channels)
+#         self.avgpool = nn.AvgPool2d((2, 2), stride=(2, 1))
+#
+#     def forward(self, x):
+#         residual = x
+#         out = self.conv1(x)
+#         out = self.bn1(out)
+#         out = self.relu(out)
+#         out = self.conv2(out)
+#         out = self.bn2(out)
+#         if self.downsample:
+#             residual = self.downsample(x)
+#         out += residual
+#         out = self.relu(out)
+#         return out
 
 class ExtractFeatures(nn.Module):
     """Extracts embeddings of segmented humans' heads and bodies from the input images."""
-    
+
     def __init__(self):
         super(ExtractFeatures, self).__init__()
         # Load the pretrained model
         self.model = models.resnet18(pretrained=True)
         self.shortcut = nn.Identity()
-        self.pool = nn.AvgPool2d(2)
-        
+
     def forward(self, inputs):
         """Applies extractfetures module.
         By default we use resnet18 as backbone to extract features of the head and body
@@ -33,36 +58,39 @@ class ExtractFeatures(nn.Module):
         Returns:
           output: `input feature`
         """
-#        h,w,_ = inputs.shape
-#        inputs = self.Transform(Image.fromarray(inputs))
+        #        h,w,_ = inputs.shape
+        #        inputs = self.Transform(Image.fromarray(inputs))
         with torch.no_grad():
-            if len(inputs.shape)==3: #if it's just one image
+            if len(inputs.shape) == 3:  # if it's just one image
                 inputs = inputs.unsqueeze(0)
             residual = self.shortcut(inputs)
             extractor = torch.nn.Sequential(*list(self.model.children())[:-1])
-            x = extractor(inputs)
+            x = extractor(inputs).squeeze(-1).permute(0,2,1)
         return x
 
 
 class SpatialAttention(nn.Module):
     """Extracts spatial attention from heads and body masks."""
-
     def __init__(self):
         super(SpatialAttention, self).__init__()
-        self.project = nn.Conv2d(in_channels=2, out_channels=768, kernel_size=16, stride=16)
-        self.norm = nn.Identity()
+        self.project = nn.Sequential(
+            nn.Linear(512, 784),
+            nn.ReLU()
+        )
+        # self.project2 = nn.Sequential(
+        #     nn.Linear(784, 196),
+        #     nn.ReLU()
+        # )
+        # self.project = nn.Conv2d(in_channels=2, out_channels=768, kernel_size=3, stride=3)
+        # self.norm = nn.Identity()
         self.mpl = nn.Sequential(
-            nn.Linear(196, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
+            nn.Linear(1568, 768),
             nn.ReLU(),
         )
         # self.conv1 = nn.Conv2d(in_channels=768, out_channels=384, kernel_size=5)
-
-    def forward(self, x):
-        x = self.project(x).flatten(2).transpose(1, 2)
-        # x += pos_embed[0, 1:, ].unsqueeze(0)  # [b_size, 14x14, 768]
-        x = self.mpl(x.transpose(1, 2)).transpose(1, 2)  # [b_size,  1, 768]
+    def forward(self, m_features, hb_features):
+        x = (self.project(hb_features) + m_features).flatten(1)
+        x = self.mpl(x).unsqueeze(1)  # [b_size,  1, 768]
         return x
 
 
@@ -111,16 +139,23 @@ class GazePredictor(nn.Module):
         return x
 
 
+
+
 class Gaze_Transformer(nn.Module):
     """Main Model"""
-    def __init__(self, img_size=224, patch_size=16, num_patches=14*14, embed_dim=768):
+    def __init__(self):
         super(Gaze_Transformer, self).__init__()
-        # self.extractor = ExtractFeatures()
+        self.resnet = ExtractFeatures()
         self.spa_net = SpatialAttention()
         self.gaze_pred = GazePredictor()
         self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
         self.softmax = nn.Softmax(dim=1)
-
+        self.maxpool = nn.MaxPool2d(2)
+        ''' vision transformer
+        inputs = feature_extractor(images=image, return_tensors="pt")
+        outputs = model(**inputs)
+        ast_hidden_states = outputs.last_hidden_state
+        '''
 
         # Initialize weights
         for m in self.modules():
@@ -134,43 +169,27 @@ class Gaze_Transformer(nn.Module):
                 
     def forward(self, images,h_crops,b_crops,masks):
         self.vit.eval()
+        self.resnet.eval()
         for param in self.vit.parameters():
             param.requires_grad = False
-        # b_size = images.shape[0]
-        # cls_tokens = torch.cat([self.vit.cls_token]*b_size)
-        # patches = self.vit.patch_embed(images)
-        #
-        # transformer_input = torch.cat((cls_tokens, patches), dim=1) + pos_embed
-        # attention = self.vit.blocks[0].attn
-        # transformer_input_expanded = attention.qkv(transformer_input)[0]
-        #
-        # # Split qkv into mulitple q, k, and v vectors for multi-head attantion
-        # qkv = transformer_input_expanded.reshape(197, 3, 12, 64)  # (N=197, (qkv), H=12, D/H=64)
-        # q = qkv[:, 0].permute(1, 0, 2)  # (H=12, N=197, D/H=64)
-        # k = qkv[:, 1].permute(1, 0, 2)  # (H=12, N=197, D/H=64)
-        # kT = k.permute(0, 2, 1)  # (H=12, D/H=64, N=197)
-        # attention_matrix = q @ kT
-
-
-        # ### IDEA: use viT to get each patch feature
-        # pos_embed = self.vit.pos_embed
+        for param in self.resnet.parameters():
+            param.requires_grad = False
 
         # get image vit feature from each 14x14 patch
         vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
         img_vit_feature = vit_feature_extractor(images) # [b_size, 14 x 14, 768]
 
         # binary masks feature
-        # h_mask, b_mask = masks[:,0,::], masks[:,1,::]
-        # h_vit_feature = vit_feature_extractor(torch.stack([h_mask,h_mask,h_mask],dim=1))
-        # b_vit_feature = vit_feature_extractor(torch.stack([b_mask,b_mask,b_mask],dim=1))
-        # spatial_attn = h_vit_feature + b_vit_feature
+        h_features, b_features = self.resnet(h_crops), self.resnet(b_crops) # head feature, body feature [b_size, 1, 512]
+        hb_features = torch.cat([h_features, b_features],1) #[b_size, 2, 512]
         masks = 1- masks # boundingbox as 0, others are 1
-        spatial_attn = self.spa_net(masks)  # [b_size, 1, 768]
+        m_features = self.maxpool(self.maxpool(self.maxpool(masks))).flatten(2) # head body position feature [b_size, 2, 784]
+        spatial_attn = self.spa_net(m_features, hb_features) #[b_size, 1, 768]
 
         # # multiply img_vit_feature to binary masks to get spatial related vit feature
-        feature_attn = img_vit_feature * spatial_attn # [b_size, 14 x 14 + 1, 768]
+        feature_attn = img_vit_feature * spatial_attn  # [b_size, 14 x 14 + 1, 768]
 
-        # visual feature x spatial attention 
+        # visual feature x spatial attention
         gaze_map = self.gaze_pred(feature_attn)
-    
+
         return gaze_map
