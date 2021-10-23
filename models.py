@@ -14,8 +14,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
 # from utils_imageclips import *
 sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
-from model_patches_training.utils_imageclips import *
-from utils_imageclips import *
+from utils import *
 
 #
 #

@@ -9,8 +9,8 @@ import torch.multiprocessing
 
 # torch.multiprocessing.set_sharing_strategy('file_system')
 
-from models_imageclips import *
-from train_model_imageclips import *
+from models import *
+from train import *
 
 
 # sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
