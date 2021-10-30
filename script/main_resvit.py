@@ -52,7 +52,7 @@ def main():
     # criterion = nn.BCELoss(reduction='mean')
 
     if args.resume:
-        checkpoint = torch.load('models/viTmodel_epoch{}.pt'.format(args.e_start), map_location='cpu')
+        checkpoint = torch.load('models/resviTmodel_epoch{}.pt'.format(args.e_start), map_location='cpu')
         loaded_dict = checkpoint['model_state_dict']
         prefix = 'module.'
         n_clip = len(prefix)
