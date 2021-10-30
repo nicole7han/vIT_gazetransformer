@@ -14,8 +14,10 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
 # from utils_imageclips import *
 sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
-from utils import *
-
+try:
+    from utils import *
+except:
+    pass
 #
 #
 # class ResidualBlock(nn.Module):
