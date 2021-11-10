@@ -45,7 +45,8 @@ def main():
     print('loading model')
     model = Gaze_Transformer()
 
-    lr = args.lr * args.b_size / 128
+    lr = args.lr * args.b_size / 512
+    print('learning rate = {}'.format(lr))
     beta1 = .9
     opt = optim.Adam(model.parameters(), lr=lr, betas=(beta1, .999))
     criterion = nn.MSELoss()

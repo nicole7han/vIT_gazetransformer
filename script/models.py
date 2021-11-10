@@ -128,7 +128,7 @@ class GazePredictor(nn.Module):
         # self.logsoftmax = nn.LogSoftmax(dim=1)
 
     def forward(self, feature_attn):
-        x = feature_attn.permute(0,2,1).view(feature_attn.shape[0], -1, 14, 14) # [b_size, 768, 14, 14]
+        x = feature_attn.permute(0,2,1).view(feature_attn.shape[0], -1, 14, 14) # [b_size, feature_dim 768, 14, 14]
         x = torch.flatten(self.deconvs(x),1) # [b_size, 14x14]
         x = self.mpl(x).unsqueeze(1) # [b_size, 1, 14x14]
 
@@ -136,7 +136,6 @@ class GazePredictor(nn.Module):
         # x = x.squeeze(2)
         # x = self.fc(x) + .05 # add floor
         x = self.softmax(x).view(x.shape[0], 1, 64, 64) #likelihood
-
         return x
 
 
@@ -157,16 +156,14 @@ class Gaze_Transformer(nn.Module):
         outputs = model(**inputs)
         ast_hidden_states = outputs.last_hidden_state
         '''
-
         # Initialize weights
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-                
+        # for m in self.modules():
+        #     if isinstance(m, nn.Conv2d):
+        #         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+        #         m.weight.data.normal_(0, math.sqrt(2. / n))
+        #     elif isinstance(m, nn.BatchNorm2d):
+        #         m.weight.data.fill_(1)
+        #         m.bias.data.zero_()
                 
     def forward(self, images,h_crops,b_crops,masks):
         self.vit.eval()
@@ -183,8 +180,8 @@ class Gaze_Transformer(nn.Module):
         # binary masks feature
         h_features, b_features = self.resnet(h_crops), self.resnet(b_crops) # head feature, body feature [b_size, 1, 512]
         hb_features = torch.cat([h_features, b_features],1) #[b_size, 2, 512]
-        masks = 1- masks # boundingbox as 0, others are 1
-        m_features = self.maxpool(self.maxpool(self.maxpool(masks))).flatten(2) # head body position feature [b_size, 2, 784]
+        # mask boundingbox as 0, others are 1
+        m_features = self.maxpool(self.maxpool(self.maxpool(1-masks))).flatten(2) # head body position feature [b_size, 2, 784]
         spatial_attn = self.spa_net(m_features, hb_features) #[b_size, 1, 768]
 
         # # multiply img_vit_feature to binary masks to get spatial related vit feature
