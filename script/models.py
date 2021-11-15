@@ -2,12 +2,13 @@ import os, math, sys
 import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
-from torch import nn
+from torch import nn, Tensor
 import torchvision.models as models
 import timm
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from PIL import Image
+from typing import Dict, Iterable, Callable
 
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -141,7 +142,6 @@ class GazePredictor(nn.Module):
 
 
 
-
 class Gaze_Transformer(nn.Module):
     """Main Model"""
     def __init__(self):
@@ -154,9 +154,19 @@ class Gaze_Transformer(nn.Module):
         self.softmax = nn.Softmax(dim=1)
         self.maxpool = nn.MaxPool2d(2)
 
+        activation = {}
+        def get_activation(name):
+            def hook(model, input, output):
+                activation[name] = output
+            return hook
 
-
-
+        # register the forward hook
+        hook = get_activation('multihead_attn')
+        hook2 = get_activation('Linear')
+        self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(hook)
+        self.vit.class_embed.register_forward_hook(hook2)
+        output = self.vit(images)
+        decoder_out = activation['multihead_attn'][0]
 
         ''' vision transformer
         inputs = feature_extractor(images=image, return_tensors="pt")
@@ -180,75 +190,15 @@ class Gaze_Transformer(nn.Module):
         for param in self.resnet.parameters():
             param.requires_grad = False
 
-        # get image vit feature from each 14x14 patch
-        # vit_feature_extractor = list(self.vit.children())[0] #just get encoder decoder
-        # vit_encoder = torch.nn.Sequential(*list(list(vit_feature_extractor.children())[0].children())[0])
-
-        # use lists to store the outputs via up-values
-        conv_features, enc_attn_weights, dec_attn_weights = [], [], []
-        hooks = [
-            self.vit.backbone[-2].register_forward_hook(
-                lambda self, input, output: conv_features.append(output)
-            ),
-            self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(
-                lambda self, input, output: enc_attn_weights.append(output[1])
-            ),
-            self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(
-                lambda self, input, output: dec_attn_weights.append(output[1])
-            ),
+        # get output from last decoder layer
+        dec_attn_weights = []
+        hooks = [self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(
+                lambda self, input, output: dec_attn_weights.append(output[1])),
         ]
         outputs = self.vit(images)  # propogate
         for hook in hooks:
             hook.remove()
-
-        conv_features = conv_features[0]
-        enc_attn_weights = enc_attn_weights[0]
         dec_attn_weights = dec_attn_weights[0]
-        # output of the CNN
-        f_map = conv_features['0']
-        print("Encoder attention:      ", enc_attn_weights[0].shape)
-        print("Feature map:            ", f_map.tensors.shape)
-        # get the HxW shape of the feature maps of the CNN
-        shape = f_map.tensors.shape[-2:]
-        # and reshape the self-attention to a more interpretable shape
-        img_idx = 2
-        sattn = enc_attn_weights[img_idx].reshape(shape + shape)
-        print("Reshaped self-attention:", sattn.shape)
-
-        # downsampling factor for the CNN, is 32 for DETR and 16 for DETR DC5
-        fact = 32
-        idxs = [(10, 10), (50, 50), (100, 100), (150, 150), ]
-        # here we create the canvas
-        fig = plt.figure(constrained_layout=True, figsize=(25 * 0.7, 8.5 * 0.7))
-        # and we add one plot per reference point
-        gs = fig.add_gridspec(2, 4)
-        axs = [
-            fig.add_subplot(gs[0, 0]),
-            fig.add_subplot(gs[1, 0]),
-            fig.add_subplot(gs[0, -1]),
-            fig.add_subplot(gs[1, -1]),
-        ]
-        # for each one of the reference points, let's plot the self-attention
-        # for that point
-        for idx_o, ax in zip(idxs, axs):
-            idx = (idx_o[0] // fact, idx_o[1] // fact)
-            ax.imshow(sattn[..., idx[0], idx[1]].detach().numpy(), cmap='cividis', interpolation='nearest')
-            ax.axis('off')
-            ax.set_title(f'self-attention{idx_o}')
-
-        # and now let's add the central image, with the reference points as red circles
-        fcenter_ax = fig.add_subplot(gs[:, 1:-1])
-        fcenter_ax.imshow(images[img_idx,0,::].detach().numpy())
-        for (y, x) in idxs:
-            scale = images[0,0,::].shape[-1]/ images[0,0,::].shape[-2]
-            x = ((x // fact) + 0.5) * fact
-            y = ((y // fact) + 0.5) * fact
-            fcenter_ax.add_patch(plt.Circle((x * scale, y * scale), fact // 2, color='r'))
-            fcenter_ax.axis('off')
-
-
-
-
 
 
         # vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
