@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 from torch import nn, Tensor
 import torchvision.models as models
-from vit_pytorch import ViT
+# from vit_pytorch import ViT
 import timm
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
