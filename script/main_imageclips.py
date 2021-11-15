@@ -32,8 +32,8 @@ model.to(device)
 # images_name_asc = [str2ASCII(name) for name in images_name]
 # images_name_asc = torch.tensor(images_name_asc).to(device)
 # b_size = images_name_asc.shape[0]
-out_map = model(images, h_crops, b_crops, masks)
-out_map = out_map.cpu()
+gaze_pos = model(images, h_crops, b_crops, masks)
+gaze_pos = out_map.cpu()
 
 
 

@@ -40,18 +40,21 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                 gaze_maps.to(device)
 
             b_size = images.shape[0]
-            out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
+            gaze_pred = model(images, h_crops, b_crops, masks)
+            gaze_pos = torch.vstack([img_anno['gaze_x'],img_anno['gaze_y']]).permute(1,0)
 
+            loss = criterion(gaze_pred.float(), gaze_pos.float())
+            '''
+            out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
             gaze_maps[gaze_maps>0] = 1
             gaze_maps[gaze_maps==1] = 1-.05 #label smoothing
             gaze_maps[gaze_maps==0] = .05
             gaze_maps = gaussian_smooth(gaze_maps.detach(), 21, 5).to(device)
             gt_map_sums = gaze_maps.view(b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
             gaze_maps = (gaze_maps.view(b_size, 1, -1) / gt_map_sums).view(b_size, 1, 64, 64)
-
             # loss between probabilty maps
             loss = criterion(out_map.float(), gaze_maps.float())
-
+            '''
             # # angle loss
             # vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
             # gaze_pred = [unravel_index(out_map.cpu()[i, 0, ::].argmax(), out_map.cpu()[i, 0, ::].shape) for i in
