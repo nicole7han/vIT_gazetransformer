@@ -1,6 +1,7 @@
 import os, math, sys
 import torch
 import torch.nn.functional as F
+import torchvision.transforms as T
 from torch import nn
 import torchvision.models as models
 import timm
@@ -148,9 +149,15 @@ class Gaze_Transformer(nn.Module):
         self.resnet = ExtractFeatures()
         self.spa_net = SpatialAttention()
         self.gaze_pred = GazePredictor()
-        self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
+        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
+        # self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
         self.softmax = nn.Softmax(dim=1)
         self.maxpool = nn.MaxPool2d(2)
+
+
+
+
+
         ''' vision transformer
         inputs = feature_extractor(images=image, return_tensors="pt")
         outputs = model(**inputs)
@@ -174,8 +181,78 @@ class Gaze_Transformer(nn.Module):
             param.requires_grad = False
 
         # get image vit feature from each 14x14 patch
-        vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
-        img_vit_feature = vit_feature_extractor(images) # [b_size, 14 x 14, 768]
+        # vit_feature_extractor = list(self.vit.children())[0] #just get encoder decoder
+        # vit_encoder = torch.nn.Sequential(*list(list(vit_feature_extractor.children())[0].children())[0])
+
+        # use lists to store the outputs via up-values
+        conv_features, enc_attn_weights, dec_attn_weights = [], [], []
+        hooks = [
+            self.vit.backbone[-2].register_forward_hook(
+                lambda self, input, output: conv_features.append(output)
+            ),
+            self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(
+                lambda self, input, output: enc_attn_weights.append(output[1])
+            ),
+            self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(
+                lambda self, input, output: dec_attn_weights.append(output[1])
+            ),
+        ]
+        outputs = self.vit(images)  # propogate
+        for hook in hooks:
+            hook.remove()
+
+        conv_features = conv_features[0]
+        enc_attn_weights = enc_attn_weights[0]
+        dec_attn_weights = dec_attn_weights[0]
+        # output of the CNN
+        f_map = conv_features['0']
+        print("Encoder attention:      ", enc_attn_weights[0].shape)
+        print("Feature map:            ", f_map.tensors.shape)
+        # get the HxW shape of the feature maps of the CNN
+        shape = f_map.tensors.shape[-2:]
+        # and reshape the self-attention to a more interpretable shape
+        img_idx = 2
+        sattn = enc_attn_weights[img_idx].reshape(shape + shape)
+        print("Reshaped self-attention:", sattn.shape)
+
+        # downsampling factor for the CNN, is 32 for DETR and 16 for DETR DC5
+        fact = 32
+        idxs = [(10, 10), (50, 50), (100, 100), (150, 150), ]
+        # here we create the canvas
+        fig = plt.figure(constrained_layout=True, figsize=(25 * 0.7, 8.5 * 0.7))
+        # and we add one plot per reference point
+        gs = fig.add_gridspec(2, 4)
+        axs = [
+            fig.add_subplot(gs[0, 0]),
+            fig.add_subplot(gs[1, 0]),
+            fig.add_subplot(gs[0, -1]),
+            fig.add_subplot(gs[1, -1]),
+        ]
+        # for each one of the reference points, let's plot the self-attention
+        # for that point
+        for idx_o, ax in zip(idxs, axs):
+            idx = (idx_o[0] // fact, idx_o[1] // fact)
+            ax.imshow(sattn[..., idx[0], idx[1]].detach().numpy(), cmap='cividis', interpolation='nearest')
+            ax.axis('off')
+            ax.set_title(f'self-attention{idx_o}')
+
+        # and now let's add the central image, with the reference points as red circles
+        fcenter_ax = fig.add_subplot(gs[:, 1:-1])
+        fcenter_ax.imshow(images[img_idx,0,::].detach().numpy())
+        for (y, x) in idxs:
+            scale = images[0,0,::].shape[-1]/ images[0,0,::].shape[-2]
+            x = ((x // fact) + 0.5) * fact
+            y = ((y // fact) + 0.5) * fact
+            fcenter_ax.add_patch(plt.Circle((x * scale, y * scale), fact // 2, color='r'))
+            fcenter_ax.axis('off')
+
+
+
+
+
+
+        # vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
+        # img_vit_feature = vit_feature_extractor(images) # [b_size, 14 x 14, 768]
 
         # binary masks feature
         h_features, b_features = self.resnet(h_crops), self.resnet(b_crops) # head feature, body feature [b_size, 1, 512]

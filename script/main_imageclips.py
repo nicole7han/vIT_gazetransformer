@@ -6,9 +6,9 @@ from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 
 basepath = os.path.abspath(os.curdir)
-from models import *
-from train import *
-from utils import *
+from script.models import *
+from script.train import *
+from script.utils import *
 
 
 ann_path = "{}/data/annotations".format(basepath)
