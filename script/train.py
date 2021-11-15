@@ -33,18 +33,17 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         loss_iter = []
         for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno in train_dataiter:
             opt.zero_grad()
-            images, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno = \
+            images, h_crops, b_crops, g_crops, masks, gaze_maps = \
                 images.to(device), \
                 h_crops.to(device), \
                 b_crops.to(device), \
                 g_crops.to(device), \
                 masks.to(device), \
-                gaze_maps.to(device), \
-                img_anno.to(device)
+                gaze_maps.to(device)
 
             b_size = images.shape[0]
             gaze_pred = model(images, h_crops, b_crops, masks)
-            gaze_pos = torch.vstack([img_anno['gaze_x'],img_anno['gaze_y']]).permute(1,0)
+            gaze_pos = torch.vstack([img_anno['gaze_x'],img_anno['gaze_y']]).permute(1,0).to(device)
 
             loss = criterion(gaze_pred.float(), gaze_pos.float())
             '''
