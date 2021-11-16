@@ -121,7 +121,7 @@ class GazePredictor(nn.Module):
 
     def forward(self, hb_spatial, img_vit_out):
         b_size = img_vit_out.shape[1]
-        pos = pos.unsqueeze(0).repeat(1, b_size, 1) #[1, b_size, 256]
+        pos = self.pos.unsqueeze(0).repeat(1, b_size, 1) #[1, b_size, 256]
         pos_emb = self.transformer(hb_spatial+img_vit_out, pos) #[1, b_size, 256]
         x = self.mlp(pos_emb)
         return x
@@ -136,6 +136,9 @@ class Gaze_Transformer(nn.Module):
         self.spa_net = SpatialAttention()
         self.gaze_pred = GazePredictor()
         self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
+        self.vit.eval()
+        for param in self.vit.parameters():
+            param.requires_grad = False
         # self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
         self.softmax = nn.Softmax(dim=1)
         self.maxpool = nn.MaxPool2d(2)
@@ -149,13 +152,8 @@ class Gaze_Transformer(nn.Module):
         #         m.weight.data.fill_(1)
         #         m.bias.data.zero_()
 
-    def get_activation(name):
-        def hook(model, input, output):
-            activation[name] = output
-        return hook
 
     def forward(self, images,h_crops,b_crops,masks):
-
         # h+b feature
         h_features, b_features = self.resnet(h_crops), self.resnet(b_crops) # head feature, body feature #[b_size, 7x7, 128]
         # h,b mask boundingbox as 0, others are 1
@@ -170,6 +168,10 @@ class Gaze_Transformer(nn.Module):
 
         # image vit feature from DETR
         activation = {}
+        def get_activation(name):
+            def hook(model, input, output):
+                activation[name] = output
+            return hook
         hook1 = get_activation('self_attn')
         self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(hook1)
         # h2=self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(hook2)

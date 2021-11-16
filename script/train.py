@@ -15,7 +15,7 @@ except:
     from script.utils import *
 
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
-          e_start, num_e, lbd, b_size=128):
+          e_start, num_e, lbd, b_size=512):
     LOSS = []
     softmax = nn.Softmax(dim=1)
     test_data = GazeDataloader(ann_path, test_img_path, test_bbx_path)
@@ -95,7 +95,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             try:
                 for i in range(5):
                     visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=i)
-                    plt.savefig('script2/outputs/ResviTtrain_epoch{}_plot{}.jpg'.format(e, i + 1))
+                    plt.savefig('script3/outputs/ResviTtrain_epoch{}_plot{}.jpg'.format(e, i + 1))
                     plt.close('all')
             except:
                 pass
@@ -143,7 +143,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     # ang_loss /= test_b_size
                     # test_loss = lbd * map_loss + (1 - lbd) * ang_loss * .00001
 
-                    PATH = "script2/models/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script3/models/resviTmodel_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
@@ -152,7 +152,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'test_loss': test_loss,
                     }, PATH)
                 except:
-                    PATH = "script2/models/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script3/models/resviTmodel_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
@@ -163,7 +163,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                 try:
                     for i in range(5):
                         visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=i)
-                        plt.savefig('script2/outputs/resviTmodel_epoch{}_plot{}.jpg'.format(e, i + 1))
+                        plt.savefig('script3/outputs/resviTmodel_epoch{}_plot{}.jpg'.format(e, i + 1))
                         plt.close('all')
                 except:
                     pass
