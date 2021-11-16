@@ -8,11 +8,11 @@ import argparse
 import torch.multiprocessing
 
 # torch.multiprocessing.set_sharing_strategy('file_system')
-from models import *
+from model import *
 from train import *
 
 
-# sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
+sys.path.append('/home/xhan01/.cache/torch/hub/facebookresearch_detr_main')
 # from model_patches_training.models_imageclips import *
 # from model_patches_training.train_model_imageclips import *
 
@@ -52,7 +52,7 @@ def main():
     # criterion = nn.BCELoss(reduction='mean')
 
     if args.resume:
-        checkpoint = torch.load('script3/models/resviTmodel_epoch{}.pt'.format(args.e_start), map_location='cpu')
+        checkpoint = torch.load('script3/trainedmodels/resviTmodel_epoch{}.pt'.format(args.e_start), map_location='cpu')
         loaded_dict = checkpoint['model_state_dict']
         prefix = 'module.'
         n_clip = len(prefix)

@@ -6,7 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 
 basepath = os.path.abspath(os.curdir)
-from script.models import *
+from script.model import *
 from script.train import *
 from script.utils import *
 
@@ -32,8 +32,8 @@ model.to(device)
 # images_name_asc = [str2ASCII(name) for name in images_name]
 # images_name_asc = torch.tensor(images_name_asc).to(device)
 # b_size = images_name_asc.shape[0]
-gaze_pos = model(images, h_crops, b_crops, masks)
-gaze_pos = gaze_pos.cpu()
+gaze_pred = model(images, h_crops, b_crops, masks)
+
 
 
 

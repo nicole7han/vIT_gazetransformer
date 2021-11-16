@@ -143,7 +143,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     # ang_loss /= test_b_size
                     # test_loss = lbd * map_loss + (1 - lbd) * ang_loss * .00001
 
-                    PATH = "script3/models/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script3/trainedmodels/resviTmodel_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
@@ -152,7 +152,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'test_loss': test_loss,
                     }, PATH)
                 except:
-                    PATH = "script3/models/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script3/trainedmodels/resviTmodel_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),

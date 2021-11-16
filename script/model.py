@@ -124,7 +124,7 @@ class GazePredictor(nn.Module):
         pos = self.pos.unsqueeze(0).repeat(1, b_size, 1) #[1, b_size, 256]
         pos_emb = self.transformer(hb_spatial+img_vit_out, pos) #[1, b_size, 256]
         x = self.mlp(pos_emb)
-        return x
+        return x.squeeze(0)
 
 
 
