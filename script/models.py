@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 from torch import nn, Tensor
 import torchvision.models as models
-from vit_pytorch import ViT
 import timm
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
@@ -14,8 +13,6 @@ from typing import Dict, Iterable, Callable
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# sys.path.append('/mnt/bhd/nicoleh/gazetransformer/')
-# from utils_imageclips import *
 sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
 try:
     from utils import *
@@ -31,6 +28,9 @@ class ExtractFeatures(nn.Module):
         self.model = models.resnet18(pretrained=True)
         self.shortcut = nn.Identity()
         self.conv = nn.Sequential(
+                nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1, stride=1),
+                nn.BatchNorm2d(256),
+                nn.ReLU(),
                 nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1, stride=1),
                 nn.BatchNorm2d(128),
                 nn.ReLU()
@@ -48,12 +48,12 @@ class ExtractFeatures(nn.Module):
             if len(inputs.shape) == 3:  # if it's just one image
                 inputs = inputs.unsqueeze(0)
             residual = self.shortcut(inputs)
-            extractor = torch.nn.Sequential(*list(self.model.children())[:-3])
+            extractor = torch.nn.Sequential(*list(self.model.children())[:-2])
             for param in extractor.parameters():
                 param.requires_grad = False
-            x = extractor(inputs)
+            x = extractor(inputs) #[b_size, 512, 7, 7]
         x = self.conv(x) #[b_size, 128, 14, 14]
-        x = x.reshape(-1,x.shape[1],x.shape[2]*x.shape[3]) #[b_size, 256, 14*14]
+        x = x.reshape(-1,x.shape[1],x.shape[2]*x.shape[3]) #[b_size, 128, 7*7]
         return x.permute(0,2,1) #to match the vit feature
 
 
@@ -79,7 +79,6 @@ class SpatialAttention(nn.Module):
                 nn.Conv2d(in_channels=64, out_channels=128, kernel_size=5, stride=3),
                 nn.BatchNorm2d(128),
                 nn.ReLU(),
-                nn.Upsample(scale_factor=2, mode='bilinear'),
         )
         self.convs2 = nn.Sequential(
             nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1, stride=1),
@@ -95,27 +94,36 @@ class SpatialAttention(nn.Module):
 
         # self.conv1 = nn.Conv2d(in_channels=768, out_channels=384, kernel_size=5)
     def forward(self, masks, h_features, b_features):
-        h_spa_feat = h_features + self.convs(masks[:,0,::].unsqueeze(1)).reshape(-1,128,14*14).permute(0,2,1) #[b_size, 14x14, 128]
-        b_spa_feat = b_features + self.convs(masks[:, 1, ::].unsqueeze(1)).reshape(-1, 128, 14 * 14).permute(0, 2, 1) #[b_size, 14x14, 128]
+        h_spa_feat = h_features + self.convs(masks[:,0,::].unsqueeze(1)).reshape(-1,128,7*7).permute(0,2,1) #[b_size, 7x7, 128]
+        b_spa_feat = b_features + self.convs(masks[:, 1, ::].unsqueeze(1)).reshape(-1, 128, 7*7).permute(0, 2, 1) #[b_size, 7x7, 128]
         x = torch.cat([h_spa_feat,b_spa_feat], -1) #[b_size, 14x14, 128x2]
-        #img_vit_feature [b_size, 14x14, 256]
+        #img_vit_feature [b_size, 7x7, 256]
         return x
 
 
 
 class GazePredictor(nn.Module):
     """Predict final gaze estimation"""
-    def __init__(self):
+    def __init__(self, hidden_dim=256, nheads=8,
+                 num_encoder_layers=3, num_decoder_layers=2):
         super(GazePredictor, self).__init__()
+        self.transformer = nn.Transformer(hidden_dim, nheads, num_encoder_layers, num_decoder_layers)
         self.mlp = nn.Sequential(
-            nn.Linear(in_features=512, out_features=256, bias=True),
             nn.Linear(in_features=256, out_features=256, bias=True),
-            nn.Linear(in_features=256, out_features=1, bias=True)
+            nn.GELU(),
+            nn.Dropout(.8),
+            nn.Linear(in_features=256, out_features=128, bias=True),
+            nn.GELU(),
+            nn.Dropout(.8),
+            nn.Linear(in_features=128, out_features=2, bias=True)
         )
+        self.pos = nn.Parameter(torch.rand(1, hidden_dim))
 
-        self.softmax = nn.Softmax(dim=1)
-    def forward(self, feature_attn): #[b_size, 196, 512]
-        x = self.softmax(self.mlp(feature_attn))
+    def forward(self, hb_spatial, img_vit_out):
+        b_size = img_vit_out.shape[1]
+        pos = pos.unsqueeze(0).repeat(1, b_size, 1) #[1, b_size, 256]
+        pos_emb = self.transformer(hb_spatial+img_vit_out, pos) #[1, b_size, 256]
+        x = self.mlp(pos_emb)
         return x
 
 
@@ -126,19 +134,8 @@ class Gaze_Transformer(nn.Module):
         super(Gaze_Transformer, self).__init__()
         self.resnet = ExtractFeatures()
         self.spa_net = SpatialAttention()
-        self.vit = ViT(
-                    image_size=224,
-                    patch_size=16,
-                    num_classes=2,
-                    dim=256,
-                    depth=6,
-                    heads=8,
-                    mlp_dim=392,
-                    dropout=0.1,
-                    emb_dropout=0.1
-                )
         self.gaze_pred = GazePredictor()
-        # self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
+        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
         # self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
         self.softmax = nn.Softmax(dim=1)
         self.maxpool = nn.MaxPool2d(2)
@@ -151,37 +148,35 @@ class Gaze_Transformer(nn.Module):
         #     elif isinstance(m, nn.BatchNorm2d):
         #         m.weight.data.fill_(1)
         #         m.bias.data.zero_()
-                
+
+    def get_activation(name):
+        def hook(model, input, output):
+            activation[name] = output
+        return hook
+
     def forward(self, images,h_crops,b_crops,masks):
 
-        # # get output from last decoder layer
-        # dec_attn_weights = []
-        # hooks = [self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(
-        #         lambda self, input, output: dec_attn_weights.append(output[1])),
-        # ]
-        # outputs = self.vit(images)  # propogate
-        # for hook in hooks:
-        #     hook.remove()
-        # dec_attn_weights = dec_attn_weights[0]
-
         # h+b feature
-        h_features, b_features = self.resnet(h_crops), self.resnet(b_crops) # head feature, body feature #[b_size, 14x14, 256]
-        # hb_features = torch.cat([h_features, b_features],2) #[b_size, 14x14, 256x2]
-
+        h_features, b_features = self.resnet(h_crops), self.resnet(b_crops) # head feature, body feature #[b_size, 7x7, 128]
         # h,b mask boundingbox as 0, others are 1
-        # m_features = self.maxpool(self.maxpool(self.maxpool(self.maxpool(1-masks)))).flatten(2) # head body position feature [b_size, 2, 14x14]
-        # hb_features = torch.cat([h_features, b_features],2)
-        hb_spatial = self.spa_net(1-masks, h_features, b_features) #[b_size, 196, 256]
+        hb_spatial = self.spa_net(1-masks, h_features, b_features).permute(1, 0, 2) #[7*7, b_size, 256]
 
         # image vit feature
-        vit_encoder = torch.nn.Sequential(*list(self.vit.children())[2].layers[0])
-        hb_vit_feature = vit_encoder(hb_spatial)
+        # vit_encoder = torch.nn.Sequential(*list(self.vit.children())[2].layers[0])
+        # vit_encoder = torch.nn.Sequential(*list(list(vit.children())[2].layers))
+        # hb_vit_feature = vit_encoder(hb_spatial)
+        # vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
+        # img_vit_feature = vit_feature_extractor(images)  # [b_size, 7x7, 256]
 
-        vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
-        img_vit_feature = vit_feature_extractor(images) # [b_size, 14 x 14, 256]
+        # image vit feature from DETR
+        activation = {}
+        hook1 = get_activation('self_attn')
+        self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(hook1)
+        # h2=self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(hook2)
+        # h3=self.vit.class_embed.register_forward_hook(hook3)
+        output = self.vit(images)
+        img_vit_out = activation['self_attn'][0] # [b_size, 49, 256]
 
-        # visual feature x spatial attention
-        feature_attn = img_vit_feature + hb_vit_feature
-        gaze_map = self.gaze_pred(feature_attn)
+        gaze_pos = self.gaze_pred(hb_spatial, img_vit_out)
 
         return gaze_pos

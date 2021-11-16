@@ -45,6 +45,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             gaze_pred = model(images, h_crops, b_crops, masks)
             gaze_pos = torch.vstack([img_anno['gaze_x'],img_anno['gaze_y']]).permute(1,0).to(device)
 
+            # loss = F.l1_loss(gaze_pos.float(), gaze_pos.float(), reduction='none')
             loss = criterion(gaze_pred.float(), gaze_pos.float())
             '''
             out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map

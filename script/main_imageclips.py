@@ -138,6 +138,11 @@ for (y, x) in idxs:
 
 
 # register the forward hook
+activation = {}
+def get_activation(name):
+    def hook(model, input, output):
+        activation[name] = output
+    return hook
 hook1 = get_activation('self_attn')
 hook2 = get_activation('multihead_attn')
 # hook3 = get_activation('Linear')
@@ -148,6 +153,19 @@ output = self.vit(images)
 encoder_out = activation['self_attn'][0].permute(1, 0, 2)  # [b_size, 49, 256]
 decoder_out = activation['multihead_attn'][0].permute(1, 0, 2)  # [b_size, 100, 256]
 
+
+
+# get output from last decoder layer
+dec_attn_weights = []
+hooks = [self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(
+    lambda self, input, output: dec_attn_weights.append(output[1])),
+    # self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(
+    # lambda self, input, output: dec_attn_weights.append(output[1])),
+]
+outputs = self.vit(images)  # propogate
+for hook in hooks:
+    hook.remove()
+dec_attn_weights = dec_attn_weights[0]
 
 
 # VIT check
