@@ -33,7 +33,7 @@ model.to(device)
 # images_name_asc = torch.tensor(images_name_asc).to(device)
 # b_size = images_name_asc.shape[0]
 gaze_pos = model(images, h_crops, b_crops, masks)
-gaze_pos = out_map.cpu()
+gaze_pos = gaze_pos.cpu()
 
 
 
@@ -135,6 +135,18 @@ for (y, x) in idxs:
     fcenter_ax.axis('off')
 
 
+
+
+# register the forward hook
+hook1 = get_activation('self_attn')
+hook2 = get_activation('multihead_attn')
+# hook3 = get_activation('Linear')
+h1 = self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(hook1)
+h2 = self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(hook2)
+# h3=self.vit.class_embed.register_forward_hook(hook3)
+output = self.vit(images)
+encoder_out = activation['self_attn'][0].permute(1, 0, 2)  # [b_size, 49, 256]
+decoder_out = activation['multihead_attn'][0].permute(1, 0, 2)  # [b_size, 100, 256]
 
 
 
