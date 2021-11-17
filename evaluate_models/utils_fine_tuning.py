@@ -542,7 +542,6 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
                            })
     return output
 
-
 def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, lbd=.7):
     '''
 
@@ -667,14 +666,15 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
     return output
 
 
+
 def plot_gaze_largedata(img_anno, images_name, flips, gaze_pred, chong_pred, gaze_map):
 
     image = Image.open(images_name[0])
     h, w = image.height, image.width
-    fig, axs = plt.subplots(1, 3, figsize=(15, 7))
+    fig, axs = plt.subplots(1, 2, figsize=(12, 6))
     # transformer gaze estimation (blue)
-    gaze_pred_y, gaze_pred_x = int(gaze_pred[0] * h), \
-                               int(gaze_pred[1] * w)
+    gaze_pred_x, gaze_pred_y = int(gaze_pred[0] * w), \
+                               int(gaze_pred[1] * h)
     chong_pred_y, chong_pred_x = int(chong_pred[0] * h), \
                                  int(chong_pred[1] * w)
     gaze_s_y, gaze_s_x, gaze_e_y, gaze_e_x = int(img_anno['eye_y'][0] * h), \
@@ -707,8 +707,6 @@ def plot_gaze_largedata(img_anno, images_name, flips, gaze_pred, chong_pred, gaz
     gaze_map = gaussian_filter(gaze_map, 3)
     axs[1].imshow(gaze_map)
     axs[1].title.set_text('groundtruth gaze map')
-    axs[2].imshow(out_map)
-    axs[2].title.set_text('prediction gaze map')
 
 
 def organize_gazedata():
