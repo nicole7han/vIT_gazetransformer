@@ -597,24 +597,13 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
             test_b_size = images.shape[0]
 
-            gt_map = gaussian_smooth(gaze_maps.detach(), 21, 5)
-            gt_map = gt_map + .05  # smooth
-            gt_map_sums = gt_map.view(test_b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-            gt_map = (gt_map.view(test_b_size, 1, -1) / gt_map_sums).view(test_b_size, 1, 64, 64)
-            gt_map = gt_map.to(device)
-            out_map = model(images, h_crops, b_crops, masks)
+            gaze_pred = model(images, h_crops, b_crops, masks).detach().numpy()
+            gaze_pos = torch.vstack([img_anno['gaze_x'],img_anno['gaze_y']]).permute(1,0).to(device)
+            # loss = criterion(gaze_pred.float(), gaze_pos.float())
 
-
-            map_loss = criterion(out_map.float(), gt_map.float())
             vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
-
             # transformer estimation
-            gaze_pred = [unravel_index(out_map.cpu()[i, 0, ::].argmax(), out_map.cpu()[i, 0, ::].shape) for i in
-                         range(test_b_size)]
-            gaze_pred = np.array(gaze_pred) / out_map[0, 0, ::].shape[0]  # [y,x]
-            vec2 = (
-                torch.from_numpy(gaze_pred[:, 1]) - img_anno['eye_x'],
-                torch.from_numpy(gaze_pred[:, 0]) - img_anno['eye_y'])
+            vec2 = (gaze_pred[0][0] -img_anno['eye_x'], gaze_pred[0][1] - img_anno['eye_y'])
 
             # chong estimation
             vec3 = (chong_pred_x-img_anno['eye_x'],
@@ -645,10 +634,8 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
             if os.path.isdir(fig_path) == False:
                 os.mkdir(fig_path)
 
-
             plot_gaze_largedata(img_anno, images_name, flips, gaze_pred[0], chong_pred,
-                                gaze_maps[0,0,::].detach().numpy(),
-                                out_map[0,0,::].detach().numpy())
+                                gaze_maps[0,0,::].detach().numpy())
             plt.savefig('{}/result_{}'.format(fig_path, images_name[0].split('/')[-1]))
             plt.close()
             # plt.clf()
@@ -680,7 +667,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
     return output
 
 
-def plot_gaze_largedata(img_anno, images_name, flips, gaze_pred, chong_pred, gaze_map, out_map):
+def plot_gaze_largedata(img_anno, images_name, flips, gaze_pred, chong_pred, gaze_map):
 
     image = Image.open(images_name[0])
     h, w = image.height, image.width
