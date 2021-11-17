@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from scipy.ndimage import gaussian_filter
 
 sys.path.append('/Users/nicolehan/Documents/Research/vIT_gazetransformer')
-from script.models import *
+from script.model import *
 from script.utils import *
 
 
