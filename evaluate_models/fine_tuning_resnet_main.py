@@ -5,10 +5,10 @@ from functions.data_ana_vis import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=14
-checkpoint = torch.load('{}/models_vit_small/resviTmodel_epoch{}.pt'.format(basepath,epoch), map_location='cpu')
+epoch=8
+checkpoint = torch.load('trained_model/resviTmodel_epoch{}.pt'.format(epoch), map_location='cpu')
 checkpoint['train_loss']
-checkpoint['test_loss']
+# checkpoint['test_loss']
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
@@ -49,7 +49,7 @@ anno_path = "{}/data/annotations".format(datapath)
 test_img_path = "{}/data/test".format(datapath)
 test_bbx_path = "{}/data/test_bbox".format(datapath)
 fig_path = '{}/model_eval_outputs_small/resnet_epoch{}_eval_outputs'.format(datapath, epoch)
-criterion = nn.BCELoss(reduction='mean')
+criterion = nn.MSELoss(reduction='mean')
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
 output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,  model, fig_path)
 output.to_excel('{}/model_eval_outputs_small/transformer_epoch{}_result.xlsx'.format(datapath, epoch))

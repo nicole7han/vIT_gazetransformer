@@ -9,7 +9,7 @@ import matplotlib.patches as patches
 import timm
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
-
+import scipy.ndimage as ndimage
 
 def str2ASCII(s):
     x = []
@@ -66,13 +66,22 @@ def visualize_dataset(images_name, images, h_crops, b_crops, g_crops, img_annos,
     axs[1, 1].title.set_text('gazed region')
 
 
-def visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=0):
+def visualize_result(images_name, flips, g_crops, gaze_maps, gaze_pred, idx=0):
     if idx is None:
         idx = np.random.randint(0, len(images_name))
     img_name = images_name[idx]
     img = Image.fromarray(plt.imread(img_name)).resize((224, 224))
 
-    gaze_maps = gaussian_smooth(gaze_maps, 21, 5)
+
+    gaze_maps = gaze_maps[idx, 0, ::].detach().cpu().numpy()
+    gaze_maps = ndimage.gaussian_filter(gaze_maps, sigma=(5, 5))
+    gaze_pred_maps = torch.zeros(gaze_maps.shape)
+    gaze_pred = gaze_pred[idx].detach().numpy()
+    h, w = gaze_pred_maps.shape
+    gaze_pred_maps[int(h*gaze_pred[1]-2):int(h*gaze_pred[1]+2),
+                    int(w*gaze_pred[0]-2):int(w*gaze_pred[0]+2)] = 1
+    gaze_pred_maps = ndimage.gaussian_filter(gaze_pred_maps, sigma=(5, 5))
+
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
     if flips[idx]:
         img = img.transpose(Image.FLIP_LEFT_RIGHT)
@@ -82,9 +91,9 @@ def visualize_result(images_name, flips, g_crops, gaze_maps, out_map, idx=0):
     axs[0, 0].imshow(img)
     axs[0, 1].imshow(np.transpose(g_crops[idx, :, :, :].detach().cpu().numpy(), (1, 2, 0)))
     axs[0, 1].title.set_text('gazed image')
-    axs[1, 0].imshow(gaze_maps[idx, 0, :, :].detach().cpu().numpy(), "gray")
+    axs[1, 0].imshow(gaze_maps, "gray")
     axs[1, 0].title.set_text('gazed mask (ground truth)')
-    axs[1, 1].imshow(out_map[idx, 0, :, :].detach().cpu().numpy(), "gray")
+    axs[1, 1].imshow(gaze_pred_maps, "gray")
     axs[1, 1].title.set_text('gazed mask (prediction)')
 
 
