@@ -26,7 +26,7 @@ train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
 train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
 train_dataiter = iter(train_dataloader)
 #
-images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno = train_dataiter.next() #get one batch of train data
+images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze = train_dataiter.next() #get one batch of train data
 model = Gaze_Transformer()
 model.to(device)
 # images_name_asc = [str2ASCII(name) for name in images_name]

@@ -31,23 +31,21 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         train_dataiter = iter(train_dataloader)
 
         loss_iter = []
-        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno in train_dataiter:
+        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze in train_dataiter:
             opt.zero_grad()
-            images, h_crops, b_crops, g_crops, masks, gaze_maps = \
+            img_anno['gaze_x']
+            images, h_crops, b_crops, g_crops, masks, gaze_maps, targetgaze = \
                 images.to(device), \
                 h_crops.to(device), \
                 b_crops.to(device), \
                 g_crops.to(device), \
                 masks.to(device), \
-                gaze_maps.to(device)
+                gaze_maps.to(device), \
+                targetgaze.to(device)
 
             b_size = images.shape[0]
             gaze_pred = model(images, h_crops, b_crops, masks)
-            # print('gaze pred shape {}'.format(gaze_pred.shape))
-            gaze_pos = torch.vstack([img_anno['gaze_x'],img_anno['gaze_y']]).permute(1,0).to(device)
-            # print('gaze pos shape {}'.format(gaze_pos.shape))
-
-            loss = criterion(gaze_pred.float(), gaze_pos.float())
+            loss = criterion(gaze_pred, targetgaze)
             '''
             out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
             gaze_maps[gaze_maps>0] = 1
@@ -105,19 +103,19 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             model.eval()
             with torch.no_grad():
                 try:
-                    images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno = test_dataiter.next()
-                    images, h_crops, b_crops, g_crops, masks, gaze_maps = \
+                    images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze= test_dataiter.next()
+                    images, h_crops, b_crops, g_crops, masks, gaze_maps, targetgaze = \
                         images.to(device), \
                         h_crops.to(device), \
                         b_crops.to(device), \
                         g_crops.to(device), \
                         masks.to(device), \
-                        gaze_maps.to(device)
+                        gaze_maps.to(device), \
+                        targetgaze.to(device)
 
                     test_b_size = images.shape[0]
                     gaze_pred = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
-                    gaze_pos = torch.vstack([img_anno['gaze_x'], img_anno['gaze_y']]).permute(1, 0).to(device)
-                    test_loss = criterion(gaze_pred, gaze_pos)
+                    test_loss = criterion(gaze_pred, targetgaze)
                     print('test_loss : {}'.format(test_loss))
 
                     PATH = "script3/trainedmodels/resviTmodel_epoch{}.pt".format(e)
