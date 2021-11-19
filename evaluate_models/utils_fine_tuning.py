@@ -572,7 +572,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
     test_dataiter = iter(test_dataloader)
     model.eval()
     with torch.no_grad():
-        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno in test_dataiter:
+        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze in test_dataiter:
             # images_name, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno = test_dataiter.next()
             # images_name
             h_crops, b_crops, g_crops, masks, gaze_maps = \
