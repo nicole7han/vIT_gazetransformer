@@ -24,7 +24,10 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
 
         print('Epoch:', e, 'Training')
         train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
-        train_dataloader = DataLoader(train_data, batch_size=b_size, shuffle=True, num_workers=4, pin_memory=True)
+        if device != 'cpu':
+            train_dataloader = DataLoader(train_data, batch_size=b_size, shuffle=True, num_workers=4, pin_memory=True)
+        else:
+            train_dataloader = DataLoader(train_data, batch_size=b_size, shuffle=True)
         train_dataiter = iter(train_dataloader)
 
         loss_iter = []
@@ -42,7 +45,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
 
             b_size = images.shape[0]
             gaze_pred = model(images, h_crops, b_crops, masks)
-
+            # print(gaze_pred)
             '''
             out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
             gaze_maps[gaze_maps>0] = 1
@@ -58,20 +61,28 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             vec1 = (img_anno['gaze_x'].to(device) - img_anno['eye_x'].to(device), img_anno['gaze_y'].to(device) - img_anno['eye_y'].to(device))
             vec2 = (gaze_pred[:, 1] - img_anno['eye_x'].to(device),
                     gaze_pred[:, 0] - img_anno['eye_y'].to(device))
-            ang_loss = 0
+            ang_dot = 0
             for i in range(b_size):
                 v1, v2 = torch.stack([vec1[0][i], vec1[1][i]]), \
                          torch.stack([vec2[0][i], vec2[1][i]])
-                unit_vector_1 = v1 / torch.linalg.norm(v1)
-                unit_vector_2 = v2 / torch.linalg.norm(v2)
+                unit_vector_1 = torch.div(v1,torch.linalg.norm(v1))
+                unit_vector_2 = torch.div(v2,torch.linalg.norm(v2))
                 dot_product = torch.dot(unit_vector_1, unit_vector_2)
-                angle = torch.arccos(dot_product) * 180 / np.pi
-                if torch.isnan(angle) == False:
-                    ang_loss += angle  # angle in degrees
-                else:
-                    print('{} angle loss nan'.format(images_name[i]))
-            ang_loss /= b_size
-            loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_loss * .01
+                # print('v1:{}'.format(v1))
+                # print('unit_vector_1:{}, unit_vector_2:{}'.format(unit_vector_1, unit_vector_2))
+                # print('dot_product:{}'.format(dot_product))
+                if torch.isnan(dot_product):
+                    continue
+                ang_dot += dot_product
+                # angle = torch.arccos(dot_product) * 180 / np.pi
+                # if torch.isnan(angle) == False:
+                #     ang_loss += angle  # angle in degrees
+                # else:
+                #     print('{} angle loss nan'.format(images_name[i]))
+            # print('angle dot product:{}'.format(ang_dot))
+            ang_dot /= b_size
+
+            loss = lbd * criterion(gaze_pred, targetgaze) - (1 - lbd) * ang_dot
 
             loss.backward()
             opt.step()
@@ -110,23 +121,27 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     test_b_size = images.shape[0]
                     gaze_pred = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
 
-                    vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
-                    vec2 = (gaze_pred[:, 1] - img_anno['eye_x'],
-                            gaze_pred[:, 0] - img_anno['eye_y'])
-                    ang_loss = 0
+                    vec1 = (img_anno['gaze_x'].to(device) - img_anno['eye_x'].to(device),
+                            img_anno['gaze_y'].to(device) - img_anno['eye_y'].to(device))
+                    vec2 = (gaze_pred[:, 1] - img_anno['eye_x'].to(device),
+                            gaze_pred[:, 0] - img_anno['eye_y'].to(device))
+                    ang_dot = 0
                     for i in range(b_size):
                         v1, v2 = torch.stack([vec1[0][i], vec1[1][i]]), \
                                  torch.stack([vec2[0][i], vec2[1][i]])
-                        unit_vector_1 = v1 / torch.linalg.norm(v1)
-                        unit_vector_2 = v2 / torch.linalg.norm(v2)
+                        unit_vector_1 = torch.div(v1, torch.linalg.norm(v1))
+                        unit_vector_2 = torch.div(v2, torch.linalg.norm(v2))
                         dot_product = torch.dot(unit_vector_1, unit_vector_2)
-                        angle = torch.arccos(dot_product) * 180 / np.pi
-                        if torch.isnan(angle) == False:
-                            ang_loss += angle  # angle in degrees
-                        else:
-                            print('{} angle loss nan'.format(images_name[i]))
-                    ang_loss /= b_size
-                    test_loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_loss * .01
+                        if torch.isnan(dot_product):
+                            continue
+                        ang_dot += dot_product
+                        # angle = torch.arccos(dot_product) * 180 / np.pi
+                        # if torch.isnan(angle) == False:
+                        #     ang_loss += angle  # angle in degrees
+                        # else:
+                        #     print('{} angle loss nan'.format(images_name[i]))
+                    ang_dot /= b_size
+                    test_loss = lbd * criterion(gaze_pred, targetgaze) - (1 - lbd) * ang_dot
                     print('test_loss : {}'.format(test_loss))
 
                     PATH = "script4/trainedmodels/resviTmodel_epoch{}.pt".format(e)
