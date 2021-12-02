@@ -14,10 +14,10 @@ try:
 except:
     from script.utils import *
 
+
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
           e_start, num_e, lbd, b_size=128):
     LOSS = []
-    softmax = nn.Softmax(dim=1)
     test_data = GazeDataloader(ann_path, test_img_path, test_bbx_path)
     test_dataloader = DataLoader(test_data, batch_size=b_size, shuffle=True)
     test_dataiter = iter(test_dataloader)
@@ -45,7 +45,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
 
             b_size = images.shape[0]
             gaze_pred = model(images, h_crops, b_crops, masks)
-            loss = criterion(gaze_pred, targetgaze)
+
             '''
             out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
             gaze_maps[gaze_maps>0] = 1
@@ -57,27 +57,24 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             # loss between probabilty maps
             loss = criterion(out_map.float(), gaze_maps.float())
             '''
-            # # angle loss
-            # vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
-            # gaze_pred = [unravel_index(out_map.cpu()[i, 0, ::].argmax(), out_map.cpu()[i, 0, ::].shape) for i in
-            #              range(b_size)]
-            # gaze_pred = np.array(gaze_pred) / out_map[0, 0, ::].shape[0]
-            # vec2 = (torch.from_numpy(gaze_pred[:, 1]) - img_anno['eye_x'],
-            #         torch.from_numpy(gaze_pred[:, 0]) - img_anno['eye_y'])
-            # ang_loss = 0
-            # for i in range(b_size):
-            #     v1, v2 = [vec1[0][i] * 1000, vec1[1][i] * 1000], [vec2[0][i] * 1000, vec2[1][i] * 1000]
-            #     unit_vector_1 = v1 / np.linalg.norm(v1)
-            #     unit_vector_2 = v2 / np.linalg.norm(v2)
-            #     dot_product = np.dot(unit_vector_1, unit_vector_2)
-            #     angle = np.arccos(dot_product) * 180 / np.pi
-            #     if torch.isnan(torch.tensor(angle)) == False:
-            #         ang_loss += angle  # angle in degrees
-            # ang_loss /= b_size
-            # if torch.isnan(torch.tensor(ang_loss)):
-            #     print("ang_loss nan")
-            # loss
-            # loss = lbd * map_loss + (1 - lbd) * ang_loss * .01
+            # angle loss
+            vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
+            vec2 = (gaze_pred[:, 1] - img_anno['eye_x'],
+                    gaze_pred[:, 0] - img_anno['eye_y'])
+            ang_loss = 0
+            for i in range(b_size):
+                v1, v2 = torch.stack([vec1[0][i], vec1[1][i]]), \
+                         torch.stack([vec2[0][i], vec2[1][i]])
+                unit_vector_1 = v1 / torch.linalg.norm(v1)
+                unit_vector_2 = v2 / torch.linalg.norm(v2)
+                dot_product = torch.dot(unit_vector_1, unit_vector_2)
+                angle = torch.arccos(dot_product) * 180 / np.pi
+                if torch.isnan(angle) == False:
+                    ang_loss += angle  # angle in degrees
+                else:
+                    print('{} angle loss nan'.format(images_name[i]))
+            ang_loss /= b_size
+            loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_loss * .01
 
             loss.backward()
             opt.step()
@@ -90,14 +87,14 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             if os.path.isdir('script3/outputs') == False:
                 os.mkdir('script3/outputs')
 
-            # check with train images
-            try:
-                for i in range(5):
-                    visualize_result(images_name, flips, g_crops, gaze_maps, gaze_pred, idx=i)
-                    plt.savefig('script3/outputs/ResviTtrain_epoch{}_plot{}.jpg'.format(e, i + 1))
-                    plt.close('all')
-            except:
-                pass
+            # # check with train images
+            # try:
+            #     for i in range(5):
+            #         visualize_result(images_name, flips, g_crops, gaze_maps, gaze_pred, idx=i)
+            #         plt.savefig('script3/outputs/ResviTtrain_epoch{}_plot{}.jpg'.format(e, i + 1))
+            #         plt.close('all')
+            # except:
+            #     pass
 
             # check with test images
             model.eval()
@@ -115,7 +112,24 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
 
                     test_b_size = images.shape[0]
                     gaze_pred = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
-                    test_loss = criterion(gaze_pred, targetgaze)
+
+                    vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
+                    vec2 = (gaze_pred[:, 1] - img_anno['eye_x'],
+                            gaze_pred[:, 0] - img_anno['eye_y'])
+                    ang_loss = 0
+                    for i in range(b_size):
+                        v1, v2 = torch.stack([vec1[0][i], vec1[1][i]]), \
+                                 torch.stack([vec2[0][i], vec2[1][i]])
+                        unit_vector_1 = v1 / torch.linalg.norm(v1)
+                        unit_vector_2 = v2 / torch.linalg.norm(v2)
+                        dot_product = torch.dot(unit_vector_1, unit_vector_2)
+                        angle = torch.arccos(dot_product) * 180 / np.pi
+                        if torch.isnan(angle) == False:
+                            ang_loss += angle  # angle in degrees
+                        else:
+                            print('{} angle loss nan'.format(images_name[i]))
+                    ang_loss /= b_size
+                    test_loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_loss * .01
                     print('test_loss : {}'.format(test_loss))
 
                     PATH = "script3/trainedmodels/resviTmodel_epoch{}.pt".format(e)
@@ -135,10 +149,10 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'train_loss': LOSS,
                     }, PATH)
 
-                try:
-                    for i in range(5):
-                        visualize_result(images_name, flips, g_crops, gaze_maps, gaze_pred, idx=i)
-                        plt.savefig('script3/outputs/resviTmodel_epoch{}_plot{}.jpg'.format(e, i + 1))
-                        plt.close('all')
-                except:
-                    pass
+                # try:
+                #     for i in range(5):
+                #         visualize_result(images_name, flips, g_crops, gaze_maps, gaze_pred, idx=i)
+                #         plt.savefig('script3/outputs/resviTmodel_epoch{}_plot{}.jpg'.format(e, i + 1))
+                #         plt.close('all')
+                # except:
+                #     pass

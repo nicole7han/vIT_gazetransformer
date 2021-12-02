@@ -5,9 +5,9 @@ from functions.data_ana_vis import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=22
+epoch=58
 checkpoint = torch.load('trainedmodels/resviTmodel_epoch{}.pt'.format(epoch), map_location='cpu')
-checkpoint['train_loss']
+plt.plot(checkpoint['train_loss'])
 # checkpoint['test_loss']
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
