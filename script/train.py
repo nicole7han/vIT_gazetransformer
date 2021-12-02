@@ -9,10 +9,7 @@ Created on Wed Mar 24 16:08:54 2021
 import torch, os, sys
 from torch import nn
 from numpy import unravel_index
-try:
-    from utils import *
-except:
-    from script.utils import *
+from utils import *
 
 
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
@@ -33,7 +30,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         loss_iter = []
         for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze in train_dataiter:
             opt.zero_grad()
-            img_anno['gaze_x']
+
             images, h_crops, b_crops, g_crops, masks, gaze_maps, targetgaze = \
                 images.to(device), \
                 h_crops.to(device), \
@@ -58,9 +55,9 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             loss = criterion(out_map.float(), gaze_maps.float())
             '''
             # angle loss
-            vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
-            vec2 = (gaze_pred[:, 1] - img_anno['eye_x'],
-                    gaze_pred[:, 0] - img_anno['eye_y'])
+            vec1 = (img_anno['gaze_x'].to(device) - img_anno['eye_x'].to(device), img_anno['gaze_y'].to(device) - img_anno['eye_y'].to(device))
+            vec2 = (gaze_pred[:, 1] - img_anno['eye_x'].to(device),
+                    gaze_pred[:, 0] - img_anno['eye_y'].to(device))
             ang_loss = 0
             for i in range(b_size):
                 v1, v2 = torch.stack([vec1[0][i], vec1[1][i]]), \
@@ -84,8 +81,8 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         LOSS.append(np.mean(np.array(loss_iter)))
 
         if (e) % 2 == 0:
-            if os.path.isdir('script3/outputs') == False:
-                os.mkdir('script3/outputs')
+            if os.path.isdir('script4/outputs') == False:
+                os.mkdir('script4/outputs')
 
             # # check with train images
             # try:
@@ -132,7 +129,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     test_loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_loss * .01
                     print('test_loss : {}'.format(test_loss))
 
-                    PATH = "script3/trainedmodels/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script4/trainedmodels/resviTmodel_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
@@ -141,7 +138,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'test_loss': test_loss,
                     }, PATH)
                 except:
-                    PATH = "script3/trainedmodels/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script4/trainedmodels/resviTmodel_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),

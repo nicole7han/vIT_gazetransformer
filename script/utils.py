@@ -10,7 +10,7 @@ import timm
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 import scipy.ndimage as ndimage
-from scipy.special import log_softmax
+from scipy.special import softmax
 
 def str2ASCII(s):
     x = []
@@ -368,7 +368,7 @@ class GazeDataloader(Dataset):
                 masks[1, ::][int(b_y * 224):int((b_y + b_h) * 224), int(b_x * 224):int((b_x + b_w) * 224)] = 1
 
             gaze_map = self.resize(Image.fromarray(gaze_map))
-            gaze_map = log_softmax(gaze_map)
+            gaze_map = np.log(softmax(gaze_map))
             h_crop = self.transform(Image.fromarray(h_crop))
             b_crop = self.transform(Image.fromarray(b_crop))
             g_crop = self.transform(Image.fromarray(g_crop))
