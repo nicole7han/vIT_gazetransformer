@@ -81,7 +81,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                 #     print('{} angle loss nan'.format(images_name[i]))
             # print('angle dot product:{}'.format(ang_dot))
             ang_dot = (1 - ang_dot / b_size)  # we want ang_dot -> 1 to minimize loss function
-            test_loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_dot
+            loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_dot
 
             loss.backward()
             opt.step()
