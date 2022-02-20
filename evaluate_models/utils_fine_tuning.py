@@ -20,7 +20,7 @@ from script.utils import *
 
 def transform(x):
     trans = transforms.Compose([
-        transforms.Resize([256, 256]),
+        transforms.Resize([224, 224]),
         transforms.ToTensor(),
     ])
     x = trans(x)
@@ -124,13 +124,8 @@ class GazeDataloader_gazevideo(Dataset):
         self.img_paths = [f for f in self.img_paths if not f.startswith('.')]
         self.mode = 'train' if 'train' in self.img_path.split("/")[-1] else 'test'
 
-        # bbx_list = os.listdir(self.bbx_path)
-        # bbx_list = [f for f in bbx_list if not f.startswith('.')]
-        # bbx_list.sort()
-        # self.bbx_list = bbx_list
-
         self.transform = transforms.Compose([
-            transforms.Resize([256, 256]),
+            transforms.Resize([224, 224]),
             transforms.ToTensor(),
             #                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
@@ -153,12 +148,16 @@ class GazeDataloader_gazevideo(Dataset):
         g_x, g_y = self.eye_gaze[self.eye_gaze['Video'] == orig_img_name]['gazed_locationx'].tolist()[0] / 800, \
                    self.eye_gaze[self.eye_gaze['Video'] == orig_img_name]['gazed_locationy'].tolist()[0] / 600
         x_l, x_h, y_l, y_h = max(0, g_x - .1), min(1, g_x + .1), max(0, g_y - .1), min(1, g_y + .1)
-        gaze_map = torch.zeros([256, 256])
-        gaze_map[int(y_l * 256):int(y_h * 256), int(x_l * 256):int(x_h * 256)] = 1
+        gaze_map = torch.zeros([224, 224])
+        gaze_map[int(y_l * 224):int(y_h * 224), int(x_l * 224):int(x_h * 224)] = 1
         gaze_map = gaze_map.numpy()
         gaze_map = self.resize(Image.fromarray(gaze_map))
 
-        return img_name, img, gaze_map
+        # # load head and body crops
+        # f = open('{}/{}.json'.format(bbx_path, img_name.split('.jpg')[0]))
+        # bbx = json.load(f)
+
+        return img_name, img, gaze_map, {'gaze_x':g_x, 'gaze_y':g_y}
 
 
 def train(e_start, num_e, anno_path, train_img_path, train_bbx_path, test_img_path, test_bbx_path, b_size=20):
@@ -433,22 +432,19 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
     GT_GAZE = []
     PERSON_IDX = []
 
-    bbx = np.load('gaze_video_data/bbx_viu_images.npy', allow_pickle=True)
+    bbx = np.load('/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/bbx_viu_images.npy', allow_pickle=True)
     bbx = bbx[()]
-    for images_name, images, gaze_maps in test_dataiter:
-        # images_name, images, gaze_maps = test_dataiter.next()
+    for images_name, images, gaze_maps, img_anno in test_dataiter:
+        # images_name, images, gaze_maps, img_anno = test_dataiter.next()
         test_b_size = images.shape[0]
         images, gaze_maps = images.to(device), gaze_maps.to(device)
-
-        images_name_asc = [str2ASCII(name) for name in images_name]
-        images_name_asc = torch.tensor(images_name_asc).to(device)
 
         gt_map = gaussian_smooth(gaze_maps, 21, 5)
         gt_map_sums = gt_map.view(test_b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
         gt_map = (gt_map.view(test_b_size, 1, -1) / gt_map_sums).view(test_b_size, 1, 64, 64)
 
         h_crops, b_crops, masks = torch.zeros(images.shape), torch.zeros(images.shape), torch.zeros(
-            [test_b_size, 2, 256, 256])
+            [test_b_size, 2, 224, 224])
 
         # load chong model estimation for the image
         chong_image_est = chong_est[chong_est['image'] == images_name[0]]
@@ -506,13 +502,19 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
             # print(chong_model_est)
 
             # load head and body masks
-            mask = torch.zeros([2, 256, 256])  # head, body, gaze location
-            mask[0, :, :][int(h_y * 256):int((h_y + h_h) * 256), int(h_x * 256):int((h_x + h_w) * 256)] = 1
-            mask[1, :, :][int(b_y * 256):int((b_y + b_h) * 256), int(b_x * 256):int((b_x + b_w) * 256)] = 1
+            mask = torch.zeros([2, 224, 224])  # head, body, gaze location
+            mask[0, :, :][int(h_y * 224):int((h_y + h_h) * 224), int(h_x * 224):int((h_x + h_w) * 224)] = 1
+            mask[1, :, :][int(b_y * 224):int((b_y + b_h) * 224), int(b_x * 224):int((b_x + b_w) * 224)] = 1
             h_crops[0, ::], b_crops[0, ::], masks[0, ::] = h_crop, b_crop, mask
             h_crops, b_crops, masks = h_crops.to(device), b_crops.to(device), masks.to(device)
             flips = torch.zeros(1)
-            out_map = model(images_name_asc, flips, h_crops, b_crops, masks)  # model prediction of gaze map
+
+            gaze_pred = model(images, h_crops, b_crops, masks).detach().numpy()
+            gaze_pos = torch.vstack([img_anno['gaze_x'], img_anno['gaze_y']]).permute(1, 0).to(device)
+            out_map = torch.zeros([1,1,224,224])
+            out_map[0,0, int((gaze_pred[0][1] - .05) * 224):int((gaze_pred[0][1] + .05) * 224),\
+                    int((gaze_pred[0][0] - .05) * 224):int((gaze_pred[0][0] + .05) * 224)] = 1
+            out_map = gaussian_smooth(out_map, 21, 5)
 
             # visualization
             if os.path.isdir(fig_path) == False:

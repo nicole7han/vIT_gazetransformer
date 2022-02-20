@@ -52,7 +52,7 @@ def analyze_error(result_df, epoch, filename):
     ax.set(xlabel='Euclidean Error', ylabel='Probability')
     ax.spines['top'].set_color('white')
     ax.spines['right'].set_color('white')
-    ax.figure.savefig("figures/{}_errors_epoch{}.png".format(filename,epoch),  bbox_inches='tight')
+    ax.figure.savefig("{}/errors_epoch{}.png".format(filename,epoch),  bbox_inches='tight')
     plt.close()
 
     # plot histogram
@@ -68,5 +68,5 @@ def analyze_error(result_df, epoch, filename):
     ax.set(xlabel='Angular Error', ylabel='Probability')
     ax.spines['top'].set_color('white')
     ax.spines['right'].set_color('white')
-    ax.figure.savefig("figures/{}_ang_errors_epoch{}.png".format(filename,epoch),  bbox_inches='tight')
+    ax.figure.savefig("{}/ang_errors_epoch{}.png".format(filename,epoch),  bbox_inches='tight')
     plt.close()
