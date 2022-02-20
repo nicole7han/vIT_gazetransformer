@@ -9,8 +9,10 @@ Created on Wed Mar 24 16:08:54 2021
 import torch, os, sys
 from torch import nn
 from numpy import unravel_index
-from utils import *
-
+try:
+    from utils import *
+except:
+    pass
 
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
           e_start, num_e, lbd, b_size=128):

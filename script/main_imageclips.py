@@ -10,67 +10,6 @@ from script.model import *
 from script.train import *
 from script.utils import *
 
-
-ann_path = "{}/data/annotations".format(basepath)
-train_img_path = "{}/data/train".format(basepath)
-train_bbx_path = "{}/data/train_bbox".format(basepath)
-test_img_path = "{}/data/test".format(basepath)
-test_bbx_path = "{}/data/test_bbox".format(basepath)
-# segmask_path = "/Users/nicolehan/Documents/Research/Gaze Transformer Model with Body Component/CDCL-human-part-segmentation-master/gazefollow/train_person_masks"
-#
-# cleanup_dataset(segmask_path, bbx_path, img_path)
-
-
-b_size = 10
-train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
-train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
-train_dataiter = iter(train_dataloader)
-#
-images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze = train_dataiter.next() #get one batch of train data
-model = Gaze_Transformer()
-model.to(device)
-# images_name_asc = [str2ASCII(name) for name in images_name]
-# images_name_asc = torch.tensor(images_name_asc).to(device)
-# b_size = images_name_asc.shape[0]
-gaze_pred = model(images, h_crops, b_crops, masks)
-
-
-
-
-
-
-## DTER VISUALIZATION
-# use lists to store the outputs via up-values
-conv_features, enc_attn_weights, dec_attn_weights = [], [], []
-hooks = [
-    self.vit.backbone[-2].register_forward_hook(
-        lambda self, input, output: conv_features.append(output)
-    ),
-    self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(
-        lambda self, input, output: enc_attn_weights.append(output[1])
-    ),
-    self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(
-        lambda self, input, output: dec_attn_weights.append(output[1])
-    ),
-]
-outputs = self.vit(images)  # propogate
-for hook in hooks:
-    hook.remove()
-conv_features = conv_features[0]
-enc_attn_weights = enc_attn_weights[0]
-dec_attn_weights = dec_attn_weights[0]
-# output of the CNN
-f_map = conv_features['0']
-print("Encoder attention:      ", enc_attn_weights[0].shape)
-print("Feature map:            ", f_map.tensors.shape)
-# get the HxW shape of the feature maps of the CNN
-shape = f_map.tensors.shape[-2:]
-h, w = shape
-# and reshape the self-attention to a more interpretable shape
-img_idx = 2
-sattn = enc_attn_weights[img_idx].reshape(shape + shape)
-print("Reshaped self-attention:", sattn.shape)
-
 def box_cxcywh_to_xyxy(x):
     x_c, y_c, w, h = x.unbind(1)
     b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
@@ -82,10 +21,91 @@ def rescale_bboxes(out_bbox, size):
     b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
     return b
 
+# COCO classes
+CLASSES = [
+    'N/A', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+    'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A',
+    'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse',
+    'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'N/A', 'backpack',
+    'umbrella', 'N/A', 'N/A', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis',
+    'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
+    'skateboard', 'surfboard', 'tennis racket', 'bottle', 'N/A', 'wine glass',
+    'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich',
+    'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake',
+    'chair', 'couch', 'potted plant', 'bed', 'N/A', 'dining table', 'N/A',
+    'N/A', 'toilet', 'N/A', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
+    'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'N/A',
+    'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
+    'toothbrush'
+]
+
+# colors for visualization
+COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
+          [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
+
+
+ann_path = "{}/data/annotations".format(basepath)
+train_img_path = "{}/data/train".format(basepath)
+train_bbx_path = "{}/data/train_bbox".format(basepath)
+test_img_path = "{}/data/test".format(basepath)
+test_bbx_path = "{}/data/test_bbox".format(basepath)
+# segmask_path = "/Users/nicolehan/Documents/Research/Gaze Transformer Model with Body Component/CDCL-human-part-segmentation-master/gazefollow/train_person_masks"
+#
+# cleanup_dataset(segmask_path, bbx_path, img_path)
+
+
+b_size = 1
+train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
+train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
+train_dataiter = iter(train_dataloader)
+#
+images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze = train_dataiter.next() #get one batch of train data
+model = Gaze_Transformer()
+model.to(device)
+#gaze_pred = model(images, h_crops, b_crops, masks)
+
+
+
+## DTER VISUALIZATION
+# use lists to store the outputs via up-values
+conv_features, enc_attn_weights, dec_attn_weights = [], [], []
+hooks = [
+    model.vit.backbone[-2].register_forward_hook(
+        lambda self, input, output: conv_features.append(output)
+    ),
+    model.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(
+        lambda self, input, output: enc_attn_weights.append(output[1])
+    ),
+    model.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(
+        lambda self, input, output: dec_attn_weights.append(output[1])
+    ),
+]
+outputs = model.vit(images)  # propogate
+for hook in hooks:
+    hook.remove()
+conv_features = conv_features[0]
+enc_attn_weights = enc_attn_weights[0]
+dec_attn_weights = dec_attn_weights[0]
+
+# output of the CNN
+f_map = conv_features['0']
+print("Encoder attention:      ", enc_attn_weights[0].shape)
+print("Feature map:            ", f_map.tensors.shape)
+# get the HxW shape of the feature maps of the CNN
+shape = f_map.tensors.shape[-2:]
+h, w = shape
+# and reshape the self-attention to a more interpretable shape
+img_idx = 0
+im = Image.open(images_name[img_idx])
+im = im.resize([244,244])
+sattn = enc_attn_weights[img_idx].reshape(shape + shape)
+print("Reshaped self-attention:", sattn.shape)
 
 probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
 keep = probas.max(-1).values > 0.9
 bboxes_scaled = rescale_bboxes(outputs['pred_boxes'][0, keep], images[img_idx, 0, ::].detach().numpy().shape)
+
+
 ''' visuliaze decoder attention weights'''
 fig, axs = plt.subplots(ncols=len(bboxes_scaled), nrows=2, figsize=(22, 7))
 colors = COLORS * 100
@@ -102,19 +122,22 @@ for idx, ax_i, (xmin, ymin, xmax, ymax) in zip(keep.nonzero(), axs.T, bboxes_sca
     ax.set_title(CLASSES[probas[idx].argmax()])
 fig.tight_layout()
 
+
 ''' visualize encoder attention map'''
 # downsampling factor for the CNN, is 32 for DETR and 16 for DETR DC5
 fact = 32
-idxs = [(10, 10), (50, 50), (100, 100), (150, 150), ]
+eyex, eyey = img_anno['eye_x'], img_anno['eye_y']
+idxs = [(int(eyey.item()*244), int(eyex.item()*244))] # the gazer's head position
+#idxs = [(10, 10), (50, 50), (100, 100), (150, 150), ]
 # here we create the canvas
 fig = plt.figure(constrained_layout=True, figsize=(25 * 0.7, 8.5 * 0.7))
 # and we add one plot per reference point
-gs = fig.add_gridspec(2, 4)
+gs = fig.add_gridspec(1, 4)
 axs = [
     fig.add_subplot(gs[0, 0]),
-    fig.add_subplot(gs[1, 0]),
-    fig.add_subplot(gs[0, -1]),
-    fig.add_subplot(gs[1, -1]),
+#    fig.add_subplot(gs[1, 0]),
+#    fig.add_subplot(gs[0, -1]),
+#    fig.add_subplot(gs[1, -1]),
 ]
 # for each one of the reference points, let's plot the self-attention
 # for that point
