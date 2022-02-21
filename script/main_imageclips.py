@@ -132,7 +132,7 @@ for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img
     
     ''' visualize encoder attention map'''
     # downsampling factor for the CNN, is 32 for DETR and 16 for DETR DC5
-    fact = 32
+    fact = 16
     eyex, eyey = img_anno['eye_x'], img_anno['eye_y']
     idxs = [(int(eyey.item()*224), int(eyex.item()*224))] # the gazer's head position
     # create the canvas

@@ -9,7 +9,6 @@ from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from PIL import Image
 from typing import Dict, Iterable, Callable
-
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -128,14 +127,14 @@ class GazePredictor(nn.Module):
 
 
 
-class Gaze_Transformer(nn.Module):
+class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer of transformer -> predict gaze
     """Main Model"""
     def __init__(self):
         super(Gaze_Transformer, self).__init__()
         self.resnet = ExtractFeatures()
         self.spa_net = SpatialAttention()
         self.gaze_pred = GazePredictor()
-        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
+        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50_dc5', pretrained=True)
         self.vit.eval()
         for param in self.vit.parameters():
             param.requires_grad = False
@@ -173,6 +172,7 @@ class Gaze_Transformer(nn.Module):
                 activation[name] = output
             return hook
         hook1 = get_activation('self_attn')
+        
         self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(hook1)
         # h2=self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(hook2)
         # h3=self.vit.class_embed.register_forward_hook(hook3)
