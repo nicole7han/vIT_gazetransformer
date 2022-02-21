@@ -93,8 +93,8 @@ class SpatialAttention(nn.Module):
 
         # self.conv1 = nn.Conv2d(in_channels=768, out_channels=384, kernel_size=5)
     def forward(self, masks, h_features, b_features):
-        h_spa_feat = h_features + self.convs(masks[:,0,::].unsqueeze(1)).reshape(-1,128,7*7).permute(0,2,1) #[b_size, 7x7, 128]
-        b_spa_feat = b_features + self.convs(masks[:, 1, ::].unsqueeze(1)).reshape(-1, 128, 7*7).permute(0, 2, 1) #[b_size, 7x7, 128]
+        h_spa_feat = self.convs(masks[:,0,::].unsqueeze(1)).reshape(-1,128,7*7).permute(0,2,1) #[b_size, 7x7, 128]
+        b_spa_feat = self.convs(masks[:, 1, ::].unsqueeze(1)).reshape(-1, 128, 7*7).permute(0, 2, 1) #[b_size, 7x7, 128]
         x = torch.cat([h_spa_feat,b_spa_feat], -1) #[b_size, 14x14, 128x2]
         #img_vit_feature [b_size, 7x7, 256]
         return x
@@ -107,23 +107,16 @@ class GazePredictor(nn.Module):
                  num_encoder_layers=3, num_decoder_layers=2):
         super(GazePredictor, self).__init__()
         self.transformer = nn.Transformer(hidden_dim, nheads, num_encoder_layers, num_decoder_layers)
-        self.mlp = nn.Sequential(
-            nn.Linear(in_features=256, out_features=256, bias=True),
-            nn.GELU(),
-            nn.Dropout(.8),
-            nn.Linear(in_features=256, out_features=128, bias=True),
-            nn.GELU(),
-            nn.Dropout(.8),
-            nn.Linear(in_features=128, out_features=2, bias=True)
-        )
+        self.linear_bbox = nn.Linear(hidden_dim, 4) #bounding box of gazed location
         self.pos = nn.Parameter(torch.rand(1, hidden_dim))
+        self.query = nn.Parameter(torch.rand(1, hidden_dim))
 
     def forward(self, hb_spatial, img_vit_out):
         b_size = img_vit_out.shape[1]
         pos = self.pos.unsqueeze(0).repeat(1, b_size, 1) #[1, b_size, 256]
-        pos_emb = self.transformer(hb_spatial+img_vit_out, pos) #[1, b_size, 256]
-        x = self.mlp(pos_emb)
-        return x.squeeze(0)
+        x = self.transformer(pos+hb_spatial+img_vit_out, self.query.unsqueeze(1)).transpose(0, 1) #[1, b_size, 256]
+        x = self.linear_bbox(x).sigmoid()
+        return x
 
 
 
@@ -135,6 +128,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.spa_net = SpatialAttention()
         self.gaze_pred = GazePredictor()
         self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50_dc5', pretrained=True)
+        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
         self.vit.eval()
         for param in self.vit.parameters():
             param.requires_grad = False
@@ -177,7 +171,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         # h2=self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(hook2)
         # h3=self.vit.class_embed.register_forward_hook(hook3)
         output = self.vit(images)
-        img_vit_out = activation['self_attn'][0] # [b_size, 49, 256]
+        img_vit_out = activation['self_attn'][0] # 196(16x16 patches)  x 1 x 256 (hidden dimension)
 
         gaze_pos = self.gaze_pred(hb_spatial, img_vit_out)
 
