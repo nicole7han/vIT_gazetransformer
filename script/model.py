@@ -114,6 +114,7 @@ class GazePredictor(nn.Module):
     def forward(self, hb_spatial, img_vit_out):
         b_size = img_vit_out.shape[1]
         pos = self.pos.unsqueeze(0).repeat(1, b_size, 1) #[1, b_size, 256]
+        query = self.query.unsqueeze(1).repeat(1, b_size, 1)
         x = self.transformer(pos+hb_spatial+img_vit_out, self.query.unsqueeze(1)).transpose(0, 1) #[1, b_size, 256]
         x = self.linear_bbox(x).sigmoid()
         return x
