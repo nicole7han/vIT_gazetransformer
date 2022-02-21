@@ -380,6 +380,7 @@ class GazeDataloader(Dataset):
             return
 
 
-        return name, img, flip, h_crop, b_crop, g_crop, masks, gaze_map, img_anno,\
+        return name, img, flip, h_crop, b_crop, g_crop, masks, gaze_map,\
+               torch.tensor([img_anno['eye_x'],img_anno['eye_y']]),\
                torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']])
 

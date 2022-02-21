@@ -115,7 +115,7 @@ class GazePredictor(nn.Module):
         b_size = img_vit_out.shape[1]
         pos = self.pos.unsqueeze(0).repeat(1, b_size, 1) #[1, b_size, 256]
         query = self.query.unsqueeze(1).repeat(1, b_size, 1)
-        x = self.transformer(pos+hb_spatial+img_vit_out, self.query.unsqueeze(1)).transpose(0, 1) #[1, b_size, 256]
+        x = self.transformer(pos+hb_spatial+img_vit_out,query).transpose(0, 1) #[1, b_size, 256]
         x = self.linear_bbox(x).sigmoid()
         return x
 
@@ -128,7 +128,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.resnet = ExtractFeatures()
         self.spa_net = SpatialAttention()
         self.gaze_pred = GazePredictor()
-        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50_dc5', pretrained=True)
+#        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50_dc5', pretrained=True)
         self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
         self.vit.eval()
         for param in self.vit.parameters():

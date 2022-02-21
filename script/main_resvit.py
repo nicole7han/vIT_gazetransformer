@@ -23,10 +23,10 @@ def main():
                         help='resume training from previous checkpoint (default:False)')
     parser.add_argument('--e_start', type=int, default=0,
                         help='starting epoch number (default:0)')
-    parser.add_argument('--num_e', type=int, default=30,
-                        help='number of epoch iterations, (default:30)')
-    parser.add_argument('--b_size', type=int, default=30,
-                        help='training batch size, (default:30)')
+    parser.add_argument('--num_e', type=int, default=50,
+                        help='number of epoch iterations, (default:50)')
+    parser.add_argument('--b_size', type=int, default=512,
+                        help='training batch size, (default:512)')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='learning rate, (default:1e-4)')
     parser.add_argument('--lbd', type=float, default=.7,

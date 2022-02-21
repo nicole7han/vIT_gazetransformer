@@ -59,16 +59,16 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 model = Gaze_Transformer()
 model.to(device)
 
-b_size = 1
+b_size = 5
 
 train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
 train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
 train_dataiter = iter(train_dataloader)
 
 
-for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze in train_dataiter: #get one batch of train data
+for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze in train_dataiter: #get one batch of train data
 
-    #images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze = train_dataiter.next() #get one batch of train data
+    #images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze = train_dataiter.next() #get one batch of train data
     #gaze_pred = model(images, h_crops, b_crops, masks)
     
     
@@ -133,7 +133,7 @@ for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img
     ''' visualize encoder attention map'''
     # downsampling factor for the CNN, is 32 for DETR and 16 for DETR DC5
     fact = 16
-    eyex, eyey = img_anno['eye_x'], img_anno['eye_y']
+    eyex, eyey = eye[0], eye[1]
     idxs = [(int(eyey.item()*224), int(eyex.item()*224))] # the gazer's head position
     # create the canvas
     fig = plt.figure(constrained_layout=True, figsize=(25 * 0.7, 8.5 * 0.7))

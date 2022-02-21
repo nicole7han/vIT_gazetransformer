@@ -33,16 +33,17 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         train_dataiter = iter(train_dataloader)
 
         loss_iter = []
-        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze in train_dataiter:
+        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze in train_dataiter:
             opt.zero_grad()
 
-            images, h_crops, b_crops, g_crops, masks, gaze_maps, targetgaze = \
+            images, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze = \
                 images.to(device), \
                 h_crops.to(device), \
                 b_crops.to(device), \
                 g_crops.to(device), \
                 masks.to(device), \
                 gaze_maps.to(device), \
+                eye.to(device),\
                 targetgaze.to(device)
 
             b_size = images.shape[0]
@@ -60,13 +61,15 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             loss = criterion(out_map.float(), gaze_maps.float())
             '''
             # angle loss
-            vec1 = (img_anno['gaze_x'].to(device) - img_anno['eye_x'].to(device), img_anno['gaze_y'].to(device) - img_anno['eye_y'].to(device))
-            vec2 = (gaze_pred[:, 1] - img_anno['eye_x'].to(device),
-                    gaze_pred[:, 0] - img_anno['eye_y'].to(device))
             ang_dot = 0
             for i in range(b_size):
-                v1, v2 = torch.stack([vec1[0][i], vec1[1][i]]), \
-                         torch.stack([vec2[0][i], vec2[1][i]])
+                vec1 = (targetgaze[i,0].to(device) - eye[i,0].to(device), 
+                        targetgaze[i,1].to(device) - eye[i,1].to(device))
+                vec2 = (gaze_pred[i,0][0] - eye[i,0].to(device),
+                        gaze_pred[i,0][1] - eye[i,1].to(device))
+            
+                v1, v2 = torch.stack([vec1[0], vec1[1]]), \
+                         torch.stack([vec2[0], vec2[1]])
                 unit_vector_1 = torch.div(v1,torch.linalg.norm(v1))
                 unit_vector_2 = torch.div(v2,torch.linalg.norm(v2))
                 dot_product = torch.dot(unit_vector_1, unit_vector_2)
@@ -96,40 +99,35 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             if os.path.isdir('script4/outputs') == False:
                 os.mkdir('script4/outputs')
 
-            # # check with train images
-            # try:
-            #     for i in range(5):
-            #         visualize_result(images_name, flips, g_crops, gaze_maps, gaze_pred, idx=i)
-            #         plt.savefig('script3/outputs/ResviTtrain_epoch{}_plot{}.jpg'.format(e, i + 1))
-            #         plt.close('all')
-            # except:
-            #     pass
 
             # check with test images
             model.eval()
             with torch.no_grad():
                 try:
-                    images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze= test_dataiter.next()
-                    images, h_crops, b_crops, g_crops, masks, gaze_maps, targetgaze = \
+                    images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze= test_dataiter.next()
+                    images, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze = \
                         images.to(device), \
                         h_crops.to(device), \
                         b_crops.to(device), \
                         g_crops.to(device), \
                         masks.to(device), \
                         gaze_maps.to(device), \
+                        eye.to(device),\
                         targetgaze.to(device)
 
                     test_b_size = images.shape[0]
                     gaze_pred = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
 
-                    vec1 = (img_anno['gaze_x'].to(device) - img_anno['eye_x'].to(device),
-                            img_anno['gaze_y'].to(device) - img_anno['eye_y'].to(device))
-                    vec2 = (gaze_pred[:, 1] - img_anno['eye_x'].to(device),
-                            gaze_pred[:, 0] - img_anno['eye_y'].to(device))
+
                     ang_dot = 0
-                    for i in range(b_size):
-                        v1, v2 = torch.stack([vec1[0][i], vec1[1][i]]), \
-                                 torch.stack([vec2[0][i], vec2[1][i]])
+                    for i in range(test_b_size):
+                        vec1 = (targetgaze[i,0].to(device) - eye[i,0].to(device), 
+                                targetgaze[i,1].to(device) - eye[i,1].to(device))
+                        vec2 = (gaze_pred[i,0][0] - eye[i,0].to(device),
+                                gaze_pred[i,0][1] - eye[i,1].to(device))
+                    
+                        v1, v2 = torch.stack([vec1[0], vec1[1]]), \
+                                 torch.stack([vec2[0], vec2[1]])
                         unit_vector_1 = torch.div(v1, torch.linalg.norm(v1))
                         unit_vector_2 = torch.div(v2, torch.linalg.norm(v2))
                         dot_product = torch.dot(unit_vector_1, unit_vector_2)
