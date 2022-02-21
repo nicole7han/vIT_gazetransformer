@@ -107,7 +107,7 @@ class GazePredictor(nn.Module):
                  num_encoder_layers=3, num_decoder_layers=2):
         super(GazePredictor, self).__init__()
         self.transformer = nn.Transformer(hidden_dim, nheads, num_encoder_layers, num_decoder_layers)
-        self.linear_bbox = nn.Linear(hidden_dim, 4) #bounding box of gazed location
+        self.linear_bbox = nn.Linear(hidden_dim, 2) #bounding box of gazed location
         self.pos = nn.Parameter(torch.rand(1, hidden_dim))
         self.query = nn.Parameter(torch.rand(1, hidden_dim))
 
