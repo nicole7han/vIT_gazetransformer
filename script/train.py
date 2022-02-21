@@ -63,10 +63,10 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             # angle loss
             ang_dot = 0
             for i in range(b_size):
-                vec1 = (targetgaze[i,0].to(device) - eye[i,0].to(device), 
-                        targetgaze[i,1].to(device) - eye[i,1].to(device))
-                vec2 = (gaze_pred[i,0][0] - eye[i,0].to(device),
-                        gaze_pred[i,0][1] - eye[i,1].to(device))
+                vec1 = (targetgaze[i,0] - eye[i,0], 
+                        targetgaze[i,1] - eye[i,1])
+                vec2 = (gaze_pred[i][0] - eye[i,0],
+                        gaze_pred[i][0] - eye[i,1])
             
                 v1, v2 = torch.stack([vec1[0], vec1[1]]), \
                          torch.stack([vec2[0], vec2[1]])
