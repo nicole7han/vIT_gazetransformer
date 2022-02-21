@@ -176,4 +176,4 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
 
         gaze_pos = self.gaze_pred(hb_spatial, img_vit_out)
 
-        return gaze_pos
+        return gaze_pos.sqeeeze(1)
