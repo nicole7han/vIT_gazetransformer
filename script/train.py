@@ -60,34 +60,34 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             # loss between probabilty maps
             loss = criterion(out_map.float(), gaze_maps.float())
             '''
-            # angle loss
-            ang_dot = 0
-            for i in range(b_size):
-                vec1 = (targetgaze[i,0] - eye[i,0], 
-                        targetgaze[i,1] - eye[i,1])
-                vec2 = (gaze_pred[i][0] - eye[i,0],
-                        gaze_pred[i][0] - eye[i,1])
-            
-                v1, v2 = torch.stack([vec1[0], vec1[1]]), \
-                         torch.stack([vec2[0], vec2[1]])
-                unit_vector_1 = torch.div(v1,torch.linalg.norm(v1))
-                unit_vector_2 = torch.div(v2,torch.linalg.norm(v2))
-                dot_product = torch.dot(unit_vector_1, unit_vector_2)
-                # print('v1:{}'.format(v1))
-                # print('unit_vector_1:{}, unit_vector_2:{}'.format(unit_vector_1, unit_vector_2))
-                # print('dot_product:{}'.format(dot_product))
-                if torch.isnan(dot_product):
-                    continue
-                ang_dot += dot_product
-                # angle = torch.arccos(dot_product) * 180 / np.pi
-                # if torch.isnan(angle) == False:
-                #     ang_loss += angle  # angle in degrees
-                # else:
-                #     print('{} angle loss nan'.format(images_name[i]))
-            # print('angle dot product:{}'.format(ang_dot))
-            ang_dot = (1 -  torch.div(ang_dot, b_size) )  # we want ang_dot -> 1 to minimize loss function
-            loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_dot
-
+            # # angle loss
+            # ang_dot = 0
+            # for i in range(b_size):
+            #     vec1 = (targetgaze[i,0] - eye[i,0],
+            #             targetgaze[i,1] - eye[i,1])
+            #     vec2 = (gaze_pred[i][0] - eye[i,0],
+            #             gaze_pred[i][0] - eye[i,1])
+            #
+            #     v1, v2 = torch.stack([vec1[0], vec1[1]]), \
+            #              torch.stack([vec2[0], vec2[1]])
+            #     unit_vector_1 = torch.div(v1,torch.linalg.norm(v1))
+            #     unit_vector_2 = torch.div(v2,torch.linalg.norm(v2))
+            #     dot_product = torch.dot(unit_vector_1, unit_vector_2)
+            #     # print('v1:{}'.format(v1))
+            #     # print('unit_vector_1:{}, unit_vector_2:{}'.format(unit_vector_1, unit_vector_2))
+            #     # print('dot_product:{}'.format(dot_product))
+            #     if torch.isnan(dot_product):
+            #         continue
+            #     ang_dot += dot_product
+            #     # angle = torch.arccos(dot_product) * 180 / np.pi
+            #     # if torch.isnan(angle) == False:
+            #     #     ang_loss += angle  # angle in degrees
+            #     # else:
+            #     #     print('{} angle loss nan'.format(images_name[i]))
+            # # print('angle dot product:{}'.format(ang_dot))
+            # ang_dot = (1 -  torch.div(ang_dot, b_size) )  # we want ang_dot -> 1 to minimize loss function
+            # loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_dot
+            loss = criterion(gaze_pred, targetgaze)
             loss.backward()
             opt.step()
             loss_iter.append(loss.detach().item())
@@ -119,28 +119,29 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     gaze_pred = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
 
 
-                    ang_dot = 0
-                    for i in range(test_b_size):
-                        vec1 = (targetgaze[i,0].to(device) - eye[i,0].to(device), 
-                                targetgaze[i,1].to(device) - eye[i,1].to(device))
-                        vec2 = (gaze_pred[i,0][0] - eye[i,0].to(device),
-                                gaze_pred[i,0][1] - eye[i,1].to(device))
-                    
-                        v1, v2 = torch.stack([vec1[0], vec1[1]]), \
-                                 torch.stack([vec2[0], vec2[1]])
-                        unit_vector_1 = torch.div(v1, torch.linalg.norm(v1))
-                        unit_vector_2 = torch.div(v2, torch.linalg.norm(v2))
-                        dot_product = torch.dot(unit_vector_1, unit_vector_2)
-                        if torch.isnan(dot_product):
-                            continue
-                        ang_dot += dot_product
-                        # angle = torch.arccos(dot_product) * 180 / np.pi
-                        # if torch.isnan(angle) == False:
-                        #     ang_loss += angle  # angle in degrees
-                        # else:
-                        #     print('{} angle loss nan'.format(images_name[i]))
-                    ang_dot = (1-ang_dot/b_size) # we want ang_dot -> 1 to minimize loss function
-                    test_loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_dot
+                    # ang_dot = 0
+                    # for i in range(test_b_size):
+                    #     vec1 = (targetgaze[i,0].to(device) - eye[i,0].to(device),
+                    #             targetgaze[i,1].to(device) - eye[i,1].to(device))
+                    #     vec2 = (gaze_pred[i,0][0] - eye[i,0].to(device),
+                    #             gaze_pred[i,0][1] - eye[i,1].to(device))
+                    #
+                    #     v1, v2 = torch.stack([vec1[0], vec1[1]]), \
+                    #              torch.stack([vec2[0], vec2[1]])
+                    #     unit_vector_1 = torch.div(v1, torch.linalg.norm(v1))
+                    #     unit_vector_2 = torch.div(v2, torch.linalg.norm(v2))
+                    #     dot_product = torch.dot(unit_vector_1, unit_vector_2)
+                    #     if torch.isnan(dot_product):
+                    #         continue
+                    #     ang_dot += dot_product
+                    #     # angle = torch.arccos(dot_product) * 180 / np.pi
+                    #     # if torch.isnan(angle) == False:
+                    #     #     ang_loss += angle  # angle in degrees
+                    #     # else:
+                    #     #     print('{} angle loss nan'.format(images_name[i]))
+                    # ang_dot = (1-ang_dot/b_size) # we want ang_dot -> 1 to minimize loss function
+                    # test_loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_dot
+                    test_loss_loss = criterion(gaze_pred, targetgaze)
                     print('test_loss : {}'.format(test_loss))
 
                     PATH = "script4/trainedmodels/resviTmodel_epoch{}.pt".format(e)
