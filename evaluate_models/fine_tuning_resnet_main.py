@@ -62,22 +62,40 @@ intact['condition'] = 'intact'
 fh['condition'] = 'floating heads'
 hb['condition'] = 'headless bodies'
 alldata = pd.concat([intact, fh, hb])
-
 alldata['transformer_eucli_error'] = np.sqrt((alldata['gazed_x'] - alldata['transformer_est_x']) ** 2 + (
          alldata['gazed_y'] - alldata['transformer_est_y']) ** 2)
 alldata['transformer_ang_error'] = alldata.apply(lambda row: compute_angle(row, 'transformer'), axis=1)
 
+#alldata['chong_eucli_error'] = np.sqrt( (alldata['gazed_x']-alldata['chong_est_x'])**2 + (alldata['gazed_y']-alldata['chong_est_y'])**2 )
+#alldata['chong_ang_error'] = alldata.apply(lambda row: compute_angle(row, 'chong'), axis=1)
+
+alldata['center_est_x'] = .5
+alldata['center_est_y'] = .5
+alldata['center_eucli_error'] =  np.sqrt((alldata['gazed_x'] - .5) ** 2 + (
+         alldata['gazed_y'] - .5) ** 2)
+alldata['center_ang_error'] = alldata.apply(lambda row: compute_angle(row, 'center'), axis=1)
+
+
+plotdata = alldata[['condition','transformer_eucli_error','center_eucli_error']]
+plotdata = pd.melt(plotdata,id_vars=['condition'],
+                   value_name='error')
+          
 sns_setup(sns)
-model = ols('transformer_eucli_error ~ C(condition)', data=alldata).fit()
-ax = sns.barplot(data=alldata, x='condition', y='transformer_eucli_error')
+model = ols('error ~ C(condition)*C(variable)', data=plotdata).fit()
+ax = sns.barplot(data=plotdata, x='condition', y='error',hue='variable')
 ax.set(xlabel='', ylabel='Euclidean Error')
 change_width(ax,.4)
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 ax.figure.savefig('{}/Figures/error_epoch{}.jpg'.format(datapath,epoch))
 
+
+plotdata = alldata[['condition','transformer_ang_error', 'center_ang_error']]
+plotdata = pd.melt(plotdata,id_vars=['condition'],
+                   value_name='error')
+       
 sns_setup(sns)
-ax = sns.barplot(data=alldata, x='condition', y='transformer_ang_error')
+ax = sns.barplot(data=plotdata, x='condition', y='error', hue='variable')
 ax.set(xlabel='', ylabel='Angular Error')
 change_width(ax,.4)
 ax.spines['top'].set_color('white')
