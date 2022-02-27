@@ -16,6 +16,15 @@ from script.utils import *
 
 
 # from model_patches_training.train_model_imageclips import *
+def change_width(ax, new_value) :
+    for patch in ax.patches :
+        current_width = patch.get_width()
+        diff = current_width - new_value
+
+        # we change the bar width
+        patch.set_width(new_value)
+        # we recenter the bar
+        patch.set_x(patch.get_x() + diff * .5)
 
 
 def transform(x):
@@ -37,7 +46,7 @@ def visualize_result(image, gaze_map, out_map, idx=0):
     axs[2].title.set_text('prediction gaze map')
 
 
-def plot_gaze(h_yxhw, b_yxhw, image, gaze_map, out_map, chong_model_est, idx=0):
+def plot_gaze(h_yxhw, b_yxhw, image, gaze_map, out_map, chong_model_est=None, idx=0):
     '''
     :param h_yxhw: head bounding box (y, x, h, w)
     :param b_yxhw: body bounding box (y, x, h, w)
@@ -66,9 +75,10 @@ def plot_gaze(h_yxhw, b_yxhw, image, gaze_map, out_map, chong_model_est, idx=0):
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 0, 1), 2)  #
 
     # chong gaze estimation (yellow)
-    chong_x, chong_y = int(chong_model_est[0] * w), int(chong_model_est[1] * h)
-    img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_x, chong_y), (1, .72, .05), 2)
-
+    try:
+        chong_x, chong_y = int(chong_model_est[0] * w), int(chong_model_est[1] * h)
+        img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_x, chong_y), (1, .72, .05), 2)
+    except: pass
     # groundtruth gaze (green)
     gt_gaze = np.array(unravel_index(gaze_map[idx, 0, ::].argmax(), gaze_map[idx, 0, ::].shape)) / \
               gaze_map[idx, 0, ::].shape[0]
@@ -435,6 +445,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
     bbx = np.load('/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/bbx_viu_images.npy', allow_pickle=True)
     bbx = bbx[()]
     for images_name, images, gaze_maps, img_anno in test_dataiter:
+        print(images_name)
         # images_name, images, gaze_maps, img_anno = test_dataiter.next()
         test_b_size = images.shape[0]
         images, gaze_maps = images.to(device), gaze_maps.to(device)
@@ -447,9 +458,11 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
             [test_b_size, 2, 224, 224])
 
         # load chong model estimation for the image
-        chong_image_est = chong_est[chong_est['image'] == images_name[0]]
-        if len(chong_image_est) == 0:
-            continue
+        try:
+            chong_image_est = chong_est[chong_est['image'] == images_name[0]]
+            if len(chong_image_est) == 0:
+                continue
+        except: pass
         ref_h, ref_w = 600, 800
 
         # load image
@@ -457,12 +470,23 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
         h, w, _ = inputs.shape
 
         try:
-            headbody = bbx[
-                '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
-                    images_name[0])]
-            num_people = int(len(headbody) / 2)
+            if 'nb' in  images_name[0]:
+                images_name_orig = images_name[0].replace('nb_','')
+                headbody = bbx[
+                    '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
+                        images_name_orig)]
+            elif 'nh' in images_name[0]:
+                images_name_orig = images_name[0].replace('nh_', '')
+                headbody = bbx[
+                    '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
+                        images_name_orig)]
+            else:
+                headbody = bbx[
+                    '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
+                        images_name[0])]
         except:
             continue
+        num_people = int(len(headbody) / 2)
         # bbx_name = images_name[0].split('.jpg')[0] + '.json'
         # # load head & body region
         # with open('{}/{}'.format(test_bbx_path, bbx_name)) as file:
@@ -486,20 +510,22 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
             b_crop = transform(Image.fromarray(b_crop))
 
             # find corresponding gaze-orienting in the chong model estimation
-            ref_h_x1, ref_h_x2, ref_h_x3 = chong_image_est['h_x1'].iloc[0] / ref_w, \
-                                           chong_image_est['h_x2'].iloc[0] / ref_w, \
-                                           chong_image_est['h_x3'].iloc[0] / ref_w
-            ref_heads = [ref_h_x1, ref_h_x2, ref_h_x3]
-            ref_heads = [i for i in ref_heads if i > 0]
-            # print('{}_person{}'.format(images_name[0], p + 1))
-            # print(ref_heads)
-            ref_index = np.argmin(abs(np.array(ref_heads) - h_x)) + 1
+            try:
+                ref_h_x1, ref_h_x2, ref_h_x3 = chong_image_est['h_x1'].iloc[0] / ref_w, \
+                                               chong_image_est['h_x2'].iloc[0] / ref_w, \
+                                               chong_image_est['h_x3'].iloc[0] / ref_w
+                ref_heads = [ref_h_x1, ref_h_x2, ref_h_x3]
+                ref_heads = [i for i in ref_heads if i > 0]
+                # print('{}_person{}'.format(images_name[0], p + 1))
+                # print(ref_heads)
+                ref_index = np.argmin(abs(np.array(ref_heads) - h_x)) + 1
 
-            chong_estx, chong_esty = chong_image_est['model_estx.{}'.format(ref_index)].iloc[0] / ref_w, \
-                                     chong_image_est['model_esty.{}'.format(ref_index)].iloc[0] / ref_h
-            chong_model_est = np.array([chong_estx, chong_esty])
-            # print('{}_person{} no chong model estimation'.format(images_name[0], p + 1))
-            # print(chong_model_est)
+                chong_estx, chong_esty = chong_image_est['model_estx.{}'.format(ref_index)].iloc[0] / ref_w, \
+                                         chong_image_est['model_esty.{}'.format(ref_index)].iloc[0] / ref_h
+                chong_model_est = np.array([chong_estx, chong_esty])
+                # print('{}_person{} no chong model estimation'.format(images_name[0], p + 1))
+                # print(chong_model_est)
+            except: pass
 
             # load head and body masks
             mask = torch.zeros([2, 224, 224])  # head, body, gaze location
@@ -514,34 +540,50 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
             out_map = torch.zeros([1,1,224,224])
             out_map[0,0, int((gaze_pred[0][1] - .05) * 224):int((gaze_pred[0][1] + .05) * 224),\
                     int((gaze_pred[0][0] - .05) * 224):int((gaze_pred[0][0] + .05) * 224)] = 1
-            out_map = gaussian_smooth(out_map, 21, 5)
+            out_map = gaussian_smooth(out_map, 21, 10)
 
             # visualization
             if os.path.isdir(fig_path) == False:
                 os.mkdir(fig_path)
             h_yxhw, b_yxhw = (h_y, h_x, h_h, h_w), (b_y, b_x, b_h, b_w)
-            gaze_start, pred_gaze, gt_gaze = plot_gaze(h_yxhw, b_yxhw, images.cpu().detach().numpy(),
-                                                       gt_map.cpu().detach().numpy(), out_map.cpu().detach().numpy(),
-                                                       chong_model_est)
+            try:
+                gaze_start, pred_gaze, gt_gaze = plot_gaze(h_yxhw, b_yxhw, images.cpu().detach().numpy(),
+                                                           gt_map.cpu().detach().numpy(), out_map.cpu().detach().numpy(),
+                                                           chong_model_est)
+            except:
+                gaze_start, pred_gaze, gt_gaze = plot_gaze(h_yxhw, b_yxhw, images.cpu().detach().numpy(),
+                                                           gt_map.cpu().detach().numpy(),
+                                                           out_map.cpu().detach().numpy())
             plt.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
             plt.clf()
             plt.close('all')
             IMAGES.append(images_name[0])
             GAZE_START.append(gaze_start)
             PREDICT_GAZE.append(pred_gaze)
-            CHONG_PREDICT_GAZE.append(chong_model_est)
             GT_GAZE.append(gt_gaze)
+            try: CHONG_PREDICT_GAZE.append(chong_model_est)
+            except: pass
 
-    output = pd.DataFrame({'image': IMAGES,
-                           'gaze_start_y': np.array(GAZE_START)[:, 0],
-                           'gaze_start_x': np.array(GAZE_START)[:, 1],
-                           'gazed_y': np.array(GT_GAZE)[:, 0],
-                           'gazed_x': np.array(GT_GAZE)[:, 1],
-                           'transformer_est_y': np.array(PREDICT_GAZE)[:, 0],
-                           'transformer_est_x': np.array(PREDICT_GAZE)[:, 1],
-                           'chong_est_x': np.array(CHONG_PREDICT_GAZE)[:, 0],
-                           'chong_est_y': np.array(CHONG_PREDICT_GAZE)[:, 1],
-                           })
+    try:
+        output = pd.DataFrame({'image': IMAGES,
+                               'gaze_start_y': np.array(GAZE_START)[:, 0],
+                               'gaze_start_x': np.array(GAZE_START)[:, 1],
+                               'gazed_y': np.array(GT_GAZE)[:, 0],
+                               'gazed_x': np.array(GT_GAZE)[:, 1],
+                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 0],
+                               'transformer_est_x': np.array(PREDICT_GAZE)[:, 1],
+                               'chong_est_x': np.array(CHONG_PREDICT_GAZE)[:, 0],
+                               'chong_est_y': np.array(CHONG_PREDICT_GAZE)[:, 1],
+                               })
+    except:
+        output = pd.DataFrame({'image': IMAGES,
+                               'gaze_start_y': np.array(GAZE_START)[:, 0],
+                               'gaze_start_x': np.array(GAZE_START)[:, 1],
+                               'gazed_y': np.array(GT_GAZE)[:, 0],
+                               'gazed_x': np.array(GT_GAZE)[:, 1],
+                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 0],
+                               'transformer_est_x': np.array(PREDICT_GAZE)[:, 1],
+                               })
     return output
 
 def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, lbd=.7):
