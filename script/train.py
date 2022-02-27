@@ -96,8 +96,8 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         LOSS.append(np.mean(np.array(loss_iter)))
 
         if (e) % 2 == 0:
-            if os.path.isdir('script4/outputs') == False:
-                os.mkdir('script4/outputs')
+            if os.path.isdir('script5/outputs') == False:
+                os.mkdir('script5/outputs')
 
 
             # check with test images
@@ -144,7 +144,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     test_loss_loss = criterion(gaze_pred, targetgaze)
                     print('test_loss : {}'.format(test_loss))
 
-                    PATH = "script4/trainedmodels/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script5/trainedmodels/resviTmodel_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
@@ -153,7 +153,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'test_loss': test_loss,
                     }, PATH)
                 except:
-                    PATH = "script4/trainedmodels/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script5/trainedmodels/resviTmodel_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
