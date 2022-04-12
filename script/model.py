@@ -92,11 +92,9 @@ class SpatialAttention(nn.Module):
         # )
 
         # self.conv1 = nn.Conv2d(in_channels=768, out_channels=384, kernel_size=5)
-    def forward(self, masks, h_features, b_features):
-        h_spa_feat = self.convs(masks[:,0,::].unsqueeze(1)).reshape(-1,128,7*7).permute(0,2,1) #[b_size, 7x7, 128]
-        b_spa_feat = self.convs(masks[:, 1, ::].unsqueeze(1)).reshape(-1, 128, 7*7).permute(0, 2, 1) #[b_size, 7x7, 128]
-        x = torch.cat([h_spa_feat,b_spa_feat], -1) #[b_size, 14x14, 128x2]
-        #img_vit_feature [b_size, 7x7, 256]
+    def forward(self, masks, h_features):
+        x = self.convs(masks[:,0,::].unsqueeze(1)).reshape(-1,128,7*7).permute(0,2,1) ##[b_size, 14x14, 128]
+        #img_vit_feature [b_size, 7x7, 128]
         return x
 
 
@@ -133,6 +131,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.vit.eval()
         for param in self.vit.parameters():
             param.requires_grad = False
+
         # self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
         self.softmax = nn.Softmax(dim=1)
         self.maxpool = nn.MaxPool2d(2)
@@ -147,11 +146,12 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         #         m.bias.data.zero_()
 
 
-    def forward(self, images,h_crops,b_crops,masks):
+    def forward(self, images, h_crops, masks):
         # h+b feature
-        h_features, b_features = self.resnet(h_crops), self.resnet(b_crops) # head feature, body feature #[b_size, 7x7, 128]
+        h_features = self.resnet(h_crops)# head feature, body feature #[b_size, 7x7, 128]
         # h,b mask boundingbox as 0, others are 1
-        hb_spatial = self.spa_net(1-masks, h_features, b_features).permute(1, 0, 2) #[7*7, b_size, 256]
+        masks = 1-masks
+        hb_spatial = self.spa_net(masks, h_features).permute(1, 0, 2) #[7*7, b_size, 256]
 
         # image vit feature
         # vit_encoder = torch.nn.Sequential(*list(self.vit.children())[2].layers[0])
@@ -173,6 +173,13 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         # h3=self.vit.class_embed.register_forward_hook(hook3)
         output = self.vit(images)
         img_vit_out = activation['self_attn'][0] # 196(16x16 patches)  x 1 x 256 (hidden dimension)
+        pos_emb = list(self.vit.backbone.children())[-1]
+
+        ''' 
+        mask -> vit feature ->
+        img -> vit feature ->
+        encoder+decoder(mask+img) -> gazed prediction
+        '''
 
         gaze_pos = self.gaze_pred(hb_spatial, img_vit_out)
 

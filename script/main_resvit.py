@@ -19,6 +19,8 @@ sys.path.append('/home/xhan01/.cache/torch/hub/facebookresearch_detr_main')
 
 def main():
     parser = argparse.ArgumentParser(description='training parameters')
+    parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'),
+                        help="Type of positional embedding to use on top of the image features")
     parser.add_argument('--resume', type=bool, default=False,
                         help='resume training from previous checkpoint (default:False)')
     parser.add_argument('--e_start', type=int, default=0,

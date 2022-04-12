@@ -59,18 +59,16 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 model = Gaze_Transformer()
 model.to(device)
 
-b_size = 5
+b_size = 1
 
 train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
 train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
 train_dataiter = iter(train_dataloader)
 
+for images_name, images, flips, h_crops, masks, eye, targetgaze in train_dataiter: #get one batch of train data
 
-for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze in train_dataiter: #get one batch of train data
-
-    #images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze = train_dataiter.next() #get one batch of train data
+    #images_name, images, flips, h_crops, masks, eye, targetgaze = train_dataiter.next() #get one batch of train data
     #gaze_pred = model(images, h_crops, b_crops, masks)
-    
     
     ## DTER VISUALIZATION
     # use lists to store the outputs via up-values
