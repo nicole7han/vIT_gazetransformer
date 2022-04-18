@@ -11,6 +11,8 @@ from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 import scipy.ndimage as ndimage
 from scipy.special import softmax
+from typing import Optional, List
+from torch import Tensor
 
 def str2ASCII(s):
     x = []
@@ -368,4 +370,28 @@ class GazeDataloader(Dataset):
         return name, img, flip, h_crop, mask, \
                torch.tensor([img_anno['eye_x'],img_anno['eye_y']]),\
                torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']])
+
+
+
+class NestedTensor(object):
+    def __init__(self, tensors, mask: Optional[Tensor]):
+        self.tensors = tensors
+        self.mask = mask
+
+    def to(self, device):
+        # type: (Device) -> NestedTensor # noqa
+        cast_tensor = self.tensors.to(device)
+        mask = self.mask
+        if mask is not None:
+            assert mask is not None
+            cast_mask = mask.to(device)
+        else:
+            cast_mask = None
+        return NestedTensor(cast_tensor, cast_mask)
+
+    def decompose(self):
+        return self.tensors, self.mask
+
+    def __repr__(self):
+        return str(self.tensors)
 

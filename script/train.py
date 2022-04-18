@@ -17,10 +17,7 @@ except:
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
           e_start, num_e, lbd, b_size=128):
     LOSS = []
-    test_data = GazeDataloader(ann_path, test_img_path, test_bbx_path)
-    test_dataloader = DataLoader(test_data, batch_size=b_size, shuffle=True)
-    test_dataiter = iter(test_dataloader)
-
+    LOSS_TEST = []
     for e in np.arange(e_start, e_start + num_e):
         model.train()
 
@@ -33,60 +30,19 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         train_dataiter = iter(train_dataloader)
 
         loss_iter = []
-        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze in train_dataiter:
+        for images_name, images, flips, h_crops, masks, eye, targetgaze in train_dataiter:
             opt.zero_grad()
 
-            images, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze = \
+            images, h_crops, masks, eye, targetgaze = \
                 images.to(device), \
                 h_crops.to(device), \
-                b_crops.to(device), \
-                g_crops.to(device), \
                 masks.to(device), \
-                gaze_maps.to(device), \
                 eye.to(device),\
                 targetgaze.to(device)
 
             b_size = images.shape[0]
-            gaze_pred = model(images, h_crops, b_crops, masks)
-            # print(gaze_pred)
-            '''
-            out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
-            gaze_maps[gaze_maps>0] = 1
-            gaze_maps[gaze_maps==1] = 1-.05 #label smoothing
-            gaze_maps[gaze_maps==0] = .05
-            gaze_maps = gaussian_smooth(gaze_maps.detach(), 21, 5).to(device)
-            gt_map_sums = gaze_maps.view(b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-            gaze_maps = (gaze_maps.view(b_size, 1, -1) / gt_map_sums).view(b_size, 1, 64, 64)
-            # loss between probabilty maps
-            loss = criterion(out_map.float(), gaze_maps.float())
-            '''
-            # # angle loss
-            # ang_dot = 0
-            # for i in range(b_size):
-            #     vec1 = (targetgaze[i,0] - eye[i,0],
-            #             targetgaze[i,1] - eye[i,1])
-            #     vec2 = (gaze_pred[i][0] - eye[i,0],
-            #             gaze_pred[i][0] - eye[i,1])
-            #
-            #     v1, v2 = torch.stack([vec1[0], vec1[1]]), \
-            #              torch.stack([vec2[0], vec2[1]])
-            #     unit_vector_1 = torch.div(v1,torch.linalg.norm(v1))
-            #     unit_vector_2 = torch.div(v2,torch.linalg.norm(v2))
-            #     dot_product = torch.dot(unit_vector_1, unit_vector_2)
-            #     # print('v1:{}'.format(v1))
-            #     # print('unit_vector_1:{}, unit_vector_2:{}'.format(unit_vector_1, unit_vector_2))
-            #     # print('dot_product:{}'.format(dot_product))
-            #     if torch.isnan(dot_product):
-            #         continue
-            #     ang_dot += dot_product
-            #     # angle = torch.arccos(dot_product) * 180 / np.pi
-            #     # if torch.isnan(angle) == False:
-            #     #     ang_loss += angle  # angle in degrees
-            #     # else:
-            #     #     print('{} angle loss nan'.format(images_name[i]))
-            # # print('angle dot product:{}'.format(ang_dot))
-            # ang_dot = (1 -  torch.div(ang_dot, b_size) )  # we want ang_dot -> 1 to minimize loss function
-            # loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_dot
+            gaze_pred = model(images, h_crops, masks).squeeze(1)
+
             loss = criterion(gaze_pred, targetgaze)
             loss.backward()
             opt.step()
@@ -96,55 +52,34 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         LOSS.append(np.mean(np.array(loss_iter)))
 
         if (e) % 2 == 0:
-            if os.path.isdir('script5/outputs') == False:
-                os.mkdir('script5/outputs')
-
+            if os.path.isdir('script_head/outputs') == False:
+                os.mkdir('script_head/outputs')
 
             # check with test images
             model.eval()
+            test_data = GazeDataloader(ann_path, test_img_path, test_bbx_path)
+            test_dataloader = DataLoader(test_data, batch_size=b_size, shuffle=True)
+            test_dataiter = iter(test_dataloader)
             with torch.no_grad():
                 try:
-                    images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze= test_dataiter.next()
-                    images, h_crops, b_crops, g_crops, masks, gaze_maps, eye, targetgaze = \
-                        images.to(device), \
-                        h_crops.to(device), \
-                        b_crops.to(device), \
-                        g_crops.to(device), \
-                        masks.to(device), \
-                        gaze_maps.to(device), \
-                        eye.to(device),\
-                        targetgaze.to(device)
+                    loss_iter = []
+                    for images_name, images, flips, h_crops, masks, eye, targetgaze in test_dataiter:
+                        images, h_crops, masks, eye, targetgaze = \
+                            images.to(device), \
+                            h_crops.to(device), \
+                            masks.to(device), \
+                            eye.to(device), \
+                            targetgaze.to(device)
 
-                    test_b_size = images.shape[0]
-                    gaze_pred = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
+                        test_b_size = images.shape[0]
+                        gaze_pred = model(images, h_crops, b_crops)  # model prediction of gaze map
+                        test_loss = criterion(gaze_pred, targetgaze)
+                        loss_iter.append(test_loss.detach().item())
 
+                    print("testing loss: {:.10f}".format(np.mean(np.array(loss_iter))))
+                    LOSS_TEST.append(np.mean(np.array(loss_iter)))
 
-                    # ang_dot = 0
-                    # for i in range(test_b_size):
-                    #     vec1 = (targetgaze[i,0].to(device) - eye[i,0].to(device),
-                    #             targetgaze[i,1].to(device) - eye[i,1].to(device))
-                    #     vec2 = (gaze_pred[i,0][0] - eye[i,0].to(device),
-                    #             gaze_pred[i,0][1] - eye[i,1].to(device))
-                    #
-                    #     v1, v2 = torch.stack([vec1[0], vec1[1]]), \
-                    #              torch.stack([vec2[0], vec2[1]])
-                    #     unit_vector_1 = torch.div(v1, torch.linalg.norm(v1))
-                    #     unit_vector_2 = torch.div(v2, torch.linalg.norm(v2))
-                    #     dot_product = torch.dot(unit_vector_1, unit_vector_2)
-                    #     if torch.isnan(dot_product):
-                    #         continue
-                    #     ang_dot += dot_product
-                    #     # angle = torch.arccos(dot_product) * 180 / np.pi
-                    #     # if torch.isnan(angle) == False:
-                    #     #     ang_loss += angle  # angle in degrees
-                    #     # else:
-                    #     #     print('{} angle loss nan'.format(images_name[i]))
-                    # ang_dot = (1-ang_dot/b_size) # we want ang_dot -> 1 to minimize loss function
-                    # test_loss = lbd * criterion(gaze_pred, targetgaze) + (1 - lbd) * ang_dot
-                    test_loss_loss = criterion(gaze_pred, targetgaze)
-                    print('test_loss : {}'.format(test_loss))
-
-                    PATH = "script5/trainedmodels/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script_head/trainedmodels/model_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
@@ -153,7 +88,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'test_loss': test_loss,
                     }, PATH)
                 except:
-                    PATH = "script5/trainedmodels/resviTmodel_epoch{}.pt".format(e)
+                    PATH = "script_head/trainedmodels/model_epoch{}.pt".format(e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
@@ -161,10 +96,3 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'train_loss': LOSS,
                     }, PATH)
 
-                # try:
-                #     for i in range(5):
-                #         visualize_result(images_name, flips, g_crops, gaze_maps, gaze_pred, idx=i)
-                #         plt.savefig('script3/outputs/resviTmodel_epoch{}_plot{}.jpg'.format(e, i + 1))
-                #         plt.close('all')
-                # except:
-                #     pass

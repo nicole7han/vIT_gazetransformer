@@ -1,5 +1,5 @@
 import os, math, sys
-import torch
+import torch, copy
 import torch.nn.functional as F
 import torchvision.transforms as T
 from torch import nn, Tensor
@@ -8,7 +8,10 @@ import timm
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from PIL import Image
-from typing import Dict, Iterable, Callable
+from typing import Optional, List, Dict, Iterable, Callable
+# from utils import NestedTensor
+
+
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -16,171 +19,225 @@ sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer')
 try:
     from utils import *
 except:
+    from script.utils import *
     pass
 
-class ExtractFeatures(nn.Module):
-    """Extracts embeddings of segmented humans' heads and bodies from the input images."""
+def _get_clones(module, N):
+    return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
 
-    def __init__(self):
-        super(ExtractFeatures, self).__init__()
-        # Load the pretrained model
-        self.model = models.resnet18(pretrained=True)
-        self.shortcut = nn.Identity()
-        self.conv = nn.Sequential(
-                nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1, stride=1),
-                nn.BatchNorm2d(256),
-                nn.ReLU(),
-                nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1, stride=1),
-                nn.BatchNorm2d(128),
-                nn.ReLU()
-        )
-    def forward(self, inputs):
-        """Applies extractfetures module.
-        By default we use resnet18 as backbone to extract features of the head and body
-        Args:
-          inputs: input image.
-        Returns:
-          output: `input feature`
-        """
-        self.model.eval()
-        with torch.no_grad():
-            if len(inputs.shape) == 3:  # if it's just one image
-                inputs = inputs.unsqueeze(0)
-            residual = self.shortcut(inputs)
-            extractor = torch.nn.Sequential(*list(self.model.children())[:-2])
-            for param in extractor.parameters():
-                param.requires_grad = False
-            x = extractor(inputs) #[b_size, 512, 7, 7]
-        x = self.conv(x) #[b_size, 128, 14, 14]
-        x = x.reshape(-1,x.shape[1],x.shape[2]*x.shape[3]) #[b_size, 128, 7*7]
-        return x.permute(0,2,1) #to match the vit feature
+def _get_activation_fn(activation):
+    """Return an activation function given a string"""
+    if activation == "relu":
+        return F.relu
+    if activation == "gelu":
+        return F.gelu
+    if activation == "glu":
+        return F.glu
+    raise RuntimeError(F"activation should be relu/gelu, not {activation}.")
 
 
-class SpatialAttention(nn.Module):
-    """Extracts spatial attention from heads and body masks."""
-    def __init__(self):
-        super(SpatialAttention, self).__init__()
-        # self.project = nn.Sequential(
-        #     nn.Linear(784, 392),
-        #     # nn.BatchNorm1d(num_features=196)
-        #     nn.ReLU(),
-        #     nn.Linear(392, 256),
-        #     # nn.BatchNorm1d(num_features=196)
-        #     nn.ReLU()
-        # )
-        self.convs = nn.Sequential(
-                nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, stride=3),
-                nn.BatchNorm2d(32),
-                nn.ReLU(),
-                nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5, stride=3),
-                nn.BatchNorm2d(64),
-                nn.ReLU(),
-                nn.Conv2d(in_channels=64, out_channels=128, kernel_size=5, stride=3),
-                nn.BatchNorm2d(128),
-                nn.ReLU(),
-        )
-        self.convs2 = nn.Sequential(
-            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1, stride=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-        )
-        # # self.norm = nn.Identity()
-        # self.mpl = nn.Sequential(
-        #     nn.Linear(32, 32, bias=True),
-        #     nn.Linear(32, 16, bias=True),
-        #     nn.Linear(16, 2, bias=True),
-        # )
+class TransformerDecoder(nn.Module):
+    def __init__(self, decoder_layer, num_layers, norm=None, return_intermediate=False):
+        super().__init__()
+        self.layers = _get_clones(decoder_layer, num_layers)
+        self.num_layers = num_layers
+        self.return_intermediate = return_intermediate
+        self.norm = norm
 
-        # self.conv1 = nn.Conv2d(in_channels=768, out_channels=384, kernel_size=5)
-    def forward(self, masks, h_features):
-        x = self.convs(masks[:,0,::].unsqueeze(1)).reshape(-1,128,7*7).permute(0,2,1) ##[b_size, 14x14, 128]
-        #img_vit_feature [b_size, 7x7, 128]
+    def forward(self, tgt, memory,
+                tgt_mask: Optional[Tensor] = None,
+                memory_mask: Optional[Tensor] = None,
+                tgt_key_padding_mask: Optional[Tensor] = None,
+                memory_key_padding_mask: Optional[Tensor] = None,
+                pos: Optional[Tensor] = None,
+                query_pos: Optional[Tensor] = None):
+        output = tgt
+        intermediate = []
+
+        for layer in self.layers:
+            output = layer(output, memory, tgt_mask=tgt_mask,
+                           memory_mask=memory_mask,
+                           tgt_key_padding_mask=tgt_key_padding_mask,
+                           memory_key_padding_mask=memory_key_padding_mask,
+                           pos=pos, query_pos=query_pos)
+            if self.return_intermediate:
+                intermediate.append(self.norm(output))
+
+        if self.return_intermediate:
+            return torch.stack(intermediate)
+
+        return output.unsqueeze(0)
+
+
+class TransformerDecoderLayer(nn.Module):
+    def __init__(self, d_model=256, nhead=8, dim_feedforward=2048, dropout=0.1,
+                 activation="relu"):
+        super().__init__()
+        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        # Implementation of Feedforward model
+        self.linear1 = nn.Linear(d_model, dim_feedforward)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model)
+
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+        self.dropout3 = nn.Dropout(dropout)
+
+        self.activation = _get_activation_fn(activation)
+
+    def with_pos_embed(self, tensor, pos: Optional[Tensor]):
+        return tensor if pos is None else tensor + pos
+
+    def forward(self, tgt, memory,
+                     tgt_mask: Optional[Tensor] = None,
+                     memory_mask: Optional[Tensor] = None,
+                     tgt_key_padding_mask: Optional[Tensor] = None,
+                     memory_key_padding_mask: Optional[Tensor] = None,
+                     pos: Optional[Tensor] = None,
+                     query_pos: Optional[Tensor] = None):
+
+        ''' query self attention '''
+        q = k = self.with_pos_embed(tgt, query_pos)  # tgt is empty at the beginning # q shape: torch.Size([91, 5, 256])
+        tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,  # tgt2: torch.Size([91, 5, 256])
+                              key_padding_mask=tgt_key_padding_mask)[0]
+        tgt = tgt + self.dropout1(tgt2)
+        tgt = self.norm1(tgt)
+
+        ''' encoder-decoder attention '''
+        tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),  # query is object query embedding
+                                   key=self.with_pos_embed(memory, pos),  # key is image memoery with position embedding
+                                   value=memory, attn_mask=memory_mask,
+                                   key_padding_mask=memory_key_padding_mask)[0]
+        tgt = tgt + self.dropout2(tgt2)
+        tgt = self.norm2(tgt)
+
+        ''' linaer projection '''
+        tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt))))
+        tgt = tgt + self.dropout3(tgt2)
+        tgt = self.norm3(tgt)
+
+        return tgt
+
+
+class PositionEmbeddingSine(nn.Module):
+    """
+    This is a more standard version of the position embedding, very similar to the one
+    used by the Attention is all you need paper, generalized to work on images.
+    """
+    def __init__(self, num_pos_feats=64, temperature=10000, normalize=False, scale=None):
+        super().__init__()
+        self.num_pos_feats = num_pos_feats
+        self.temperature = temperature
+        self.normalize = normalize
+        if scale is not None and normalize is False:
+            raise ValueError("normalize should be True if scale is passed")
+        if scale is None:
+            scale = 2 * math.pi
+        self.scale = scale
+
+    def forward(self, tensor_list: NestedTensor):
+        x = tensor_list.tensors
+        mask = tensor_list.mask
+        assert mask is not None
+        not_mask = ~mask
+        y_embed = not_mask.cumsum(1, dtype=torch.float32)
+        x_embed = not_mask.cumsum(2, dtype=torch.float32)
+        if self.normalize:
+            eps = 1e-6
+            y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
+            x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
+
+        dim_t = torch.arange(self.num_pos_feats, dtype=torch.float32, device=x.device)
+        dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
+
+        pos_x = x_embed[:, :, :, None] / dim_t
+        pos_y = y_embed[:, :, :, None] / dim_t
+        pos_x = torch.stack((pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4).flatten(3)
+        pos_y = torch.stack((pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4).flatten(3)
+        pos = torch.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)
+        return pos
+
+
+
+class MLP(nn.Module):
+    """ Very simple multi-layer perceptron (also called FFN)"""
+
+    def __init__(self, input_dim, hidden_dim=256, output_dim=4, num_layers=3):
+        super().__init__()
+        self.num_layers = num_layers
+        h = [hidden_dim] * (num_layers - 1)
+        self.layers = nn.ModuleList(nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim]))
+
+    def forward(self, x):
+        for i, layer in enumerate(self.layers):
+            x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
         return x
-
-
-
-class GazePredictor(nn.Module):
-    """Predict final gaze estimation"""
-    def __init__(self, hidden_dim=256, nheads=8,
-                 num_encoder_layers=3, num_decoder_layers=2):
-        super(GazePredictor, self).__init__()
-        self.transformer = nn.Transformer(hidden_dim, nheads, num_encoder_layers, num_decoder_layers)
-        self.linear_bbox = nn.Linear(hidden_dim, 2) #bounding box of gazed location
-        self.pos = nn.Parameter(torch.rand(1, hidden_dim))
-        self.query = nn.Parameter(torch.rand(1, hidden_dim))
-
-    def forward(self, hb_spatial, img_vit_out):
-        b_size = img_vit_out.shape[1]
-        pos = self.pos.unsqueeze(0).repeat(1, b_size, 1) #[1, b_size, 256]
-        query = self.query.unsqueeze(1).repeat(1, b_size, 1)
-        x = self.transformer(pos+hb_spatial+img_vit_out,query).transpose(0, 1) #[1, b_size, 256]
-        x = self.linear_bbox(x).sigmoid()
-        return x
-
-
 
 class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer of transformer -> predict gaze
     """Main Model"""
-    def __init__(self):
+    def __init__(self, d_model=256, dim_feedforward=2048, nhead=8, dropout=0.1,
+                 num_decoder_layers=3, activation='relu'):
         super(Gaze_Transformer, self).__init__()
-        self.resnet = ExtractFeatures()
-        self.spa_net = SpatialAttention()
-        self.gaze_pred = GazePredictor()
 #        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50_dc5', pretrained=True)
         self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
         self.vit.eval()
         for param in self.vit.parameters():
             param.requires_grad = False
+        self.backbone = self.vit.backbone
 
-        # self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
-        self.softmax = nn.Softmax(dim=1)
-        self.maxpool = nn.MaxPool2d(2)
+        # decoder
+        decoder_layer = TransformerDecoderLayer()
+        decoder_norm = nn.LayerNorm(d_model)
+        self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm)
+        self.query_embed = nn.Embedding(1, d_model)
+        self.d_model=d_model
+        self.nhead=nhead
+        self.dropout=dropout
 
-        # Initialize weights
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-        #         m.weight.data.normal_(0, math.sqrt(2. / n))
-        #     elif isinstance(m, nn.BatchNorm2d):
-        #         m.weight.data.fill_(1)
-        #         m.bias.data.zero_()
-
+        # gaze output bbox
+        self.gaze_bbox = MLP(d_model, d_model, 2, 3)
 
     def forward(self, images, h_crops, masks):
-        # h+b feature
-        h_features = self.resnet(h_crops)# head feature, body feature #[b_size, 7x7, 128]
-        # h,b mask boundingbox as 0, others are 1
-        masks = 1-masks
-        hb_spatial = self.spa_net(masks, h_features).permute(1, 0, 2) #[7*7, b_size, 256]
-
-        # image vit feature
-        # vit_encoder = torch.nn.Sequential(*list(self.vit.children())[2].layers[0])
-        # vit_encoder = torch.nn.Sequential(*list(list(vit.children())[2].layers))
-        # hb_vit_feature = vit_encoder(hb_spatial)
-        # vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
-        # img_vit_feature = vit_feature_extractor(images)  # [b_size, 7x7, 256]
-
-        # image vit feature from DETR
+        '''image vit feature from DETR'''
         activation = {}
         def get_activation(name):
             def hook(model, input, output):
                 activation[name] = output
             return hook
-        hook1 = get_activation('self_attn')
-        
+        # hook1 = get_activation('self_attn')
+        hook1 = get_activation('out_proj')
+
         self.vit.transformer.encoder.layers[-1].self_attn.register_forward_hook(hook1)
-        # h2=self.vit.transformer.decoder.layers[-1].multihead_attn.register_forward_hook(hook2)
-        # h3=self.vit.class_embed.register_forward_hook(hook3)
         output = self.vit(images)
-        img_vit_out = activation['self_attn'][0] # 196(16x16 patches)  x 1 x 256 (hidden dimension)
-        pos_emb = list(self.vit.backbone.children())[-1]
+        img_vit_out = activation['out_proj'][0] # (output[0]:activation,output[1]:weights), 49(7x7 patches) x 1 x 256 (hidden dimension)
+        output = self.vit(torch.cat([masks,masks,masks],1))
+        mask_vit_out = activation['out_proj'][0]
+        memory = img_vit_out + mask_vit_out
 
-        ''' 
-        mask -> vit feature ->
-        img -> vit feature ->
-        encoder+decoder(mask+img) -> gazed prediction
-        '''
+        ''' encoder output + query embedding -> decoder '''
+        _, bs, _ = img_vit_out.shape
+        query_embed = self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1) #  1 x bs x 256
+        tgt = torch.zeros_like(query_embed) # num_queries x b_s x hidden_dim, torch.Size([1, 5, 256])
+        vit_mask = torch.zeros([bs,7,7], dtype=torch.bool) # no padding, all False
 
-        gaze_pos = self.gaze_pred(hb_spatial, img_vit_out)
+        # get pos_mebed
+        samples = NestedTensor(images, vit_mask).to(device)
+        if isinstance(samples, (list, torch.Tensor)):
+            samples = nested_tensor_from_tensor_list(samples)
+        features, pos = self.backbone(samples)
+        pos_embed = pos[-1] # bs x 256 x 7 x 7
+        pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
 
-        return gaze_pos.squeeze(1)
+        hs = self.decoder(tgt, memory, memory_key_padding_mask=None,
+                          pos=pos_embed, query_pos=query_embed)   # 1 x num_queries x b_s x hidden_dim, torch.Size([1, 91, 5, 256])
+        hs = hs.transpose(1,2) # 1 x bs x 1 x 256
+
+        # output gaze bbox
+        outputs_coord = self.gaze_bbox(hs).sigmoid()
+
+        return outputs_coord[-1]
+
