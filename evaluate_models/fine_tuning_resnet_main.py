@@ -1,12 +1,13 @@
 import pandas as pd
+from script.model import *
 from statsmodels.formula.api import ols
 from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=114
-checkpoint = torch.load('trainedmodels/resviTmodel_epoch{}.pt'.format(epoch), map_location='cpu')
+epoch=2
+checkpoint = torch.load('trainedmodels/model_head/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 # checkpoint['test_loss']
 loaded_dict = checkpoint['model_state_dict']
@@ -43,6 +44,7 @@ else: cond='intact'
 head_bbx_path='{}/boundingbox_head (gaze-orienting people)'.format(datapath)
 fig_path='{}/viT_epoch{}_{}_outputs'.format(datapath,epoch,cond)
 
+
 try:
  chong_est = pd.read_excel('{}/Chong_model_estimation.xlsx'.format(datapath))
  output = evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chong_est, model, fig_path,
@@ -50,7 +52,7 @@ try:
 except:
  output = evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, None, model, fig_path,
                           bbx_noise=False)
-output.to_excel('{}/chong&transformer_epoch{}_{}_result.xlsx'.format(datapath,epoch,cond))
+output.to_excel('{}/chong&transformer_epoch{}_{}_result.xlsx'.format(datapath,epoch,cond), index=None)
 analyze_error(output, epoch, filename=datapath)
 
 

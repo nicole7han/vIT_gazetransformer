@@ -33,8 +33,11 @@ def main():
                         help='learning rate, (default:1e-4)')
     parser.add_argument('--lbd', type=float, default=.7,
                         help='map loss weight, (default:.7)')
+    parser.add_argument('--outpath', type=str, default='script_head/trainedmodels',
+                        help='output path')
     args = parser.parse_args()
 
+    os.makedirs(args.outpath, exist_ok=True)
     basepath = os.path.abspath(os.curdir)
     ann_path = "{}/data/annotations".format(basepath)
     train_img_path = "{}/data/train".format(basepath)
@@ -54,7 +57,7 @@ def main():
     # criterion = nn.BCELoss(reduction='mean')
 
     if args.resume:
-        checkpoint = torch.load('script_head/trainedmodels/model_epoch{}.pt'.format(args.e_start), map_location='cpu')
+        checkpoint = torch.load('{}/model_epoch{}.pt'.format(args.outpath, args.e_start), map_location='cpu')
         loaded_dict = checkpoint['model_state_dict']
         prefix = 'module.'
         n_clip = len(prefix)
@@ -73,7 +76,7 @@ def main():
     print('available {} devices...'.format(torch.cuda.device_count()))
     model = torch.nn.DataParallel(model).to(device)
     LOSS = train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
-                 args.e_start + 1, args.num_e, args.lbd, b_size=args.b_size)
+                 args.e_start + 1, args.num_e, args.lbd, outpath=args.outpath, b_size=args.b_size)
 
 
 if __name__ == '__main__':

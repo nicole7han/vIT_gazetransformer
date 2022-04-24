@@ -233,7 +233,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
 
         hs = self.decoder(tgt, memory, memory_key_padding_mask=None,
-                          pos=pos_embed, query_pos=query_embed)   # 1 x num_queries x b_s x hidden_dim, torch.Size([1, 91, 5, 256])
+                          pos=pos_embed, query_pos=query_embed)   # 1 x num_queries x b_s x hidden_dim, torch.Size([1, 1, 5, 256])
         hs = hs.transpose(1,2) # 1 x bs x 1 x 256
 
         # output gaze bbox

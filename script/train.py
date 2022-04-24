@@ -15,7 +15,7 @@ except:
     pass
 
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
-          e_start, num_e, lbd, b_size=128):
+          e_start, num_e, lbd, outpath, b_size=128):
     LOSS = []
     LOSS_TEST = []
     for e in np.arange(e_start, e_start + num_e):
@@ -52,8 +52,6 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         LOSS.append(np.mean(np.array(loss_iter)))
 
         if (e) % 2 == 0:
-            if os.path.isdir('script_head/outputs') == False:
-                os.mkdir('script_head/outputs')
 
             # check with test images
             model.eval()
@@ -79,7 +77,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     print("testing loss: {:.10f}".format(np.mean(np.array(loss_iter))))
                     LOSS_TEST.append(np.mean(np.array(loss_iter)))
 
-                    PATH = "script_head/trainedmodels/model_epoch{}.pt".format(e)
+                    PATH = "{}/model_epoch{}.pt".format(outpath,e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),
@@ -88,7 +86,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'test_loss': test_loss,
                     }, PATH)
                 except:
-                    PATH = "script_head/trainedmodels/model_epoch{}.pt".format(e)
+                    PATH = "{}/model_epoch{}.pt".format(outpath,e)
                     torch.save({
                         'epoch': e,
                         'model_state_dict': model.state_dict(),

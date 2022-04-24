@@ -89,10 +89,10 @@ def plot_gaze(h_yxhw, b_yxhw, image, gaze_map, out_map, chong_model_est=None, id
     # bounding box
     h_rect = patches.Rectangle((h_yxhw[1] * w, h_yxhw[0] * h), h_yxhw[3] * w, h_yxhw[2] * h, linewidth=1, edgecolor='r',
                                facecolor='none')
-    b_rect = patches.Rectangle((b_yxhw[1] * w, b_yxhw[0] * h), b_yxhw[3] * w, b_yxhw[2] * h, linewidth=1, edgecolor='r',
-                               facecolor='none')
+    # b_rect = patches.Rectangle((b_yxhw[1] * w, b_yxhw[0] * h), b_yxhw[3] * w, b_yxhw[2] * h, linewidth=1, edgecolor='r',
+    #                            facecolor='none')
     axs[0].add_patch(h_rect)
-    axs[0].add_patch(b_rect)
+    # axs[0].add_patch(b_rect)
     axs[0].title.set_text('original image')
 
     # heatmap
@@ -449,13 +449,8 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
         # images_name, images, gaze_maps, img_anno = test_dataiter.next()
         test_b_size = images.shape[0]
         images, gaze_maps = images.to(device), gaze_maps.to(device)
-
-        gt_map = gaussian_smooth(gaze_maps, 21, 5)
-        gt_map_sums = gt_map.view(test_b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-        gt_map = (gt_map.view(test_b_size, 1, -1) / gt_map_sums).view(test_b_size, 1, 64, 64)
-
         h_crops, b_crops, masks = torch.zeros(images.shape), torch.zeros(images.shape), torch.zeros(
-            [test_b_size, 2, 224, 224])
+            [test_b_size, 1, 224, 224])
 
         # load chong model estimation for the image
         try:
@@ -470,28 +465,12 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
         h, w, _ = inputs.shape
 
         try:
-            if 'nb' in  images_name[0]:
-                images_name_orig = images_name[0].replace('nb_','')
-                headbody = bbx[
-                    '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
-                        images_name_orig)]
-            elif 'nh' in images_name[0]:
-                images_name_orig = images_name[0].replace('nh_', '')
-                headbody = bbx[
-                    '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
-                        images_name_orig)]
-            else:
-                headbody = bbx[
-                    '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
-                        images_name[0])]
+            headbody = bbx[
+                '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
+                    images_name[0])]
         except:
             continue
         num_people = int(len(headbody) / 2)
-        # bbx_name = images_name[0].split('.jpg')[0] + '.json'
-        # # load head & body region
-        # with open('{}/{}'.format(test_bbx_path, bbx_name)) as file:
-        #     headbody = json.load(file)
-        # num_people = int(len(headbody) / 8)
 
         # for each image, loop through all the gaze-orienting individual
         for p in range(num_people):
@@ -528,20 +507,23 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
             except: pass
 
             # load head and body masks
-            mask = torch.zeros([2, 224, 224])  # head, body, gaze location
-            mask[0, :, :][int(h_y * 224):int((h_y + h_h) * 224), int(h_x * 224):int((h_x + h_w) * 224)] = 1
-            mask[1, :, :][int(b_y * 224):int((b_y + b_h) * 224), int(b_x * 224):int((b_x + b_w) * 224)] = 1
-            h_crops[0, ::], b_crops[0, ::], masks[0, ::] = h_crop, b_crop, mask
+            masks[0, :, :][int(h_y * 224):int((h_y + h_h) * 224), int(h_x * 224):int((h_x + h_w) * 224)] = 1
+            # mask[1, :, :][int(b_y * 224):int((b_y + b_h) * 224), int(b_x * 224):int((b_x + b_w) * 224)] = 1
+            h_crops[0, ::], b_crops[0, ::], masks[0, ::] = h_crop, b_crop, masks
             h_crops, b_crops, masks = h_crops.to(device), b_crops.to(device), masks.to(device)
             flips = torch.zeros(1)
 
-            gaze_pred = model(images, h_crops, b_crops, masks).detach().numpy()
+            gaze_pred = model(images, h_crops, masks).squeeze(1).detach().numpy()
             gaze_pos = torch.vstack([img_anno['gaze_x'], img_anno['gaze_y']]).permute(1, 0).to(device)
             out_map = torch.zeros([1,1,224,224])
             out_map[0,0, int((gaze_pred[0][1] - .05) * 224):int((gaze_pred[0][1] + .05) * 224),\
                     int((gaze_pred[0][0] - .05) * 224):int((gaze_pred[0][0] + .05) * 224)] = 1
             out_map = gaussian_smooth(out_map, 21, 10)
 
+            gt_map = torch.zeros([1,1,224,224])
+            gt_map[0,0, int((gaze_pos[0][1] - .05) * 224):int((gaze_pos[0][1] + .05) * 224),\
+                    int((gaze_pos[0][0] - .05) * 224):int((gaze_pos[0][0] + .05) * 224)] = 1
+            gt_map = gaussian_smooth(gt_map, 21, 10)
             # visualization
             if os.path.isdir(fig_path) == False:
                 os.mkdir(fig_path)
