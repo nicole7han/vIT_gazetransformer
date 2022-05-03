@@ -199,7 +199,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.dropout=dropout
 
         # gaze output bbox
-        self.gaze_bbox = MLP(d_model, d_model, 2, 3)
+        self.gaze_bbox = MLP(d_model, dim_feedforward, 2, 3)
 
     def forward(self, images, h_crops, masks):
         '''image vit feature from DETR'''
