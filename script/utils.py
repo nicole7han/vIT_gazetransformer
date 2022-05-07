@@ -261,6 +261,8 @@ class GazeDataloader(Dataset):
             if len(img_list) > 0:
                 self.img_paths += img_list
 
+        with open('{}/{}_annotation.json'.format(self.ann_path, self.mode)) as file:
+            self.eyegaze = json.load(file)
         # self.transform = transforms.Compose([
         #     transforms.Resize([256, 256]),
         #     transforms.ToTensor(),
@@ -287,16 +289,11 @@ class GazeDataloader(Dataset):
             img = Image.open(name)
         except:
             print(self.img_paths[idx])
-        # config = resolve_data_config({}, model=self.vit)
-        # transform = create_transform(**config)
-        # inputs = transform(img).unsqueeze(0)
-        # vit_feature_extractor = torch.nn.Sequential(*list(self.vit.children())[:-1])
-        # vit_feature = vit_feature_extractor(inputs)  # input size 3x384x384
+        inputs = np.array(img)
 
         # name = 'data/test/00000000/00000349.jpg'
         img_name = name.split("/")[-1]  # name = 'data/train/00000004/00004947.jpg'
         folder_name = name.split("/")[-2]
-        inputs = plt.imread(name)
         try:
             h, w, _ = inputs.shape
         except:
@@ -305,18 +302,14 @@ class GazeDataloader(Dataset):
             inputs = np.stack([inputs, inputs, inputs], axis=-1)
 
         # load eye gaze annotation
-        with open('{}/{}_annotation.json'.format(self.ann_path, self.mode)) as file:
-            eyegaze = json.load(file)
-        img_anno = eyegaze['/'.join(name.split('/')[-3:])]
+        img_anno = self.eyegaze['/'.join(name.split('/')[-3:])]
 
         # load head and body region
         seg_bbx = np.load("{}/bbx_{}.npy".format(self.bbx_path, folder_name), allow_pickle=True)
         seg_bbx = seg_bbx[()]
-
         try:
             # crop head and body 
             inputs_bbx = seg_bbx["./gazefollow/{}".format('/'.join(name.split('/')[-3:]))]
-
             [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = inputs_bbx['head'] + inputs_bbx['body']
             h_y += random.uniform(-.01, 0)
             h_x += random.uniform(-.01, 0)
@@ -343,31 +336,51 @@ class GazeDataloader(Dataset):
                 # print('{} random flip'.format(img_name))
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 h_crop = np.fliplr(h_crop)
-                mask = torch.zeros([1, 224, 224])
-                mask[0, ::][int(h_y * 224):int((h_y + h_h) * 224), int((1 - h_x - h_w) * 224):int((1 - h_x) * 224)] = 1
+                mask = np.zeros([ h, w])
+                mask[int(h_y * h):int((h_y + h_h) * h), int((1 - h_x - h_w) * w):int((1 - h_x) * w)] = 1
                 # masks[1, ::][int(b_y * 224):int((b_y + b_h) * 224), int((1 - b_x - b_w) * 224):int((1 - b_x) * 224)] = 1
                 img_anno['eye_x'] = 1 - img_anno['eye_x']
                 img_anno['gaze_x'] = 1 - img_anno['gaze_x']
             else:
                 # create binary masks for head, body, gaze location
-                mask = torch.zeros([1, 224, 224])  # head, body, gaze location
-                mask[0, ::][int(h_y * 224):int((h_y + h_h) * 224), int(h_x * 224):int((h_x + h_w) * 224)] = 1
+                mask = np.zeros([h, w])  # head, body, gaze location
+                mask[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)] = 1
                 # masks[1, ::][int(b_y * 224):int((b_y + b_h) * 224), int(b_x * 224):int((b_x + b_w) * 224)] = 1
-
             # gaze_map = self.resize(Image.fromarray(gaze_map))
             # gaze_map = np.log(softmax(gaze_map))
             h_crop = self.transform(Image.fromarray(h_crop))
             # b_crop = self.transform(Image.fromarray(b_crop))
             # g_crop = self.transform(Image.fromarray(g_crop))
-            img = self.transform(img)
-
         except:
             print(name)
             print('{} no data'.format(img_name))
             return
 
+        # resize
+        h, w = 100, 100
+        img = img.resize([h,w])
+        inputs = np.array(img)
+        # create a white background, randomly position img, update eye position, gaze location
+        # update img_anno based on random position of image relative to the background
+        img_bg = 255 * np.ones([224, 224, 3]).astype('uint8')
+        loc_min, loc_max = int(h/2), int(224-h/2)
+        rand_x, rand_y = torch.randint(loc_min, loc_max, [1,1])[0].item(), \
+                         torch.randint(loc_min, loc_max, [1,1])[0].item()
+        img_bg[rand_y-loc_min:rand_y+loc_min, rand_x-loc_min:rand_x+loc_min] = inputs
+        img_bg = Image.fromarray(img_bg)
+        img_anno['eye_x'], img_anno['eye_y'], img_anno['gaze_x'], img_anno['gaze_y'] = \
+            (img_anno['eye_x']*w + rand_x-loc_min)/224, \
+            (img_anno['eye_y']*h + rand_y-loc_min)/224, \
+            (img_anno['gaze_x']*w + rand_x-loc_min)/224, \
+            (img_anno['gaze_y']*h + rand_y-loc_min)/224
+        img_bg = self.transform(img_bg)
 
-        return name, img, flip, h_crop, mask, \
+        mask = Image.fromarray(mask)
+        mask = torch.tensor(np.array(mask.resize([h,w])))
+        mask_bg = torch.zeros([1, 224, 224])
+        mask_bg[0, rand_y - loc_min:rand_y + loc_min, rand_x - loc_min:rand_x + loc_min] = mask
+
+        return name, img_bg, flip, h_crop, mask_bg, \
                torch.tensor([img_anno['eye_x'],img_anno['eye_y']]),\
                torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']])
 
