@@ -5,7 +5,8 @@ from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 
-basepath = os.path.abspath(os.curdir)
+# basepath = os.path.abspath(os.curdir)
+basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 from script.model import *
 from script.train import *
 from script.utils import *
