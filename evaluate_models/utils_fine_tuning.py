@@ -568,151 +568,42 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
                                })
     return output
 
-def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, lbd=.7):
-    '''
 
-    @param anno_path:gazed location
-    @type anno_path: str
-    @param test_img_path:test image path
-    @type test_img_path: str
-    @param test_bbx_path:test bounding box path
-    @type test_bbx_path: str
-    @param chong_est: chong estimation on test images
-    @param criterion: loss criterion
-    @param model: the model
-    @return:output
-    @rtype:dataframe
-    '''
-
-    IMAGES = []
-    GAZE_START = []
-    PREDICT_GAZE = []
-    GT_GAZE = []
-    ANG_LOSS = []
-    CHONG_ANG_LOSS = []
-    DIS_LOSS = []
-    CHONG_DIS_LOSS = []
-
-    test_data = GazeDataloader(anno_path, test_img_path, test_bbx_path)
-    test_dataloader = DataLoader(test_data, batch_size=1, shuffle=True)
-    test_dataiter = iter(test_dataloader)
-    model.eval()
-    with torch.no_grad():
-        for images_name, images, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno, targetgaze in test_dataiter:
-            # images_name, flips, h_crops, b_crops, g_crops, masks, gaze_maps, img_anno = test_dataiter.next()
-            # images_name
-            h_crops, b_crops, g_crops, masks, gaze_maps = \
-                h_crops.to(device), \
-                b_crops.to(device), \
-                g_crops.to(device), \
-                masks.to(device), \
-                gaze_maps.to(device)
-
-            chong = chong_est[chong_est['frame'].str.contains(images_name[0].split('/')[-1])]
-            chong_pred_x, chong_pred_y = chong['x_r'].item(), chong['y_r'].item()
-            if flips[0]==True:
-                chong_pred_x = 1-chong_pred_x
-            chong_pred = np.array([chong_pred_y, chong_pred_x])
-
-            img = plt.imread(images_name[0])
-            try:
-                h, w, _ = img.shape
-            except:
-                h, w = img.shape
-
-            test_b_size = images.shape[0]
-
-            gaze_pred = model(images, h_crops, b_crops, masks).detach().numpy()
-            gaze_pos = torch.vstack([img_anno['gaze_x'],img_anno['gaze_y']]).permute(1,0).to(device)
-            # loss = criterion(gaze_pred.float(), gaze_pos.float())
-
-            vec1 = (img_anno['gaze_x'] - img_anno['eye_x'], img_anno['gaze_y'] - img_anno['eye_y'])
-            # transformer estimation
-            vec2 = (gaze_pred[0][0] -img_anno['eye_x'], gaze_pred[0][1] - img_anno['eye_y'])
-
-            # chong estimation
-            vec3 = (chong_pred_x-img_anno['eye_x'],
-                    chong_pred_y-img_anno['eye_y'])
-
-            # groundtruth
-            gt = np.array([img_anno['gaze_y'].item(), img_anno['gaze_x'].item()])
-
-            for i in range(test_b_size):
-                v1, v2, v3 = [vec1[0][i] * w, vec1[1][i] * h], \
-                         [vec2[0][i] * w, vec2[1][i] * h], \
-                        [vec3[0][i] * w, vec3[1][i] * h]
-                unit_vector_1 = v1 / np.linalg.norm(v1)
-                unit_vector_2 = v2 / np.linalg.norm(v2)
-                unit_vector_3 = v3/ np.linalg.norm(v3)
-
-                # transformer vector
-                dot_product = np.dot(unit_vector_1, unit_vector_2)
-                ang_loss = (np.arccos(dot_product) * 180 / np.pi)  # angle in degrees
-                dis_loss = np.linalg.norm(gaze_pred-gt)
-
-                # chong vector
-                dot_product = np.dot(unit_vector_1, unit_vector_3)
-                chong_ang_loss = (np.arccos(dot_product) * 180 / np.pi)  # angle in degrees
-                chong_dis_loss = np.linalg.norm(chong_pred-gt)
-
-            # visualization
-            if os.path.isdir(fig_path) == False:
-                os.mkdir(fig_path)
-
-            plot_gaze_largedata(img_anno, images_name, flips, gaze_pred[0], chong_pred,
-                                gaze_maps[0,0,::].detach().numpy())
-            plt.savefig('{}/result_{}'.format(fig_path, images_name[0].split('/')[-1]))
-            plt.close()
-            # plt.clf()
-            # plt.close('all')
-
-            gaze_pred = gaze_pred[0].tolist()
-            IMAGES.append(images_name[0])
-            GAZE_START.append([img_anno['eye_y'][0].item(), img_anno['eye_x'][0].item()])
-            PREDICT_GAZE.append(gaze_pred)
-            GT_GAZE.append([img_anno['gaze_y'][0].item(), img_anno['gaze_x'][0].item()])
-            ANG_LOSS.append(ang_loss)
-            CHONG_ANG_LOSS.append(chong_ang_loss)
-            DIS_LOSS.append(dis_loss)
-            CHONG_DIS_LOSS.append(chong_dis_loss)
-
-        output = pd.DataFrame({'image': IMAGES,
-                               'gaze_start_y': np.array(GAZE_START)[:, 0],
-                               'gaze_start_x': np.array(GAZE_START)[:, 1],
-                               'gazed_y': np.array(GT_GAZE)[:, 0],
-                               'gazed_x': np.array(GT_GAZE)[:, 1],
-                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 1],
-                               'transformer_est_x': np.array(PREDICT_GAZE)[:, 0],
-                               'ang_loss': np.array(ANG_LOSS),
-                               'chong_ang_error': np.array(CHONG_ANG_LOSS),
-                               'dis_loss': np.array(DIS_LOSS),
-                               'chong_eucli_error': np.array(CHONG_DIS_LOSS),
-                               })
-
-    return output
+def coord_bg2img(x, y, disx, disy, img_size=100, bg_size=224):
+    # coordinates of x, y from an image displaced on a bacground with displacement xy -> xy within the image itself
+    x = x*bg_size-(disx*bg_size-img_size/2)
+    y = y*bg_size-(disy*bg_size-img_size/2)
+    return x/img_size, y/img_size
 
 
 
-def plot_gaze_largedata(img_anno, images_name, flips, gaze_pred, chong_pred, gaze_map):
+def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
+    try:
+        h, w, _ = img.shape
+    except:
+        h, w = img.shape
 
-    image = Image.open(images_name[0])
-    h, w = image.height, image.width
+
     fig, axs = plt.subplots(1, 2, figsize=(12, 6))
     # transformer gaze estimation (blue)
-    gaze_pred_x, gaze_pred_y = int(gaze_pred[0] * w), \
-                               int(gaze_pred[1] * h)
-    chong_pred_y, chong_pred_x = int(chong_pred[0] * h), \
-                                 int(chong_pred[1] * w)
-    gaze_s_y, gaze_s_x, gaze_e_y, gaze_e_x = int(img_anno['eye_y'][0] * h), \
-                                             int(img_anno['eye_x'][0] * w), \
-                                             int(img_anno['gaze_y'][0] * h), \
-                                             int(img_anno['gaze_x'][0] * w)
-    if flips[0] == True:
-        image = image.transpose(Image.FLIP_LEFT_RIGHT)
+    gaze_pred_x, gaze_pred_y = int(transxy[0] * w), \
+                               int(transxy[1]* h)
+    try:
+        chong_pred_x, chong_pred_y = int(chongxy[0] * w), \
+                                     int(chongxy[1] * h)
+    except:
+        pass
+    gaze_s_x, gaze_s_y, gaze_e_x, gaze_e_y = int(eyexy[0] * w), \
+                                             int(eyexy[1] * h), \
+                                             int(targetxy[0] * w), \
+                                             int(targetxy[1] * h)
+    if flip == True:
+        image = Image.fromarray(img).transpose(Image.FLIP_LEFT_RIGHT)
+        img = np.array(image)
         axs[0].title.set_text('original image (flipped)')
     else:
         axs[0].title.set_text('original image')
-    img = np.array(image)
+
     # transformer prediction (blue)
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
 

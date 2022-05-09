@@ -30,7 +30,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         train_dataiter = iter(train_dataloader)
 
         loss_iter = []
-        for images_name, images, flips, h_crops, masks, eye, targetgaze in train_dataiter:
+        for images_name, images, flips, h_crops, masks, eye, targetgaze, _ in train_dataiter:
             opt.zero_grad()
 
             images, h_crops, masks, eye, targetgaze = \
@@ -61,7 +61,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             with torch.no_grad():
                 try:
                     loss_iter = []
-                    for images_name, images, flips, h_crops, masks, eye, targetgaze in test_dataiter:
+                    for images_name, images, flips, h_crops, masks, eye, targetgaze, _ in test_dataiter:
                         images, h_crops, masks, eye, targetgaze = \
                             images.to(device), \
                             h_crops.to(device), \

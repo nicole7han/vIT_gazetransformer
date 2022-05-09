@@ -311,22 +311,22 @@ class GazeDataloader(Dataset):
             # crop head and body 
             inputs_bbx = seg_bbx["./gazefollow/{}".format('/'.join(name.split('/')[-3:]))]
             [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = inputs_bbx['head'] + inputs_bbx['body']
-            h_y += random.uniform(-.01, 0)
-            h_x += random.uniform(-.01, 0)
-            h_h += random.uniform(0, 0.01)
-            h_w += random.uniform(0, 0.01)
+            # h_y += random.uniform(-.01, 0)
+            # h_x += random.uniform(-.01, 0)
+            # h_h += random.uniform(0, 0.01)
+            # h_w += random.uniform(0, 0.01)
             # b_y += random.uniform(-.01, 0)
             # b_x += random.uniform(-.01, 0)
             # b_h += random.uniform(0, 0.01)
             # b_w += random.uniform(0, 0.01)
             # make sure all between [0,1]
-            vals = [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w]
-            for i in range(len(vals)):
-                if vals[i] < 0:
-                    vals[i] = 0
-                elif vals[i] > 1:
-                    vals[i] = 1
-            [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = vals
+            # vals = [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w]
+            # for i in range(len(vals)):
+            #     if vals[i] < 0:
+            #         vals[i] = 0
+            #     elif vals[i] > 1:
+            #         vals[i] = 1
+            # [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = vals
 
             h_crop = inputs[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)]
             # b_crop = inputs[int(b_y * h):int((b_y + b_h) * h), int(b_x * w):int((b_x + b_w) * w)]
@@ -382,7 +382,8 @@ class GazeDataloader(Dataset):
 
         return name, img_bg, flip, h_crop, mask_bg, \
                torch.tensor([img_anno['eye_x'],img_anno['eye_y']]),\
-               torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']])
+               torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']]), \
+               torch.tensor([rand_x/224, rand_y/224])
 
 
 
