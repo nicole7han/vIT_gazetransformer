@@ -83,7 +83,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': opt.state_dict(),
                         'train_loss': LOSS,
-                        'test_loss': test_loss,
+                        'test_loss': LOSS_TEST,
                     }, PATH)
                 except:
                     PATH = "{}/model_epoch{}.pt".format(outpath,e)
