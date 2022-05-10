@@ -584,7 +584,7 @@ def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
         h, w = img.shape
 
 
-    fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+    fig, axs = plt.subplots(1, 1, figsize=(6, 6))
     # transformer gaze estimation (blue)
     gaze_pred_x, gaze_pred_y = int(transxy[0] * w), \
                                int(transxy[1]* h)
@@ -600,9 +600,9 @@ def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
     if flip == True:
         image = Image.fromarray(img).transpose(Image.FLIP_LEFT_RIGHT)
         img = np.array(image)
-        axs[0].title.set_text('original image (flipped)')
+        axs.title.set_text('original image (flipped)')
     else:
-        axs[0].title.set_text('original image')
+        axs.title.set_text('original image')
 
     # transformer prediction (blue)
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
@@ -612,7 +612,7 @@ def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
 
     # groundtruth gaze (green)
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
-    axs[0].imshow(img)
+    axs.imshow(img)
 
     # bounding box
     # h_rect = patches.Rectangle((h_yxhw[1]*w, h_yxhw[0]*h), h_yxhw[3]*w, h_yxhw[2]*h, linewidth=1, edgecolor='r', facecolor='none')
@@ -620,10 +620,10 @@ def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
     # axs[0].add_patch(h_rect)
     # axs[0].add_patch(b_rect)
 
-    # heatmap
-    gaze_map = gaussian_filter(gaze_map, 3)
-    axs[1].imshow(gaze_map)
-    axs[1].title.set_text('groundtruth gaze map')
+    # # heatmap
+    # gaze_map = gaussian_filter(gaze_map, 3)
+    # axs[1].imshow(gaze_map)
+    # axs[1].title.set_text('groundtruth gaze map')
 
 
 def organize_gazedata():

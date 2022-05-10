@@ -5,7 +5,7 @@ from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 
 
-def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, lbd=.7):
+def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path):
     '''
 
     @param anno_path:gazed location
@@ -82,28 +82,34 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
                 # visualization
                 os.makedirs(fig_path, exist_ok=True)
-                plot_gaze_largedata(img, flips[i], [eye_x, eye_y], [target_x,target_y],
+                outfig = plot_gaze_largedata(img, flips[i], [eye_x, eye_y], [target_x,target_y],\
                                     [trans_pred_x, trans_pred_y], [chong_pred_x, chong_pred_y] )
-                plt.savefig('{}/result_{}'.format(fig_path, images_name[0].split('/')[-1]))
-                plt.close()
+                plt.text(.5*w, 1.2*h, 'transformer ang_error:{:.2f}, eucli_error:{:.2f}'.format(trans_ang_loss,trans_dis_loss), \
+                         horizontalalignment='center',
+                         verticalalignment='bottom')
+                plt.text(.5*w, 1.25*h ,'chong ang_error:{:.2f}, eucli_error:{:.2f}'.format(chong_ang_loss, chong_dis_loss), \
+                         horizontalalignment='center',
+                         verticalalignment='bottom')
 
-                gaze_pred = gaze_pred[0].tolist()
-                IMAGES.append(images_name[0])
-                GAZE_START.append([img_anno['eye_y'][0].item(), img_anno['eye_x'][0].item()])
-                PREDICT_GAZE.append(gaze_pred)
-                GT_GAZE.append([img_anno['gaze_y'][0].item(), img_anno['gaze_x'][0].item()])
-                ANG_LOSS.append(ang_loss)
+                plt.savefig('{}/result_{}'.format(fig_path, images_name[i].split('/')[-1]))
+                plt.close()
+                ANG_LOSS.append(trans_ang_loss)
                 CHONG_ANG_LOSS.append(chong_ang_loss)
-                DIS_LOSS.append(dis_loss)
+                DIS_LOSS.append(trans_dis_loss)
                 CHONG_DIS_LOSS.append(chong_dis_loss)
 
+            IMAGES += list(images_name)
+            GAZE_START += eye.tolist() #xy
+            PREDICT_GAZE += gaze_pred.tolist()
+            GT_GAZE += targetgaze.tolist()
+
         output = pd.DataFrame({'image': IMAGES,
-                               'gaze_start_y': np.array(GAZE_START)[:, 0],
-                               'gaze_start_x': np.array(GAZE_START)[:, 1],
+                               'gaze_start_x': np.array(GAZE_START)[:, 0],
+                               'gaze_start_y': np.array(GAZE_START)[:, 1],
                                'gazed_y': np.array(GT_GAZE)[:, 0],
                                'gazed_x': np.array(GT_GAZE)[:, 1],
-                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 1],
                                'transformer_est_x': np.array(PREDICT_GAZE)[:, 0],
+                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 1],
                                'ang_loss': np.array(ANG_LOSS),
                                'chong_ang_error': np.array(CHONG_ANG_LOSS),
                                'dis_loss': np.array(DIS_LOSS),
@@ -115,7 +121,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=200
+epoch=400
 checkpoint = torch.load('trainedmodels/model_head/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 # checkpoint['test_loss']
@@ -136,5 +142,5 @@ test_bbx_path = "{}/data/test_bbox".format(datapath)
 criterion = nn.MSELoss()
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
 output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path)
-output.to_excel('{}/model_eval_outputs_3decoder/transformer_epoch{}_result.xlsx'.format(datapath, epoch))
-analyze_error(output, epoch, filename='figures/model_largedata')
+output.to_excel('{}/model_eval_outputs_3decoder/transformer_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
+analyze_error(output, epoch, filename='{}/model_eval_outputs_3decoder'.format(datapath))
