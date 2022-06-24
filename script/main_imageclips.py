@@ -61,7 +61,6 @@ model = Gaze_Transformer()
 model.to(device)
 
 b_size = 5
-
 train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
 train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
 train_dataiter = iter(train_dataloader)

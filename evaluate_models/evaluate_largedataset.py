@@ -121,7 +121,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=400
+epoch=700
 checkpoint = torch.load('trainedmodels/model_head/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 # checkpoint['test_loss']
