@@ -311,6 +311,7 @@ class GazeDataloader(Dataset):
             # crop head and body 
             inputs_bbx = seg_bbx["./gazefollow/{}".format('/'.join(name.split('/')[-3:]))]
             [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = inputs_bbx['head'] + inputs_bbx['body']
+            bbx_y, bbx_x, bbx_h, bbx_w = min(h_y, b_y), min(h_x,b_x), max(h_h,b_h), max(h_w, b_w)
             # h_y += random.uniform(-.01, 0)
             # h_x += random.uniform(-.01, 0)
             # h_h += random.uniform(0, 0.01)
@@ -328,29 +329,24 @@ class GazeDataloader(Dataset):
             #         vals[i] = 1
             # [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = vals
 
-            h_crop = inputs[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)]
+            # h_crop = inputs[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)]
             # b_crop = inputs[int(b_y * h):int((b_y + b_h) * h), int(b_x * w):int((b_x + b_w) * w)]
+            bbx_crop = inputs[int(bbx_y * h):int((bbx_y + bbx_h) * h), int(bbx_x * w):int((bbx_x + bbx_w) * w)]
 
             flip = random.random() > .5  # random flip images horizontally
             if flip:
                 # print('{} random flip'.format(img_name))
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
-                h_crop = np.fliplr(h_crop)
+                bbx_crop = np.fliplr(bbx_crop)
                 mask = np.zeros([ h, w])
-                mask[int(h_y * h):int((h_y + h_h) * h), int((1 - h_x - h_w) * w):int((1 - h_x) * w)] = 1
-                # masks[1, ::][int(b_y * 224):int((b_y + b_h) * 224), int((1 - b_x - b_w) * 224):int((1 - b_x) * 224)] = 1
+                mask[int(bbx_y * h):int((bbx_y + bbx_h) * h), int((1 - bbx_x - bbx_w) * w):int((1 - bbx_x) * w)] = 1
                 img_anno['eye_x'] = 1 - img_anno['eye_x']
                 img_anno['gaze_x'] = 1 - img_anno['gaze_x']
             else:
                 # create binary masks for head, body, gaze location
                 mask = np.zeros([h, w])  # head, body, gaze location
-                mask[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)] = 1
-                # masks[1, ::][int(b_y * 224):int((b_y + b_h) * 224), int(b_x * 224):int((b_x + b_w) * 224)] = 1
-            # gaze_map = self.resize(Image.fromarray(gaze_map))
-            # gaze_map = np.log(softmax(gaze_map))
-            h_crop = self.transform(Image.fromarray(h_crop))
-            # b_crop = self.transform(Image.fromarray(b_crop))
-            # g_crop = self.transform(Image.fromarray(g_crop))
+                mask[int(bbx_y * h):int((bbx_y + bbx_h) * h), int(bbx_x * w):int((bbx_x + bbx_w) * w)] = 1
+            bbx_crop = self.transform(Image.fromarray(bbx_crop))
         except:
             print(name)
             print('{} no data'.format(img_name))
@@ -380,7 +376,7 @@ class GazeDataloader(Dataset):
         mask_bg = torch.zeros([1, 224, 224])
         mask_bg[0, rand_y - loc_min:rand_y + loc_min, rand_x - loc_min:rand_x + loc_min] = mask
 
-        return name, img_bg, flip, h_crop, mask_bg, \
+        return name, img_bg, flip, bbx_crop, mask_bg, \
                torch.tensor([img_anno['eye_x'],img_anno['eye_y']]),\
                torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']]), \
                torch.tensor([rand_x/224, rand_y/224])
