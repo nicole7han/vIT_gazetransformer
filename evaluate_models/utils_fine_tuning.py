@@ -600,6 +600,9 @@ def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
     if flip == True:
         image = Image.fromarray(img).transpose(Image.FLIP_LEFT_RIGHT)
         img = np.array(image)
+        gaze_s_x, gaze_e_x = w-gaze_s_x, w-gaze_e_x
+        chong_pred_x = w-chong_pred_x
+        gaze_pred_x = w-gaze_pred_x
         axs.title.set_text('original image (flipped)')
     else:
         axs.title.set_text('original image')

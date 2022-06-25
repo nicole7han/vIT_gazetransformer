@@ -41,7 +41,6 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
             test_b_size = images.shape[0]
             gaze_pred = model(images, h_crops, masks).squeeze(1).detach().numpy()
 
-
             for i in range(test_b_size):
                 img = plt.imread(images_name[i])
                 try: h, w, _ = img.shape
@@ -50,7 +49,6 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
                 # chong prediction (relative within the image)
                 chong = chong_est[chong_est['frame'].str.contains(images_name[i].split('/')[-1])]
                 chong_pred_x, chong_pred_y = chong['x_r'].item(), chong['y_r'].item()
-                if flips[i]: chong_pred_x = 1-chong_pred_x
 
                 # transformer prediction (relative with background)
                 disx, disy = displacexy[i]
@@ -58,6 +56,13 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
                 trans_pred_x, trans_pred_y = coord_bg2img(gaze_pred[i][0], gaze_pred[i][1], disx, disy)
                 eye_x, eye_y = coord_bg2img(eye[i][0], eye[i][1], disx, disy)
                 target_x, target_y = coord_bg2img(targetgaze[i][0], targetgaze[i][1], disx, disy)
+
+                # flip x if the image is flipped horizontally, so all x positions are in the original image coordination
+                if flips[i]:
+                    chong_pred_x = 1 - chong_pred_x
+                    trans_pred_x = 1- trans_pred_x
+                    eye_x = 1 - eye_x
+                    target_x = 1-target_x
 
                 vec1 = (target_x - eye_x, target_y - eye_y) #groundtruth vector
                 vec2 = (trans_pred_x - eye_x, trans_pred_y - eye_y) # transformer estimation
@@ -124,7 +129,7 @@ model = Gaze_Transformer()
 epoch=700
 checkpoint = torch.load('trainedmodels/model_head/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
-# plt.plot(checkpoint['test_loss'])
+plt.plot(checkpoint['test_loss'])
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
