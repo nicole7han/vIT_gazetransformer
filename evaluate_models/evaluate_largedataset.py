@@ -31,7 +31,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
     CHONG_DIS_LOSS = []
 
     test_data = GazeDataloader(anno_path, test_img_path, test_bbx_path)
-    test_dataloader = DataLoader(test_data, batch_size=10, shuffle=True)
+    test_dataloader = DataLoader(test_data, batch_size=50, shuffle=True)
     test_dataiter = iter(test_dataloader)
     model.eval()
     with torch.no_grad():
