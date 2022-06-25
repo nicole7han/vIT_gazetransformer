@@ -51,30 +51,30 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         print("training loss: {:.10f}".format(np.mean(np.array(loss_iter))))
         LOSS.append(np.mean(np.array(loss_iter)))
 
-        if 1:
-            # check with test images
-            model.eval()
-            test_data = GazeDataloader(ann_path, test_img_path, test_bbx_path)
-            test_dataloader = DataLoader(test_data, batch_size=b_size, shuffle=True)
-            test_dataiter = iter(test_dataloader)
-            with torch.no_grad():
-                loss_iter = []
-                for images_name, images, flips, h_crops, masks, eye, targetgaze, _ in test_dataiter:
-                    images, h_crops, masks, eye, targetgaze = \
-                        images.to(device), \
-                        h_crops.to(device), \
-                        masks.to(device), \
-                        eye.to(device), \
-                        targetgaze.to(device)
+        # check with test images
+        model.eval()
+        test_data = GazeDataloader(ann_path, test_img_path, test_bbx_path)
+        test_dataloader = DataLoader(test_data, batch_size=b_size, shuffle=True)
+        test_dataiter = iter(test_dataloader)
+        with torch.no_grad():
+            loss_iter = []
+            for images_name, images, flips, h_crops, masks, eye, targetgaze, _ in test_dataiter:
+                images, h_crops, masks, eye, targetgaze = \
+                    images.to(device), \
+                    h_crops.to(device), \
+                    masks.to(device), \
+                    eye.to(device), \
+                    targetgaze.to(device)
 
-                    test_b_size = images.shape[0]
-                    gaze_pred = model(images, h_crops, masks).squeeze(1)  # model prediction of gaze map
-                    test_loss = criterion(gaze_pred, targetgaze)
-                    loss_iter.append(test_loss.detach().item())
+                test_b_size = images.shape[0]
+                gaze_pred = model(images, h_crops, masks).squeeze(1)  # model prediction of gaze map
+                test_loss = criterion(gaze_pred, targetgaze)
+                loss_iter.append(test_loss.detach().item())
 
-                print("testing loss: {:.10f}".format(np.mean(np.array(loss_iter))))
-                LOSS_TEST.append(np.mean(np.array(loss_iter)))
+            print("testing loss: {:.10f}".format(np.mean(np.array(loss_iter))))
+            LOSS_TEST.append(np.mean(np.array(loss_iter)))
 
+        if e % 2==0:
                 PATH = "{}/model_epoch{}.pt".format(outpath,e)
                 torch.save({
                     'epoch': e,

@@ -65,7 +65,7 @@ train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
 train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
 train_dataiter = iter(train_dataloader)
 
-for images_name, images, flips, h_crops, masks, eye, targetgaze, _ in train_dataiter: #get one batch of train data
+for images_name, images, flips, h_crops, masks, eye, targetgaze, randpos in train_dataiter: #get one batch of train data
 
     #images_name, images, flips, h_crops, masks, eye, targetgaze = train_dataiter.next() #get one batch of train data
     #gaze_pred = model(images, h_crops, masks)
