@@ -35,12 +35,14 @@ def main():
                         help='map loss weight, (default:.7)')
     parser.add_argument('--outpath', type=str, default='script_headbody/trainedmodels',
                         help='output path')
+    parser.add_argument('--train_datapath', type=str, default='train',
+                        help='train path')
     args = parser.parse_args()
 
     os.makedirs(args.outpath, exist_ok=True)
     basepath = os.path.abspath(os.curdir)
     ann_path = "{}/data/annotations".format(basepath)
-    train_img_path = "{}/data/train".format(basepath)
+    train_img_path = "{}/data/{}".format(basepath,args.train_datapath)
     train_bbx_path = "{}/data/train_bbox".format(basepath)
     test_img_path = "{}/data/test".format(basepath)
     test_bbx_path = "{}/data/test_bbox".format(basepath)

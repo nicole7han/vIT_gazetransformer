@@ -249,7 +249,7 @@ class GazeDataloader(Dataset):
         self.img_path = img_path
         self.bbx_path = bbx_path
         self.img_paths = []
-        self.mode = self.img_path.split("/")[-1]
+        self.mode = 'train' if 'train' in self.img_path.split("/")[-1] else 'test'
 
         img_folder_list = os.listdir(self.img_path)
         img_folder_list = [f for f in img_folder_list if not f.startswith('.')]
@@ -302,14 +302,16 @@ class GazeDataloader(Dataset):
             inputs = np.stack([inputs, inputs, inputs], axis=-1)
 
         # load eye gaze annotation
-        img_anno = self.eyegaze['/'.join(name.split('/')[-3:])]
+        key = '/'.join(name.split('/')[-3:])
+        key = key.replace('train_orig','train')
+        img_anno = self.eyegaze[key]
 
         # load head and body region
         seg_bbx = np.load("{}/bbx_{}.npy".format(self.bbx_path, folder_name), allow_pickle=True)
         seg_bbx = seg_bbx[()]
         try:
             # crop head and body 
-            inputs_bbx = seg_bbx["./gazefollow/{}".format('/'.join(name.split('/')[-3:]))]
+            inputs_bbx = seg_bbx["./gazefollow/{}".format(key)]
             [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = inputs_bbx['head'] + inputs_bbx['body']
             bbx_y, bbx_x, bbx_h, bbx_w = min(h_y, b_y), min(h_x,b_x), max(h_h,b_h), max(h_w, b_w)
             # h_y += random.uniform(-.01, 0)
