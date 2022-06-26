@@ -43,6 +43,26 @@ def compute_angle(row):
     angle = np.arccos(dot_product) * 180 / np.pi  # angle in degrees
     return angle
 
+def plot_grad_flow(named_parameters):
+    ave_grads = []
+    layers = []
+    for n, p in named_parameters:
+        # print('name: {}, required_grad: {}'.format(n, p.requires_grad))
+        if(p.requires_grad) and ("bias" not in n):
+            try:
+                layers.append(n)
+                ave_grads.append(p.grad.abs().mean())
+                print('layer with grad:{}'.format(n))
+            except:
+                print('layer no grad:{}'.format(n))
+    plt.plot(ave_grads, alpha=0.3, color="b")
+    plt.hlines(0, 0, len(ave_grads)+1, linewidth=1, color="k" )
+    plt.xticks(range(0,len(ave_grads), 1), layers, rotation="vertical")
+    plt.xlim(xmin=0, xmax=len(ave_grads))
+    plt.xlabel("Layers")
+    plt.ylabel("average gradient")
+    plt.title("Gradient flow")
+    plt.grid(True)
 
 def visualize_dataset(images_name, images, h_crops, b_crops, g_crops, img_annos, idx=None):
     if idx is None:

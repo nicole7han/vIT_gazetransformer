@@ -26,8 +26,8 @@ def main():
     parser.add_argument('--e_start', type=int, default=0,
                         help='starting epoch number (default:0)')
     parser.add_argument('--num_e', type=int, default=50,
-                        help='number of epoch iterations, (default:50)')
-    parser.add_argument('--b_size', type=int, default=512,
+                        help='number of epoch iterations, (default:64)')
+    parser.add_argument('--b_size', type=int, default=64,
                         help='training batch size, (default:512)')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='learning rate, (default:1e-4)')
@@ -51,10 +51,10 @@ def main():
     print('loading model')
     model = Gaze_Transformer()
 
-    lr = args.lr * args.b_size / 512
+    lr = args.lr * args.b_size / 64
     print('learning rate = {}'.format(lr))
     beta1 = .9
-    opt = optim.Adam(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.01)
+    opt = optim.Adam(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.0001)
     criterion = nn.MSELoss()
     # criterion = nn.BCELoss(reduction='mean')
 

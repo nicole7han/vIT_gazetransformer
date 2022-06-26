@@ -113,8 +113,9 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
                 GT_GAZE.append([target_x, target_y])
 
 
-        # FOR EACH BATCH
-        IMAGES += list(images_name)
+            # FOR EACH BATCH
+            IMAGES += list(images_name)
+            print(len(IMAGES))
 
         # save data in the original image coordination
         output = pd.DataFrame({'image': IMAGES,
@@ -138,8 +139,8 @@ basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
 epoch=108
 checkpoint = torch.load('trainedmodels/model_headbody/model_epoch{}.pt'.format(epoch), map_location='cpu')
-plt.plot(checkpoint['train_loss'][1:])
-plt.plot(checkpoint['test_loss'][1:])
+# plt.plot(checkpoint['train_loss'][1:])
+# plt.plot(checkpoint['test_loss'][1:])
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
@@ -156,6 +157,6 @@ test_img_path = "{}/data/test".format(datapath)
 test_bbx_path = "{}/data/test_bbox".format(datapath)
 criterion = nn.MSELoss()
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
-output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
-output.to_excel('{}/model_eval_outputs_3decoder/transformer_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
+output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=False)
+output.to_excel('{}/model_eval_outputs_3decoder/transformer_headbody_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
 analyze_error(output, epoch, filename='{}/model_eval_outputs_3decoder'.format(datapath))

@@ -44,8 +44,15 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
             gaze_pred = model(images, h_crops, masks).squeeze(1)
 
             loss = criterion(gaze_pred, targetgaze)
-            loss.backward()
+            # pre_en, pre_de, pre_bbx = model.vit.transformer.encoder.layers[0].state_dict()['self_attn.in_proj_weight'].clone(),\
+            #                             model.decoder.layers[0].state_dict()['self_attn.in_proj_weight'].clone(),\
+            #                             model.gaze_bbox.layers[0].state_dict()['weight'].clone()
+            #plot_grad_flow(model.named_parameters())
+            loss.backward() #.retain_grad()
             opt.step()
+            # post_en, post_de, post_bbx = model.vit.transformer.encoder.layers[0].state_dict()['self_attn.in_proj_weight'].clone(),\
+            #                             model.decoder.layers[0].state_dict()['self_attn.in_proj_weight'].clone(),\
+            #                             model.gaze_bbox.layers[0].state_dict()['weight'].clone()
             loss_iter.append(loss.detach().item())
 
         print("training loss: {:.10f}".format(np.mean(np.array(loss_iter))))

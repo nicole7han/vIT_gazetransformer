@@ -166,7 +166,7 @@ class PositionEmbeddingSine(nn.Module):
 class MLP(nn.Module):
     """ Very simple multi-layer perceptron (also called FFN)"""
 
-    def __init__(self, input_dim, hidden_dim=256, output_dim=4, num_layers=3):
+    def __init__(self, input_dim, hidden_dim=256, output_dim=2, num_layers=3):
         super().__init__()
         self.num_layers = num_layers
         h = [hidden_dim] * (num_layers - 1)
@@ -183,13 +183,15 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
                  num_decoder_layers=3, activation='relu'):
         super(Gaze_Transformer, self).__init__()
 #        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50_dc5', pretrained=True)
-        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
-        self.vit.eval()
+        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)# (FREEZE NOT UPDATING)
+        # self.vit.eval()
+        # for param in self.vit.parameters():
+        #     param.trainable = False
         for param in self.vit.parameters():
             param.requires_grad = False
         self.backbone = self.vit.backbone
 
-        # decoder
+        # decoder (NOT UPDATING?!)
         decoder_layer = TransformerDecoderLayer()
         decoder_norm = nn.LayerNorm(d_model)
         self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm)
@@ -198,8 +200,8 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.nhead=nhead
         self.dropout=dropout
 
-        # gaze output bbox
-        self.gaze_bbox = MLP(d_model, dim_feedforward, 2, 3)
+        # gaze output bbox (UPDATING)
+        self.gaze_bbox = MLP(d_model, dim_feedforward, 2, 3) # UPDATING
 
     def forward(self, images, h_crops, masks):
         '''image vit feature from DETR'''
@@ -216,12 +218,12 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         img_vit_out = activation['out_proj'][0] # (output[0]:activation,output[1]:weights), 49(7x7 patches) x 1 x 256 (hidden dimension)
         output = self.vit(torch.cat([masks,masks,masks],1))
         mask_vit_out = activation['out_proj'][0]
-        memory = img_vit_out + mask_vit_out
+        memory = img_vit_out + mask_vit_out # encoder output
 
         ''' encoder output + query embedding -> decoder '''
-        _, bs, _ = img_vit_out.shape
+        _, bs, _ = img_vit_out.shape # 49 x bs x 256
         query_embed = self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1) #  1 x bs x 256
-        tgt = torch.zeros_like(query_embed) # num_queries x b_s x hidden_dim, torch.Size([1, 5, 256])
+        tgt = torch.zeros_like(query_embed) # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])
         vit_mask = torch.zeros([bs,7,7], dtype=torch.bool) # no padding, all False
 
         # get pos_mebed
@@ -232,12 +234,12 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         pos_embed = pos[-1] # bs x 256 x 7 x 7
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
 
+        # pass to decoder
         hs = self.decoder(tgt, memory, memory_key_padding_mask=None,
                           pos=pos_embed, query_pos=query_embed)   # 1 x num_queries x b_s x hidden_dim, torch.Size([1, 1, 5, 256])
         hs = hs.transpose(1,2) # 1 x bs x 1 x 256
 
         # output gaze bbox
         outputs_coord = self.gaze_bbox(hs).sigmoid()
-
         return outputs_coord[-1]
 
