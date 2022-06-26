@@ -578,13 +578,14 @@ def coord_bg2img(x, y, disx, disy, img_size=100, bg_size=224):
 
 
 def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
+    # take original image and coordinations
+    # flip the image and coordination if flip==True
     try:
         h, w, _ = img.shape
     except:
         h, w = img.shape
 
-
-    fig, axs = plt.subplots(1, 1, figsize=(6, 6))
+    fig, axs = plt.subplots(1, 1, figsize=(8, 8))
     # transformer gaze estimation (blue)
     gaze_pred_x, gaze_pred_y = int(transxy[0] * w), \
                                int(transxy[1]* h)

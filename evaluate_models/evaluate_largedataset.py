@@ -5,7 +5,7 @@ from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 
 
-def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path):
+def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True):
     '''
 
     @param anno_path:gazed location
@@ -23,11 +23,13 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
     IMAGES = []
     GAZE_START = []
-    PREDICT_GAZE = []
     GT_GAZE = []
-    ANG_LOSS = []
+
+    TRANS_PRED = []
+    TRANS_ANG_LOSS = []
+    TRANS_DIS_LOSS = []
+    CHONG_PRED = []
     CHONG_ANG_LOSS = []
-    DIS_LOSS = []
     CHONG_DIS_LOSS = []
 
     test_data = GazeDataloader(anno_path, test_img_path, test_bbx_path)
@@ -48,7 +50,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
                 # chong prediction (relative within the image)
                 chong = chong_est[chong_est['frame'].str.contains(images_name[i].split('/')[-1])]
-                chong_pred_x, chong_pred_y = chong['x_r'].item(), chong['y_r'].item()
+                chong_pred_x, chong_pred_y = chong['x_r'].item(), chong['y_r'].item() #prediction in the original image
 
                 # transformer prediction (relative with background)
                 disx, disy = displacexy[i]
@@ -57,9 +59,8 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
                 eye_x, eye_y = coord_bg2img(eye[i][0], eye[i][1], disx, disy)
                 target_x, target_y = coord_bg2img(targetgaze[i][0], targetgaze[i][1], disx, disy)
 
-                # flip x if the image is flipped horizontally, so all x positions are in the original image coordination
+                # flip transformer x if the image is flipped horizontally, keep all xy in original image coordination
                 if flips[i]:
-                    chong_pred_x = 1 - chong_pred_x
                     trans_pred_x = 1- trans_pred_x
                     eye_x = 1 - eye_x
                     target_x = 1-target_x
@@ -85,42 +86,51 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
                 chong_ang_loss = (np.arccos(dot_product) * 180 / np.pi)  # angle in degrees
                 chong_dis_loss = np.linalg.norm(np.array([target_x, target_y]) - np.array([chong_pred_x, chong_pred_y]))
 
-                # visualization
-                os.makedirs(fig_path, exist_ok=True)
-                outfig = plot_gaze_largedata(img, flips[i], [eye_x, eye_y], [target_x,target_y],\
-                                    [trans_pred_x, trans_pred_y], [chong_pred_x, chong_pred_y] )
-                plt.text(.5*w, 1.2*h, 'transformer ang_error:{:.2f}, eucli_error:{:.2f}'.format(trans_ang_loss,trans_dis_loss), \
-                         horizontalalignment='center',
-                         verticalalignment='bottom')
-                plt.text(.5*w, 1.25*h ,'chong ang_error:{:.2f}, eucli_error:{:.2f}'.format(chong_ang_loss, chong_dis_loss), \
-                         horizontalalignment='center',
-                         verticalalignment='bottom')
+                # visualization the flips
+                if savefigure:
+                    os.makedirs(fig_path, exist_ok=True)
+                    outfig = plot_gaze_largedata(img, flips[i], [eye_x, eye_y], [target_x,target_y],\
+                                        [trans_pred_x, trans_pred_y], [chong_pred_x, chong_pred_y] )
+                    plt.text(.5*w, 1.2*h, 'transformer ang_error:{:.2f}, eucli_error:{:.2f}'.format(trans_ang_loss,trans_dis_loss), \
+                             horizontalalignment='center',
+                             verticalalignment='bottom')
+                    plt.text(.5*w, 1.25*h ,'chong ang_error:{:.2f}, eucli_error:{:.2f}'.format(chong_ang_loss, chong_dis_loss), \
+                             horizontalalignment='center',
+                             verticalalignment='bottom')
 
-                plt.savefig('{}/result_{}'.format(fig_path, images_name[i].split('/')[-1]))
-                plt.close()
-                ANG_LOSS.append(trans_ang_loss)
+                    plt.savefig('{}/result_{}'.format(fig_path, images_name[i].split('/')[-1]))
+                    plt.close()
+
+
+                # CALCULATE ERROR FOR EACH IMAGE
+                TRANS_PRED.append([trans_pred_x, trans_pred_y])
+                TRANS_ANG_LOSS.append(trans_ang_loss)
+                TRANS_DIS_LOSS.append(trans_dis_loss)
+                CHONG_PRED.append([chong_pred_x, chong_pred_y])
                 CHONG_ANG_LOSS.append(chong_ang_loss)
-                DIS_LOSS.append(trans_dis_loss)
                 CHONG_DIS_LOSS.append(chong_dis_loss)
+                GAZE_START.append([eye_x, eye_y])
+                GT_GAZE.append([target_x, target_y])
 
-            IMAGES += list(images_name)
-            GAZE_START += eye.tolist() #xy
-            PREDICT_GAZE += gaze_pred.tolist()
-            GT_GAZE += targetgaze.tolist()
 
+        # FOR EACH BATCH
+        IMAGES += list(images_name)
+
+        # save data in the original image coordination
         output = pd.DataFrame({'image': IMAGES,
                                'gaze_start_x': np.array(GAZE_START)[:, 0],
                                'gaze_start_y': np.array(GAZE_START)[:, 1],
-                               'gazed_y': np.array(GT_GAZE)[:, 0],
-                               'gazed_x': np.array(GT_GAZE)[:, 1],
-                               'transformer_est_x': np.array(PREDICT_GAZE)[:, 0],
-                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 1],
-                               'ang_loss': np.array(ANG_LOSS),
+                               'gazed_x': np.array(GT_GAZE)[:, 0],
+                               'gazed_y': np.array(GT_GAZE)[:, 1],
+                               'transformer_est_x': np.array(TRANS_PRED)[:, 0],
+                               'transformer_est_y': np.array(TRANS_PRED)[:, 1],
+                               'transformer_ang_error': np.array(TRANS_ANG_LOSS),
+                               'transformer_eucli_error': np.array(TRANS_DIS_LOSS),
+                               'chong_est_x': np.array(CHONG_PRED)[:, 0],
+                               'chong_est_y': np.array(CHONG_PRED)[:, 1],
                                'chong_ang_error': np.array(CHONG_ANG_LOSS),
-                               'dis_loss': np.array(DIS_LOSS),
                                'chong_eucli_error': np.array(CHONG_DIS_LOSS),
                                })
-
     return output
 
 
@@ -146,6 +156,6 @@ test_img_path = "{}/data/test".format(datapath)
 test_bbx_path = "{}/data/test_bbox".format(datapath)
 criterion = nn.MSELoss()
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
-output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path)
+output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savfiugre=False)
 output.to_excel('{}/model_eval_outputs_3decoder/transformer_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
 analyze_error(output, epoch, filename='{}/model_eval_outputs_3decoder'.format(datapath))
