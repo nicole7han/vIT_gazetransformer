@@ -33,7 +33,7 @@ def main():
                         help='learning rate, (default:1e-4)')
     parser.add_argument('--lbd', type=float, default=.7,
                         help='map loss weight, (default:.7)')
-    parser.add_argument('--outpath', type=str, default='script_head/trainedmodels',
+    parser.add_argument('--outpath', type=str, default='script_headbody/trainedmodels',
                         help='output path')
     args = parser.parse_args()
 
