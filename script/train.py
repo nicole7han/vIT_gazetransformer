@@ -6,7 +6,7 @@ Created on Wed Mar 24 16:08:54 2021
 @author: nicolehan
 """
 
-import torch, os, sys
+import torch, os, sys, time
 from torch import nn
 from numpy import unravel_index
 try:
@@ -19,6 +19,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
     LOSS = []
     LOSS_TEST = []
     for e in np.arange(e_start, e_start + num_e):
+        start_time = time.time()
         model.train()
 
         print('Epoch:', e, 'Training')
@@ -90,7 +91,8 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     'train_loss': LOSS,
                     'test_loss': LOSS_TEST,
                 }, PATH)
-            
+        end_time = time.time()
+        print('training epoch time: {:.2f}'.format(end_time-start_time))
         torch.cuda.empty_cache()
 
 
