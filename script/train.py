@@ -90,5 +90,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
                     'train_loss': LOSS,
                     'test_loss': LOSS_TEST,
                 }, PATH)
+            
+        torch.cuda.empty_cache()
 
 
