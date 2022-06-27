@@ -219,6 +219,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         output = self.vit(torch.cat([masks,masks,masks],1))
         mask_vit_out = activation['out_proj'][0]
         memory = img_vit_out + mask_vit_out # encoder output
+        del img_vit_out, mask_vit_out
 
         ''' encoder output + query embedding -> decoder '''
         _, bs, _ = img_vit_out.shape # 49 x bs x 256
@@ -233,6 +234,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         _, pos = self.backbone(samples)
         pos_embed = pos[-1] # bs x 256 x 7 x 7
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
+        del samples, vit_mask
 
         # pass to decoder
         hs = self.decoder(tgt, memory, memory_key_padding_mask=None,
