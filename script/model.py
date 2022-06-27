@@ -191,7 +191,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
             param.requires_grad = False
         self.backbone = self.vit.backbone
 
-        # decoder (NOT UPDATING?!)
+        # decoder (UPDATING)
         decoder_layer = TransformerDecoderLayer()
         decoder_norm = nn.LayerNorm(d_model)
         self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm)
@@ -230,7 +230,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         samples = NestedTensor(images, vit_mask).to(device)
         if isinstance(samples, (list, torch.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
-        features, pos = self.backbone(samples)
+        _, pos = self.backbone(samples)
         pos_embed = pos[-1] # bs x 256 x 7 x 7
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
 
