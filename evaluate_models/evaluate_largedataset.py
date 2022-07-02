@@ -3,6 +3,7 @@ from script.model import *
 from statsmodels.formula.api import ols
 from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
+from script.matcher import *
 
 
 def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True):
@@ -36,17 +37,31 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
     test_dataloader = DataLoader(test_data, batch_size=50, shuffle=True)
     test_dataiter = iter(test_dataloader)
     model.eval()
+    criterion.eval()
     with torch.no_grad():
         for images_name, images, flips, h_crops, masks, eye, targetgaze, displacexy in test_dataiter:
-            eye, targetgaze, displacexy = np.array(eye), np.array(targetgaze), np.array(displacexy)
-            # images_name, images, flips, h_crops, masks, eye, targetgaze, displacexy = test_dataiter.next()
-            test_b_size = images.shape[0]
-            gaze_pred = model(images, h_crops, masks).squeeze(1).detach().numpy()
+            eye, displacexy = np.array(eye), np.array(displacexy)
+            targetgaze_label = np.array(targetgaze['labels'].tolist())
+            targetgaze_bbx = np.array(targetgaze['boxes']) #x_cen, y_cen, width, height
 
+            test_b_size = images.shape[0]
+            gaze_pred = model(images, h_crops, masks)
+            gaze_pred_logits = np.array(gaze_pred['pred_logits'].detach()) # bs x 100 x 2
+            gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())  # bs x 100 x 4
+
+            # loss
+            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
+                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
+                       for i in range(test_b_size)]
+            indices = np.array(criterion.matcher(gaze_pred, targets))
             for i in range(test_b_size):
                 img = plt.imread(images_name[i])
                 try: h, w, _ = img.shape
                 except:h, w = img.shape
+
+                # find the bbox idx out of 100 queries
+                idx = indices[i][0]
+                gaze_bbx = gaze_pred_bbx[i][idx]
 
                 # chong prediction (relative within the image)
                 chong = chong_est[chong_est['frame'].str.contains(images_name[i].split('/')[-1])]
@@ -55,9 +70,9 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
                 # transformer prediction (relative with background)
                 disx, disy = displacexy[i]
                 # transform gaze_pred, targetgaze, eye position from background to image
-                trans_pred_x, trans_pred_y = coord_bg2img(gaze_pred[i][0], gaze_pred[i][1], disx, disy)
+                trans_pred_x, trans_pred_y = coord_bg2img(gaze_bbx[0], gaze_bbx[1], disx, disy)
                 eye_x, eye_y = coord_bg2img(eye[i][0], eye[i][1], disx, disy)
-                target_x, target_y = coord_bg2img(targetgaze[i][0], targetgaze[i][1], disx, disy)
+                target_x, target_y = coord_bg2img(targetgaze_bbx[i][0], targetgaze_bbx[i][1], disx, disy)
 
                 # flip transformer x if the image is flipped horizontally, keep all xy in original image coordination
                 if flips[i]:
@@ -137,8 +152,8 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=142
-checkpoint = torch.load('trainedmodels/model_headbody/model_epoch{}.pt'.format(epoch), map_location='cpu')
+epoch=500
+checkpoint = torch.load('trainedmodels/model/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'][1:])
 plt.plot(checkpoint['test_loss'][1:])
 loaded_dict = checkpoint['model_state_dict']
@@ -152,12 +167,16 @@ model.eval()
 
 # evaluate both models' estimation on viu dataset
 datapath = '/Users/nicolehan/Documents/Research/gazetransformer'
-fig_path='{}/model_eval_outputs_3decoder/epoch{}_headbody_outputs'.format(datapath,epoch)
+fig_path='{}/model_eval_outputs/epoch{}_headbody_outputs'.format(datapath,epoch)
 anno_path = "{}/data/annotations".format(datapath)
 test_img_path = "{}/data/test".format(datapath)
 test_bbx_path = "{}/data/test_bbox".format(datapath)
-criterion = nn.MSELoss()
+matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
+weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
+losses = ['labels', 'boxes']
+criterion = SetCriterion(1, matcher=matcher, weight_dict=weight_dict,
+                         eos_coef=0.1, losses=losses)
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
 output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
-output.to_excel('{}/model_eval_outputs_3decoder/transformer_headbody_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
-analyze_error(output, epoch, filename='{}/model_eval_outputs_3decoder'.format(datapath))
+output.to_excel('{}/model_eval_outputs/transformer_headbody_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
+analyze_error(output, epoch, filename='{}/model_eval_outputs'.format(datapath))

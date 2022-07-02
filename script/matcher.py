@@ -5,9 +5,10 @@ Modules to compute the matching cost and solve the corresponding LSAP.
 import torch
 from scipy.optimize import linear_sum_assignment
 from torch import nn
-
-from utils import box_cxcywh_to_xyxy, generalized_box_iou
-
+try:
+    from utils import box_cxcywh_to_xyxy, generalized_box_iou
+except:
+    from script.utils import box_cxcywh_to_xyxy, generalized_box_iou
 
 class HungarianMatcher(nn.Module):
     """This class computes an assignment between the targets and the predictions of the network
