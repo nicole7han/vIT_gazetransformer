@@ -54,7 +54,7 @@ def main():
     lr = args.lr * args.b_size / 64
     print('learning rate = {}'.format(lr))
     beta1 = .9
-    opt = optim.Adam(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.0001)
+    opt = optim.AdamW(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.0001)
     criterion = nn.MSELoss()
     # criterion = nn.BCELoss(reduction='mean')
 
