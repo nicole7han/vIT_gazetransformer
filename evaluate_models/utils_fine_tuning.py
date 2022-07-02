@@ -602,7 +602,8 @@ def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
         image = Image.fromarray(img).transpose(Image.FLIP_LEFT_RIGHT)
         img = np.array(image)
         gaze_s_x, gaze_e_x = w-gaze_s_x, w-gaze_e_x
-        chong_pred_x = w-chong_pred_x
+        try:  chong_pred_x = w-chong_pred_x
+        except: pass
         gaze_pred_x = w-gaze_pred_x
         axs.title.set_text('original image (flipped)')
     else:
@@ -612,7 +613,8 @@ def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
 
     # chong prediction (yellow)
-    img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_pred_x, chong_pred_y), (255, 255, 0), 2)
+    try: img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_pred_x, chong_pred_y), (255, 255, 0), 2)
+    except: pass
 
     # groundtruth gaze (green)
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)

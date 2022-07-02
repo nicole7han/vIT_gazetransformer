@@ -57,8 +57,12 @@ def analyze_error(result_df, epoch, filename):
     result_df['centroid_eucli_error'] = np.sqrt( (result_df['gazed_x']-.5)**2 + (result_df['gazed_y']-.5)**2 )
 
     # plot euclidean error histogram
-    plot_data = result_df[['transformer_eucli_error','chong_eucli_error','centroid_eucli_error']]
-    plot_data.columns = ['Transformer','CNN','Centroid']
+    try:
+        plot_data = result_df[['transformer_eucli_error','chong_eucli_error','centroid_eucli_error']]
+        plot_data.columns = ['Transformer','CNN','Centroid']
+    except:
+        plot_data = result_df[['transformer_eucli_error','centroid_eucli_error']]
+        plot_data.columns = ['Transformer','Centroid']
     plot_data = plot_data.melt()
     sns_setup(sns)
     ax = sns.histplot(
@@ -72,7 +76,7 @@ def analyze_error(result_df, epoch, filename):
 
     # plot euclidean error barplot
     sns_setup(sns)
-    ax = sns.barplot(data=plot_data, x='variable', y='value', color=deeppallet[0], order=['CNN','Transformer','Centroid',])
+    ax = sns.barplot(data=plot_data, x='variable', y='value', color=deeppallet[0])
     ax.set(xlabel='', ylabel='Euclidean Error (pixels)')
     change_width(ax, .4)
     ax.spines['top'].set_color('white')
@@ -81,8 +85,12 @@ def analyze_error(result_df, epoch, filename):
     plt.close()
 
     # plot angular error histogram
-    plot_data = result_df[['transformer_ang_error','chong_ang_error','centroid_ang_error']]
-    plot_data.columns = ['Transformer','CNN','Centroid']
+    try:
+        plot_data = result_df[['transformer_ang_error','chong_ang_error','centroid_ang_error']]
+        plot_data.columns = ['Transformer','CNN','Centroid']
+    except:
+        plot_data = result_df[['transformer_ang_error','centroid_ang_error']]
+        plot_data.columns = ['Transformer','Centroid']
     plot_data = plot_data.melt()
     sns_setup(sns)
     ax = sns.histplot(
