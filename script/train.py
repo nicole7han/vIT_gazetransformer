@@ -11,6 +11,7 @@ from torch import nn
 from numpy import unravel_index
 try:
     from utils import *
+    from matcher import *
 except:
     pass
 
@@ -39,7 +40,20 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
             targetgaze.to(device)
 
         b_size = images.shape[0]
-        gaze_pred = model(images, h_crops, masks).squeeze(1)
+        gaze_pred = model(images, h_crops, masks)
+
+        # compute loss
+        # target as a list of length b_s, each is a dictionary of labels and boxes centeroid + height + width
+        targets = [{'labels':targetgaze['labels'][i][0].unsqueeze(0), 'boxes':targetgaze['boxes'][i].unsqueeze(0)} for i in range(b_size)]
+        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
+        indices = matcher(gaze_pred, targets)
+        weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
+        losses = ['labels', 'boxes', 'cardinality']
+        criterion = SetCriterion(1, matcher=matcher, weight_dict=weight_dict,
+                                 eos_coef=0.1, losses=losses)
+        all_losses = {}
+        for loss in losses:
+            all_losses.update(criterion.get_loss(loss, gaze_pred, targets, indices, num_boxes=1))
 
         loss = criterion(gaze_pred, targetgaze)
         # pre_en, pre_de, pre_bbx = model.vit.transformer.encoder.layers[0].state_dict()['self_attn.in_proj_weight'].clone(),\
