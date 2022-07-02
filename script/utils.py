@@ -285,6 +285,7 @@ class GazeDataloader(Dataset):
             if len(img_list) > 0:
                 self.img_paths += img_list
 
+        # print('{}/{}_annotation.json'.format(self.ann_path, self.mode))
         with open('{}/{}_annotation.json'.format(self.ann_path, self.mode)) as file:
             self.eyegaze = json.load(file)
         # self.transform = transforms.Compose([
@@ -326,15 +327,17 @@ class GazeDataloader(Dataset):
             inputs = np.stack([inputs, inputs, inputs], axis=-1)
 
         # load eye gaze annotation
-        key = '/'.join(name.split('/')[-3:])
-        key = key.replace('train_orig','train')
+        key = self.mode +'/' + '/'.join(name.split('/')[-2:])
+        # print(key)
         img_anno = self.eyegaze[key]
 
         # load head and body region
+        # print("{}/bbx_{}.npy".format(self.bbx_path, folder_name))
         seg_bbx = np.load("{}/bbx_{}.npy".format(self.bbx_path, folder_name), allow_pickle=True)
         seg_bbx = seg_bbx[()]
         try:
-            # crop head and body 
+            # crop head and body
+            # print("./gazefollow/{}".format(key))
             inputs_bbx = seg_bbx["./gazefollow/{}".format(key)]
             [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = inputs_bbx['head'] + inputs_bbx['body']
             bbx_y, bbx_x, bbx_h, bbx_w = min(h_y, b_y), min(h_x,b_x), max(h_h,b_h), max(h_w, b_w)
@@ -374,8 +377,8 @@ class GazeDataloader(Dataset):
                 mask[int(bbx_y * h):int((bbx_y + bbx_h) * h), int(bbx_x * w):int((bbx_x + bbx_w) * w)] = 1
             bbx_crop = self.transform(Image.fromarray(bbx_crop))
         except:
-            print(name)
-            print('{} no data'.format(img_name))
+            # print(name)
+            # print('{} no data'.format(img_name))
             return
 
         # resize
@@ -697,3 +700,19 @@ class SetCriterion(nn.Module):
                     losses.update(l_dict)
 
         return losses
+
+def move_to(obj, device):
+  if torch.is_tensor(obj):
+    return obj.to(device)
+  elif isinstance(obj, dict):
+    res = {}
+    for k, v in obj.items():
+      res[k] = move_to(v, device)
+    return res
+  elif isinstance(obj, list):
+    res = []
+    for v in obj:
+      res.append(move_to(v, device))
+    return res
+  else:
+    raise TypeError("Invalid type for move_to")

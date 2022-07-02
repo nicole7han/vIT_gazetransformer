@@ -10,7 +10,7 @@ import torch.multiprocessing
 # torch.multiprocessing.set_sharing_strategy('file_system')
 from model import *
 from train import *
-
+from matcher import *
 
 sys.path.append('/home/xhan01/.cache/torch/hub/facebookresearch_detr_main')
 # from model_patches_training.models_imageclips import *
@@ -33,17 +33,19 @@ def main():
                         help='learning rate, (default:1e-4)')
     parser.add_argument('--lbd', type=float, default=.7,
                         help='map loss weight, (default:.7)')
-    parser.add_argument('--outpath', type=str, default='script_headbody/trainedmodels',
+    parser.add_argument('--outpath', type=str, default='script/trainedmodels',
                         help='output path')
-    parser.add_argument('--train_datapath', type=str, default='train',
+    parser.add_argument('--train_img_path', type=str, default='train',
+                        help='train path')
+    parser.add_argument('--train_bbx_path', type=str, default='train_bbox',
                         help='train path')
     args = parser.parse_args()
 
     os.makedirs(args.outpath, exist_ok=True)
     basepath = os.path.abspath(os.curdir)
     ann_path = "{}/data/annotations".format(basepath)
-    train_img_path = "{}/data/{}".format(basepath,args.train_datapath)
-    train_bbx_path = "{}/data/train_bbox".format(basepath)
+    train_img_path = "{}/data/{}".format(basepath, args.train_img_path)
+    train_bbx_path = "{}/data/{}".format(basepath, args.train_bbx_path)
     test_img_path = "{}/data/test".format(basepath)
     test_bbx_path = "{}/data/test_bbox".format(basepath)
 
@@ -55,8 +57,13 @@ def main():
     print('learning rate = {}'.format(lr))
     beta1 = .9
     opt = optim.AdamW(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.0001)
-    criterion = nn.MSELoss()
+    # criterion = nn.MSELoss()
     # criterion = nn.BCELoss(reduction='mean')
+    matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
+    weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
+    losses = ['labels', 'boxes']
+    criterion = SetCriterion(1, matcher=matcher, weight_dict=weight_dict,
+                             eos_coef=0.1, losses=losses)
 
     if args.resume:
         checkpoint = torch.load('{}/model_epoch{}.pt'.format(args.outpath, args.e_start), map_location='cpu')
@@ -77,6 +84,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print('available {} devices...'.format(torch.cuda.device_count()))
     model = torch.nn.DataParallel(model).to(device)
+    criterion = criterion.to(device)
     LOSS = train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
                  args.e_start + 1, args.num_e, args.lbd, outpath=args.outpath, b_size=args.b_size)
 

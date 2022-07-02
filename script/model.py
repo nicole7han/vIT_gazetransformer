@@ -224,11 +224,10 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
 
         memory = img_vit_out + mask_vit_out # final encoder output
 
-
         ''' encoder output + query embedding -> decoder '''
         _, bs, _ = img_vit_out.shape # 49 x bs x 256
         query_embed = self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1) #  1 x bs x 256
-        tgt = torch.zeros_like(query_embed) # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])
+        tgt = torch.zeros_like(query_embed).to(device) # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])
         vit_mask = torch.zeros([bs,7,7], dtype=torch.bool) # no padding, all False
 
         # get pos_mebed
@@ -240,7 +239,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
 
         # pass to decoder
-        mask = torch.zeros([bs,7*7],dtype=torch.bool)
+        mask = torch.zeros([bs,7*7],dtype=torch.bool).to(device)
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)   # 1 x num_queries x b_s x hidden_dim, torch.Size([#decoders, 100, bs, 256])
         hs = hs.transpose(1,2) # [#decoders x bs x 100 x 256]

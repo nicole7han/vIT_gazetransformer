@@ -49,8 +49,8 @@ os.makedirs(attention_path, exist_ok=True)
 
 
 ann_path = "{}/data/annotations".format(basepath)
-train_img_path = "{}/data/train".format(basepath)
-train_bbx_path = "{}/data/train_bbox".format(basepath)
+train_img_path = "{}/data/test_s".format(basepath)
+train_bbx_path = "{}/data/test_bbox".format(basepath)
 test_img_path = "{}/data/test".format(basepath)
 test_bbx_path = "{}/data/test_bbox".format(basepath)
 # segmask_path = "/Users/nicolehan/Documents/Research/Gaze Transformer Model with Body Component/CDCL-human-part-segmentation-master/gazefollow/train_person_masks"

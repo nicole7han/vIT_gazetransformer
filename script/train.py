@@ -11,8 +11,8 @@ from torch import nn
 from numpy import unravel_index
 try:
     from utils import *
-    from matcher import *
 except:
+    from script.utils import *
     pass
 
 def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path,
@@ -32,20 +32,23 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
     for images_name, images, flips, h_crops, masks, eye, targetgaze, _ in train_dataiter:
         opt.zero_grad()
 
-        images, h_crops, masks, eye, targetgaze = \
+        images, h_crops, masks, eye, = \
             images.to(device), \
             h_crops.to(device), \
             masks.to(device), \
-            eye.to(device), \
-            targetgaze.to(device)
+            eye.to(device)
         # target as a list of length b_s, each is a dictionary of labels and boxes centeroid + height + width
-        targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0), 'boxes': targetgaze['boxes'][i].unsqueeze(0)} for
-                   i in range(b_size)]
+        targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device), \
+                    'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
+                   for i in range(b_size)]
 
         b_size = images.shape[0]
         gaze_pred = model(images, h_crops, masks)
 
-                criterion.train()
+        criterion.train()
+        # move_to(targets, device)
+        # print(gaze_pred['pred_boxes'][0].device)
+        # print(targets[0]['labels'].device)
         loss_dict = criterion(gaze_pred, targets)
         weight_dict = criterion.weight_dict
         loss = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
@@ -63,13 +66,13 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
     with torch.no_grad():
         test_loss_iter = []
         for images_name, images, flips, h_crops, masks, eye, targetgaze, _ in test_dataiter:
-            images, h_crops, masks, eye, targetgaze = \
+            images, h_crops, masks, eye= \
                 images.to(device), \
                 h_crops.to(device), \
                 masks.to(device), \
-                eye.to(device), \
-                targetgaze.to(device)
-            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0), 'boxes': targetgaze['boxes'][i].unsqueeze(0)}
+                eye.to(device)
+            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
+                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
                        for i in range(b_size)]
 
             test_b_size = images.shape[0]
@@ -97,12 +100,6 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
     LOSS = []
     LOSS_TEST = []
     for e in np.arange(e_start, e_start + num_e):
-
-        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
-        weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
-        losses = ['labels', 'boxes']
-        criterion = SetCriterion(1, matcher=matcher, weight_dict=weight_dict,
-                                 eos_coef=0.1, losses=losses)
 
         train_stats = train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path,
                                       ann_path, opt, criterion, e_start, num_e, e, lbd, outpath, b_size)
