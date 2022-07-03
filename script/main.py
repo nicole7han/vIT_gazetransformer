@@ -60,7 +60,7 @@ def main():
     # criterion = nn.MSELoss()
     # criterion = nn.BCELoss(reduction='mean')
     matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
-    weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
+    weight_dict = {'loss_ce': 1, 'loss_bbox': 100, 'loss_giou': 2}
     losses = ['labels', 'boxes']
     num_classes = 2 # gazed vs. not gazed
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,

@@ -203,7 +203,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.class_embed = nn.Linear(d_model, 2 + 1)
         self.gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, d_model, bias=True),
-                                       nn.Linear(d_model, 2, bias=True),)
+                                       nn.Linear(d_model, 2, bias=True))
 
     def forward(self, images, h_crops, masks):
         '''image vit feature from DETR'''

@@ -549,8 +549,8 @@ class SetCriterion(nn.Module):
         self.weight_dict = weight_dict
         self.eos_coef = eos_coef
         self.losses = losses
-        empty_weight = torch.ones(self.num_classes + 1) # class + no object class
-        empty_weight[-1] = self.eos_coef
+        empty_weight = torch.ones(self.num_classes + 1)*self.eos_coef # no object + gazed class + no object
+        empty_weight[1] = 1 # [0.01, 1, 0.01]
         self.register_buffer('empty_weight', empty_weight)
 
     def loss_labels(self, outputs, targets, indices, num_boxes, log=False):
@@ -564,7 +564,7 @@ class SetCriterion(nn.Module):
         target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)]) #target labels
         target_classes = torch.full(src_logits.shape[:2], self.num_classes,
                                     dtype=torch.int64, device=src_logits.device)
-        target_classes[idx] = target_classes_o
+        target_classes[idx] = target_classes_o #update only the matched idx with label 1, else 2 (empty)
 
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
         losses = {'loss_ce': loss_ce}
@@ -595,18 +595,18 @@ class SetCriterion(nn.Module):
         """
         assert 'pred_boxes' in outputs
         idx = self._get_src_permutation_idx(indices)
-        src_boxes = outputs['pred_boxes'][idx]
+        src_boxes = outputs['pred_boxes'][idx] #get best matching boxes
         target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
 
-        loss_bbox = F.l1_loss(src_boxes, target_boxes, reduction='none')
+        loss_bbox = F.l1_loss(src_boxes, target_boxes)
 
         losses = {}
         losses['loss_bbox'] = loss_bbox.sum() / num_boxes # l1 loss
 
-        loss_giou = 1 - torch.diag(generalized_box_iou(
-            box_cxcywh_to_xyxy(src_boxes),
-            box_cxcywh_to_xyxy(target_boxes))) # center x,y,w,h -> x0,y0, x1,y1
-        losses['loss_giou'] = loss_giou.sum() / num_boxes # generalized IOU loss
+        # loss_giou = 1 - torch.diag(generalized_box_iou(
+        #     box_cxcywh_to_xyxy(src_boxes),
+        #     box_cxcywh_to_xyxy(target_boxes))) # center x,y,w,h -> x0,y0, x1,y1
+        # losses['loss_giou'] = loss_giou.sum() / num_boxes # generalized IOU loss
         return losses
 
     def loss_masks(self, outputs, targets, indices, num_boxes):
