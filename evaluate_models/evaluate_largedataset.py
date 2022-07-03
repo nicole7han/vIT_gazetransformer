@@ -274,7 +274,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=134
+epoch=944
 checkpoint = torch.load('trainedmodels/model/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 plt.plot(checkpoint['test_loss'])
@@ -295,9 +295,9 @@ train_bbx_path = "{}/data/train_bbox".format(datapath)
 test_img_path = "{}/data/test".format(datapath)
 test_bbx_path = "{}/data/test_bbox".format(datapath)
 matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
-weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
+weight_dict = {'loss_ce': 1, 'loss_bbox': 100, 'loss_giou': 2}
 losses = ['labels', 'boxes']
-num_classes = 1
+num_classes = 2
 criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                          eos_coef=0.01, losses=losses)
 # eos_coef: weight to the non-gazed location for class imbalance
