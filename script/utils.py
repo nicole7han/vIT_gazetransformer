@@ -408,7 +408,7 @@ class GazeDataloader(Dataset):
         rand_x, rand_y = 0, 0
         return name, img, flip, bbx_crop, mask, \
                torch.tensor([img_anno['eye_x'],img_anno['eye_y']]),\
-               {'labels':torch.tensor([1]) ,'boxes':torch.tensor([img_anno['gaze_x'],img_anno['gaze_y'], .1, .1])},\
+               {'labels':torch.tensor([1]) ,'boxes':torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']])},\
                torch.tensor([rand_x/224, rand_y/224])
 
 

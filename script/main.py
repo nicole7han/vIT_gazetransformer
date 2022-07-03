@@ -62,8 +62,9 @@ def main():
     matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
     weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
     losses = ['labels', 'boxes']
-    criterion = SetCriterion(1, matcher=matcher, weight_dict=weight_dict,
-                             eos_coef=0.1, losses=losses)
+    num_classes = 2 # gazed vs. not gazed
+    criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
+                             eos_coef=0.01, losses=losses)
 
     if args.resume:
         checkpoint = torch.load('{}/model_epoch{}.pt'.format(args.outpath, args.e_start), map_location='cpu')

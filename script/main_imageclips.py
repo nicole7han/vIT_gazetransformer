@@ -49,8 +49,8 @@ os.makedirs(attention_path, exist_ok=True)
 
 
 ann_path = "{}/data/annotations".format(basepath)
-train_img_path = "{}/data/test_s".format(basepath)
-train_bbx_path = "{}/data/test_bbox".format(basepath)
+train_img_path = "{}/data/train_s".format(basepath)
+train_bbx_path = "{}/data/train_bbox".format(basepath)
 test_img_path = "{}/data/test".format(basepath)
 test_bbx_path = "{}/data/test_bbox".format(basepath)
 # segmask_path = "/Users/nicolehan/Documents/Research/Gaze Transformer Model with Body Component/CDCL-human-part-segmentation-master/gazefollow/train_person_masks"
@@ -66,7 +66,72 @@ train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
 train_dataiter = iter(train_dataloader)
 
 for images_name, images, flips, h_crops, masks, eye, targetgaze, randpos in train_dataiter: #get one batch of train data
+    d_model = 256
+    dim_feedforward = 2048
+    nhead = 8
+    dropout = 0.1,
+    num_decoder_layers = 3
+    activation = 'relu'
     break
+
+    vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
+    for param in vit.backbone.parameters(): # freeze resnet backbone
+        param.requires_grad = False
+    for param in vit.transformer.encoder.layers[:3].parameters(): # freeze first 3 layers of encoders
+        param.requires_grad = False
+    backbone = vit.backbone
+    # encoder (UPDATING)
+    modules = list(vit.transformer.encoder.layers[3:])
+    encoder = nn.Sequential(*modules)
+    # decoder (UPDATING)
+    decoder = vit.transformer.decoder  # Finetune decoder
+    query_embed = vit.query_embed  # Finetune query embed
+    class_embed = nn.Linear(d_model, 2 + 1)
+    gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
+                              nn.Linear(d_model, d_model, bias=True),
+                              nn.Linear(d_model, 2, bias=True), )
+
+    activation = {}
+    def get_activation(name):
+        def hook(model, input, output):
+            activation[name] = output
+        return hook
+    # hook1 = get_activation('self_attn')
+    hook1 = get_activation('out_proj')
+
+    vit.transformer.encoder.layers[-4].self_attn.register_forward_hook(hook1)  # get feature from the 3rd encoder layer
+    output = vit(images)
+    img_vit_out = activation['out_proj'][0]  # (output[0]:activation,output[1]:weights), 49(7x7 patches) x 1 x 256 (hidden dimension)
+    output = vit(torch.cat([masks, masks, masks], 1))
+    mask_vit_out = activation['out_proj'][0]  # 49 x bs x 256
+
+    img_vit_out = encoder(img_vit_out)  # pass it through the last 3 encoders
+    mask_vit_out = encoder(mask_vit_out)  # pass it through the last 3 encoders
+
+    memory = img_vit_out + mask_vit_out  # final encoder output
+
+    ''' encoder output + query embedding -> decoder '''
+    _, bs, _ = img_vit_out.shape  # 49 x bs x 256
+    query_embed = query_embed.weight.unsqueeze(1).repeat(1, bs, 1)  # 1 x bs x 256
+    tgt = torch.zeros_like(query_embed).to(device)  # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])
+    vit_mask = torch.zeros([bs, 7, 7], dtype=torch.bool)  # no padding, all False
+
+    # get pos_mebed
+    samples = NestedTensor(images, vit_mask).to(device)
+    if isinstance(samples, (list, torch.Tensor)):
+        samples = nested_tensor_from_tensor_list(samples)
+    _, pos = backbone(samples)
+    pos_embed = pos[-1]  # bs x 256 x 7 x 7
+    pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
+
+    # pass to decoder
+    mask = torch.zeros([bs, 7 * 7], dtype=torch.bool).to(device)
+    hs = decoder(tgt, memory, memory_key_padding_mask=mask,
+                      pos=pos_embed,
+                      query_pos=query_embed)  # 1 x num_queries x b_s x hidden_dim, torch.Size([#decoders, 100, bs, 256])
+    hs = hs.transpose(1, 2)  # [#decoders x bs x 100 x 256]
+    outputs_class = self.class_embed(hs)
+    outputs_coord = self.gaze_bbox(hs).sigmoid()
     #images_name, images, flips, h_crops, masks, eye, targetgaze = train_dataiter.next() #get one batch of train data
     #gaze_pred = model(images, h_crops, masks)
     

@@ -64,10 +64,13 @@ def evaluate_train(anno_path, test_img_path, test_bbx_path, chong_est, criterion
 
                 # transformer prediction (relative with background)
                 disx, disy = displacexy[i]
-                # transform gaze_pred, targetgaze, eye position from background to image
-                trans_pred_x, trans_pred_y = coord_bg2img(gaze_bbx[0], gaze_bbx[1], disx, disy)
-                eye_x, eye_y = coord_bg2img(eye[i][0], eye[i][1], disx, disy)
-                target_x, target_y = coord_bg2img(targetgaze_bbx[i][0], targetgaze_bbx[i][1], disx, disy)
+                # # transform gaze_pred, targetgaze, eye position from background to image
+                # trans_pred_x, trans_pred_y = coord_bg2img(gaze_bbx[0], gaze_bbx[1], disx, disy)
+                # eye_x, eye_y = coord_bg2img(eye[i][0], eye[i][1], disx, disy)
+                # target_x, target_y = coord_bg2img(targetgaze_bbx[i][0], targetgaze_bbx[i][1], disx, disy)
+                trans_pred_x, trans_pred_y = gaze_bbx[0], gaze_bbx[1]
+                eye_x, eye_y = eye[i][0], eye[i][1]
+                target_x, target_y = targetgaze_bbx[i][0], targetgaze_bbx[i][1]
 
                 # flip transformer x if the image is flipped horizontally, keep all xy in original image coordination
                 if flips[i]:
@@ -271,10 +274,10 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=168
+epoch=134
 checkpoint = torch.load('trainedmodels/model/model_epoch{}.pt'.format(epoch), map_location='cpu')
-plt.plot(checkpoint['train_loss'][1:])
-plt.plot(checkpoint['test_loss'][1:])
+plt.plot(checkpoint['train_loss'])
+plt.plot(checkpoint['test_loss'])
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
@@ -294,8 +297,10 @@ test_bbx_path = "{}/data/test_bbox".format(datapath)
 matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
 weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
 losses = ['labels', 'boxes']
-criterion = SetCriterion(1, matcher=matcher, weight_dict=weight_dict,
-                         eos_coef=0.1, losses=losses)
+num_classes = 1
+criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
+                         eos_coef=0.01, losses=losses)
+# eos_coef: weight to the non-gazed location for class imbalance
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
 output = evaluate_train(anno_path, train_img_path, train_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
 output.to_excel('{}/model_eval_outputs/transformer_headbody_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
