@@ -53,7 +53,7 @@ def main():
     print('loading model')
     model = Gaze_Transformer()
 
-    lr = args.lr * args.b_size / 64
+    lr = args.lr * args.b_size / args.b_size
     print('learning rate = {}'.format(lr))
     beta1 = .9
     opt = optim.AdamW(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.0001)
