@@ -340,24 +340,7 @@ class GazeDataloader(Dataset):
             # print("./gazefollow/{}".format(key))
             inputs_bbx = seg_bbx["./gazefollow/{}".format(key)]
             [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = inputs_bbx['head'] + inputs_bbx['body']
-            bbx_y, bbx_x, bbx_h, bbx_w = min(h_y, b_y), min(h_x,b_x), max(h_h,b_h), max(h_w, b_w)
-            # h_y += random.uniform(-.01, 0)
-            # h_x += random.uniform(-.01, 0)
-            # h_h += random.uniform(0, 0.01)
-            # h_w += random.uniform(0, 0.01)
-            # b_y += random.uniform(-.01, 0)
-            # b_x += random.uniform(-.01, 0)
-            # b_h += random.uniform(0, 0.01)
-            # b_w += random.uniform(0, 0.01)
-            # make sure all between [0,1]
-            # vals = [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w]
-            # for i in range(len(vals)):
-            #     if vals[i] < 0:
-            #         vals[i] = 0
-            #     elif vals[i] > 1:
-            #         vals[i] = 1
-            # [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = vals
-
+            bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
             # h_crop = inputs[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)]
             # b_crop = inputs[int(b_y * h):int((b_y + b_h) * h), int(b_x * w):int((b_x + b_w) * w)]
             bbx_crop = inputs[int(bbx_y * h):int((bbx_y + bbx_h) * h), int(bbx_x * w):int((bbx_x + bbx_w) * w)]
