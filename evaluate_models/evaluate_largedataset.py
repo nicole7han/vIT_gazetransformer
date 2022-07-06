@@ -274,7 +274,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=944
+epoch=208
 checkpoint = torch.load('trainedmodels/model/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 plt.plot(checkpoint['test_loss'])
@@ -302,6 +302,7 @@ criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                          eos_coef=0.01, losses=losses)
 # eos_coef: weight to the non-gazed location for class imbalance
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
-output = evaluate_train(anno_path, train_img_path, train_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
+# output = evaluate_train(anno_path, train_img_path, train_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
+output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
 output.to_excel('{}/model_eval_outputs/transformer_headbody_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
 analyze_error(output, epoch, filename='{}/model_eval_outputs'.format(datapath))
