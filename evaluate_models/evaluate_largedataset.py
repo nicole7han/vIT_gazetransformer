@@ -130,7 +130,6 @@ def evaluate_train(anno_path, test_img_path, test_bbx_path, chong_est, criterion
 
 def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True):
     '''
-
     @param anno_path:gazed location
     @type anno_path: str
     @param test_img_path:test image path

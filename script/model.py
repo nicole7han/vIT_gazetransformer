@@ -178,7 +178,7 @@ class MLP(nn.Module):
 class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer of transformer -> predict gaze
     """Main Model"""
     def __init__(self, d_model=256, dim_feedforward=2048, nhead=8, dropout=0.1,
-                 num_decoder_layers=3, activation='relu'):
+                 num_decoder_layers=3, num_classes=2):
         super(Gaze_Transformer, self).__init__()
         self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
         for param in self.vit.backbone.parameters(): # freeze resnet backbone
@@ -188,19 +188,20 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
 
         self.backbone = self.vit.backbone
 
-        # encoder (UPDATING)
+        # encoder (TRAINING)
         modules = list(self.vit.transformer.encoder.layers[3:])
         self.encoder = nn.Sequential(*modules)
 
-        # decoder (UPDATING)
-        self.decoder = self.vit.transformer.decoder # Finetune decoder
-        self.query_embed = self.vit.query_embed # Finetune query embed
+        # decoder (TRAINING)
+        self.decoder = self.vit.transformer.decoder
+        self.query_embed = self.vit.query_embed
         self.d_model=d_model
         self.nhead=nhead
         self.dropout=dropout
+        self.num_classes = num_classes
 
-        # gaze output bbox (UPDATING)
-        self.class_embed = nn.Linear(d_model, 2 + 1)
+        # gaze output bbox (TRAINING)
+        self.class_embed = nn.Linear(d_model, num_classes + 1)
         self.gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, 2, bias=True))
