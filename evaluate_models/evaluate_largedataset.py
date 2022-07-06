@@ -191,11 +191,13 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
                 # transformer prediction (relative with background)
                 disx, disy = displacexy[i]
-                # transform gaze_pred, targetgaze, eye position from background to image
-                trans_pred_x, trans_pred_y = coord_bg2img(gaze_bbx[0], gaze_bbx[1], disx, disy)
-                eye_x, eye_y = coord_bg2img(eye[i][0], eye[i][1], disx, disy)
-                target_x, target_y = coord_bg2img(targetgaze_bbx[i][0], targetgaze_bbx[i][1], disx, disy)
-
+                # # transform gaze_pred, targetgaze, eye position from background to image
+                # trans_pred_x, trans_pred_y = coord_bg2img(gaze_bbx[0], gaze_bbx[1], disx, disy)
+                # eye_x, eye_y = coord_bg2img(eye[i][0], eye[i][1], disx, disy)
+                # target_x, target_y = coord_bg2img(targetgaze_bbx[i][0], targetgaze_bbx[i][1], disx, disy)
+                trans_pred_x, trans_pred_y = gaze_bbx[0], gaze_bbx[1]
+                eye_x, eye_y = eye[i][0], eye[i][1]
+                target_x, target_y = targetgaze_bbx[i][0], targetgaze_bbx[i][1]
                 # flip transformer x if the image is flipped horizontally, keep all xy in original image coordination
                 if flips[i]:
                     trans_pred_x = 1- trans_pred_x
@@ -236,7 +238,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
                              verticalalignment='bottom')
 
                     plt.savefig('{}/result_{}'.format(fig_path, images_name[i].split('/')[-1]))
-                    plt.close()
+                    plt.close('all')
 
 
                 # CALCULATE ERROR FOR EACH IMAGE
