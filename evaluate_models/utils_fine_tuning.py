@@ -618,7 +618,7 @@ def plot_gaze_largedata(img, flip, eyexy, targetxy, transxy, chongxy=None):
 
     # groundtruth gaze (green)
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
-    axs.imshow(img)
+    plt.imshow(img)
 
     # bounding box
     # h_rect = patches.Rectangle((h_yxhw[1]*w, h_yxhw[0]*h), h_yxhw[3]*w, h_yxhw[2]*h, linewidth=1, edgecolor='r', facecolor='none')
