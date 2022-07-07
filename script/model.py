@@ -191,7 +191,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.targetatten.load_state_dict(model_dict)
         for param in self.targetatten.parameters():  # freeze all parameters
             param.requires_grad = False
-        self.conv = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0, bias=False) #(UPDATING)
         self.bn = nn.BatchNorm2d(256)
         self.relu = nn.ReLU(inplace=True)
 
