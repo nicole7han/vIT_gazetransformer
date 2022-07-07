@@ -9,7 +9,7 @@ from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from PIL import Image
 from typing import Optional, List, Dict, Iterable, Callable
-from atten-target-detection.model
+from attention_target.model import ModelSpatial
 # from utils import NestedTensor
 
 
@@ -179,57 +179,122 @@ class MLP(nn.Module):
 class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer of transformer -> predict gaze
     """Main Model"""
     def __init__(self, d_model=256, dim_feedforward=2048, nhead=8, dropout=0.1,
-                 num_decoder_layers=3, activation='relu'):
+                 num_decoder_layers=3, num_classes=1):
         super(Gaze_Transformer, self).__init__()
+
+        # pretrained CHONG attention model
+        self.targetatten = ModelSpatial()
+        model_dict = self.targetatten.state_dict()
+        pretrained_dict = torch.load('attention_target/model_gazefollow.pt', map_location=torch.device('cpu'))
+        pretrained_dict = pretrained_dict['model']
+        model_dict.update(pretrained_dict)
+        self.targetatten.load_state_dict(model_dict)
+        for param in self.targetatten.parameters():  # freeze all parameters
+            param.requires_grad = False
+        self.conv = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn = nn.BatchNorm2d(256)
+        self.relu = nn.ReLU(inplace=True)
+
+        # pretrained DETR
         self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
-        self.crop_atten =
         for param in self.vit.backbone.parameters(): # freeze resnet backbone
             param.requires_grad = False
-        for param in self.vit.transformer.encoder.layers[:3].parameters(): # freeze first 3 layers of encoders
-            param.requires_grad = False
-
+        # for param in self.vit.transformer.encoder.layers[:3].parameters(): # freeze first 3 layers of encoders
+        #     param.requires_grad = False
         self.backbone = self.vit.backbone
 
+
         # encoder (UPDATING)
-        modules = list(self.vit.transformer.encoder.layers[3:])
+        modules = list(self.vit.transformer.encoder.layers) # Finetune encdoer
         self.encoder = nn.Sequential(*modules)
 
         # decoder (UPDATING)
-        self.decoder = self.vit.transformer.decoder # Finetune decoder
+        self.decoder = self.vit.transformer.decoder# Finetune decoder
         self.query_embed = self.vit.query_embed # Finetune query embed
         self.d_model=d_model
         self.nhead=nhead
         self.dropout=dropout
 
         # gaze output bbox (UPDATING)
-        self.class_embed = nn.Linear(d_model, 2 + 1)
+        self.class_embed = nn.Linear(d_model, num_classes+1)
         self.gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, 2, bias=True))
 
-    def forward(self, images, h_crops, masks):
+    # def get_activation(name):
+    #     def hook(model, input, output):
+    #         activation[name] = output
+    #     return hook
+
+    def forward(self, images, gazer, masks):
+        ''' cropped gazer feature '''
+        gazer = self.targetatten.conv1_face(gazer)
+        gazer = self.targetatten.bn1_face(gazer)
+        gazer = self.targetatten.relu(gazer)
+        gazer = self.targetatten.maxpool(gazer)
+        gazer = self.targetatten.layer1_face(gazer)
+        gazer = self.targetatten.layer2_face(gazer)
+        gazer = self.targetatten.layer3_face(gazer)
+        gazer = self.targetatten.layer4_face(gazer)
+        gazer_feat = self.targetatten.layer5_face(gazer) #torch.Size([bs, 1024, 7, 7])
+
+        ''' gazer feature weighted with masks '''
+        # reduce head channel size by max pooling: (N, 1, 224, 224) -> (N, 1, 28, 28)
+        masks_reduced = self.targetatten.maxpool(self.targetatten.maxpool(self.targetatten.maxpool(masks))).view(-1, 784) #torch.Size([bs, 784])
+        # reduce face feature size by avg pooling: (N, 1024, 7, 7) -> (N, 1024, 1, 1)
+        gazer_feat_reduced = self.targetatten.avgpool(gazer_feat).view(-1, 1024) #torch.Size([bs, 1024])
+        # get and reshape attention weights such that it can be multiplied with scene feature map
+        attn_weights = self.targetatten.attn(torch.cat((masks_reduced, gazer_feat_reduced), 1)) # torch.Size([bs, 49])
+        attn_weights = attn_weights.view(-1, 1, 49)
+        attn_weights = F.softmax(attn_weights, dim=2) # soft attention weights single-channel
+        attn_weights = attn_weights.view(-1, 1, 7, 7) # torch.Size([bs, 1, 7, 7])
+
+        ''' scene feature weighted with masks '''
+        im = torch.cat((images, masks), dim=1)
+        im = self.targetatten.conv1_scene(im)
+        im = self.targetatten.bn1_scene(im)
+        im = self.relu(im)
+        im = self.targetatten.maxpool(im)
+        im = self.targetatten.layer1_scene(im)
+        im = self.targetatten.layer2_scene(im)
+        im = self.targetatten.layer3_scene(im)
+        im = self.targetatten.layer4_scene(im)
+        scene_feat = self.targetatten.layer5_scene(im) #torch.Size([bs, 1024, 7, 7])
+        # attn_weights = torch.ones(attn_weights.shape)/49.0
+        attn_applied_scene_feat = torch.mul(attn_weights,
+                                            scene_feat)  # (N, 1, 7, 7) # applying attention weights on scene feat
+
+        ''' weighted scene feature + '''
+        scene_gazer_feat = torch.cat((attn_applied_scene_feat, gazer_feat), 1) #torch.Size([bs, 2048, 7, 7])
+
+        encoding = self.targetatten.compress_conv1(scene_gazer_feat) # conv from 2048 -> 256 to feed to vit encdoer
+        encoding = self.targetatten.compress_bn1(encoding)
+        encoding = self.relu(encoding)
+        encoding = self.conv(encoding)
+        encoding = self.bn(encoding)
+        encoding = self.relu(encoding) # torch.Size([bs, 256, 7, 7])
+        memory = encoding.flatten(2).permute(2,0,1) # torch.Size([49, bs, 256])
+
+
+
         '''image vit feature from DETR'''
-        activation = {}
-        def get_activation(name):
-            def hook(model, input, output):
-                activation[name] = output
-            return hook
-        # hook1 = get_activation('self_attn')
-        hook1 = get_activation('out_proj')
-
-        self.vit.transformer.encoder.layers[-4].self_attn.register_forward_hook(hook1) #get feature from the 3rd encoder layer
-        output = self.vit(images)
-        img_vit_out = activation['out_proj'][0] # (output[0]:activation,output[1]:weights), 49(7x7 patches) x 1 x 256 (hidden dimension)
-        output = self.vit(torch.cat([masks,masks,masks],1))
-        mask_vit_out = activation['out_proj'][0] # 49 x bs x 256
-
-        img_vit_out = self.encoder(img_vit_out) # pass it through the last 3 encoders
-        mask_vit_out = self.encoder(mask_vit_out)  # pass it through the last 3 encoders
-
-        memory = img_vit_out + mask_vit_out # final encoder output
+        # activation = {}
+        # # hook1 = get_activation('self_attn')
+        # hook1 = self.get_activation('out_proj')
+        #
+        # self.vit.transformer.encoder.layers[-4].self_attn.register_forward_hook(hook1) #get feature from the 3rd encoder layer
+        # output = self.vit(images)
+        # img_vit_out = activation['out_proj'][0] # (output[0]:activation,output[1]:weights), 49(7x7 patches) x 1 x 256 (hidden dimension)
+        # output = self.vit(torch.cat([masks,masks,masks],1))
+        # mask_vit_out = activation['out_proj'][0] # 49 x bs x 256
+        #
+        # img_vit_out = self.encoder(img_vit_out) # pass it through the last 3 encoders
+        # mask_vit_out = self.encoder(mask_vit_out)  # pass it through the last 3 encoders
+        #
+        # memory = img_vit_out + mask_vit_out # final encoder output
 
         ''' encoder output + query embedding -> decoder '''
-        _, bs, _ = img_vit_out.shape # 49 x bs x 256
+        _, bs, _ = memory.shape # 49 x bs x 256
         query_embed = self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1) #  1 x bs x 256
         tgt = torch.zeros_like(query_embed).to(device) # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])
         vit_mask = torch.zeros([bs,7,7], dtype=torch.bool) # no padding, all False

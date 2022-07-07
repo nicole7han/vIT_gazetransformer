@@ -33,7 +33,7 @@ def main():
                         help='learning rate, (default:1e-4)')
     parser.add_argument('--lbd', type=float, default=.7,
                         help='map loss weight, (default:.7)')
-    parser.add_argument('--outpath', type=str, default='script/trainedmodels',
+    parser.add_argument('--outpath', type=str, default='script_chong_detr/trainedmodels',
                         help='output path')
     parser.add_argument('--train_img_path', type=str, default='train',
                         help='train path')
@@ -60,9 +60,9 @@ def main():
     # criterion = nn.MSELoss()
     # criterion = nn.BCELoss(reduction='mean')
     matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
-    weight_dict = {'loss_ce': 1, 'loss_bbox': 100, 'loss_giou': 2}
+    weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
     losses = ['labels', 'boxes']
-    num_classes = 2 # gazed vs. not gazed
+    num_classes = 1 # gazed vs. not gazed
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                              eos_coef=0.01, losses=losses)
 

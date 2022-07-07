@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, PackedSequence
 import math
-from lib.pytorch_convolutional_rnn import convolutional_rnn
+from attention_target.lib.pytorch_convolutional_rnn import convolutional_rnn
 import numpy as np
 
 
@@ -197,6 +197,8 @@ class ModelSpatial(nn.Module):
 
 
     def forward(self, images, head, face):
+        # head binary mask
+        # face feature
         face = self.conv1_face(face)
         face = self.bn1_face(face)
         face = self.relu(face)
