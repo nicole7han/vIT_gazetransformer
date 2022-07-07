@@ -9,9 +9,9 @@ from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from PIL import Image
 from typing import Optional, List, Dict, Iterable, Callable
+sys.path.append('/home/xhan01/gazetransformer/')
 from attention_target.model import ModelSpatial
 # from utils import NestedTensor
-
 
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
