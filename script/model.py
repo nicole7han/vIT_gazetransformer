@@ -9,6 +9,7 @@ from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from PIL import Image
 from typing import Optional, List, Dict, Iterable, Callable
+from atten-target-detection.model
 # from utils import NestedTensor
 
 
@@ -181,6 +182,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
                  num_decoder_layers=3, activation='relu'):
         super(Gaze_Transformer, self).__init__()
         self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
+        self.crop_atten =
         for param in self.vit.backbone.parameters(): # freeze resnet backbone
             param.requires_grad = False
         for param in self.vit.transformer.encoder.layers[:3].parameters(): # freeze first 3 layers of encoders
