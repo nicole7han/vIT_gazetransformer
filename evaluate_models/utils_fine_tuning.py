@@ -117,12 +117,12 @@ class GazeDataloader_gazevideo(Dataset):
         img_anno: eye and gaze annotation locations
     """
 
-    def __init__(self, anno_path, img_path, bbx_path):
+    def __init__(self, anno_path, img_path, bbx_path, gazer_bbox):
         # PARAMETERS:
         # anno_path: gazed location
         # img_path: train/test images
         # bbx_path: train/test head and body bounding box
-        # gaze_orien_bbx_path: all gaze-orienting people head bounding box
+        # bbox_region: 'hb', 'h', or 'b'
         # RETURNS:
         # image, gaze_map
 
@@ -150,288 +150,96 @@ class GazeDataloader_gazevideo(Dataset):
 
     def __getitem__(self, idx):
         img_name = self.img_paths[idx]
-        img = Image.open('{}/{}'.format(self.img_path, img_name))
-        img = self.transform(img)
+        inputs = plt.imread('{}/{}'.format(self.img_path, img_name))
+        image = Image.open('{}/{}'.format(self.img_path, img_name))
+        w, h = image.size
+        img = self.transform(image)
 
         # load groundtruth gaze location
         orig_img_name = img_name.split('_')[0]
         g_x, g_y = self.eye_gaze[self.eye_gaze['Video'] == orig_img_name]['gazed_locationx'].tolist()[0] / 800, \
                    self.eye_gaze[self.eye_gaze['Video'] == orig_img_name]['gazed_locationy'].tolist()[0] / 600
-        x_l, x_h, y_l, y_h = max(0, g_x - .1), min(1, g_x + .1), max(0, g_y - .1), min(1, g_y + .1)
-        gaze_map = torch.zeros([224, 224])
-        gaze_map[int(y_l * 224):int(y_h * 224), int(x_l * 224):int(x_h * 224)] = 1
-        gaze_map = gaze_map.numpy()
-        gaze_map = self.resize(Image.fromarray(gaze_map))
 
-        # # load head and body crops
-        # f = open('{}/{}.json'.format(bbx_path, img_name.split('.jpg')[0]))
-        # bbx = json.load(f)
+        # # load bbox mask
+        # with open('{}/{}.json'.format(self.bbx_path, img_name.split('.jpg')[0])) as file:
+        #     img_bbx = json.load(file)
+        # num_gazer = int(len(img_bbx)/8)
+        # for g in range(num_gazer):
+        #     if gazer_bbox!='hb': # topleft, width
+        #         bbx_x, bbx_y, bbx_w, bbx_h = img_bbx['{}_x{}'.format(gazer_bbox,g)],img_bbx['{}_y{}'.format(gazer_bbox,g)], \
+        #                              img_bbx['{}_w{}'.format(gazer_bbox, g)],img_bbx['{}_h{}'.format(gazer_bbox,g)]
+        #     else:
+        #         h_x, h_y, h_w, h_h, b_x, b_y, b_w, b_h = \
+        #             img_bbx['h_x{}'.format(g)],img_bbx['h_y{}'.format(g)],img_bbx['h_w{}'.format(g)],img_bbx['h_h{}'.format(g)], \
+        #             img_bbx['b_x{}'.format(g)], img_bbx['b_y{}'.format(g)], img_bbx['b_w{}'.format(g)], img_bbx[
+        #                 'b_h{}'.format(g)]
+        #         bbx_x, bbx_y, bbx_w, bbx_h = min(h_x,b_x),min(h_y, b_y),  max(h_w, b_w), max(h_h,b_h)
+        #
+        #     bbx_crop = inputs[int(bbx_y * h):int((bbx_y + bbx_h) * h), int(bbx_x * w):int((bbx_x + bbx_w) * w)]
+        #     bbx_crop = self.transform(Image.fromarray(bbx_crop))
+        #     mask = np.zeros([h, w])
+        #     mask[int(bbx_y * h):int((bbx_y + bbx_h) * h), int(bbx_x * w):int((bbx_x + bbx_w) * w)] = 1
+        #     mask = Image.fromarray(mask)
+        #     mask = torch.tensor(np.array(mask.resize([224, 224]))).unsqueeze(0)
+        #     if g == 0:
+        #         gazer_crops = bbx_crop.unsqueeze(0)
+        #         gazer_masks = mask.unsqueeze(0)
+        #     else:
+        #         gazer_crops = torch.cat([gazer_crops, bbx_crop.unsqueeze(0)])
+        #         gazer_masks = torch.cat([gazer_masks, mask.unsqueeze(0)])
 
-        return img_name, img, gaze_map, {'gaze_x':g_x, 'gaze_y':g_y}
-
-
-def train(e_start, num_e, anno_path, train_img_path, train_bbx_path, test_img_path, test_bbx_path, b_size=20):
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda:0" if use_cuda else "cpu")
-
-    model = Gaze_Transformer()
-    criterion = nn.MSELoss()
-    opt = optim.Adam(model.parameters(), lr=.0001, betas=(.9, .999))
-    checkpoint = torch.load('models/model_epoch{}.pt'.format(e_start), map_location='cpu')
-    model.load_state_dict(checkpoint['model_state_dict'])
-    opt.load_state_dict(checkpoint['optimizer_state_dict'])
-    for state in opt.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to(device)
-    model.to(device)
-
-    LOSS = []
-    for e in np.arange(e_start + 1, e_start + num_e):
-        model.train()
-        print('Epoch:', e, 'Training')
-
-        train_data = GazeDataloader_gazevideo(anno_path, train_img_path, train_bbx_path)
-        train_dataloader = DataLoader(train_data, batch_size=b_size, shuffle=True, num_workers=0)
-        train_dataiter = iter(train_dataloader)
-
-        loss_iter = []
-        for images_name, images, gaze_maps in train_dataiter:
-            opt.zero_grad()
-            images, gaze_maps = images.to(device), gaze_maps.to(device)
-
-            b_size = images.shape[0]
-            h_crops, b_crops, masks = torch.zeros(images.shape), torch.zeros(images.shape), torch.zeros(
-                [b_size, 2, 256, 256])
-            for i in range(b_size):  # for each image, train with all gaze-orienting people present in the image
-                # load image
-                inputs = plt.imread('{}/{}'.format(train_img_path, images_name[i]))
-                h, w, _ = inputs.shape
-
-                # load head and body region images
-                bbx_name = images_name[i].split('.jpg')[0] + '.json'
-                with open('{}/{}'.format(train_bbx_path, bbx_name)) as file:
-                    # print('{}/{}'.format(train_bbx_path, bbx_name))
-                    headbody = json.load(file)
-                num_people = int(len(headbody) / 8)
-                # randomly choose one gaze-orienting people to train
-                p = random.choice(np.arange(num_people))
-                h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w = headbody['h_y{}'.format(p)], headbody['h_x{}'.format(p)], \
-                                                         headbody['h_h{}'.format(p)], headbody['h_w{}'.format(p)], \
-                                                         headbody['b_y{}'.format(p)], headbody['b_x{}'.format(p)], \
-                                                         headbody['b_h{}'.format(p)], headbody['b_w{}'.format(p)]
-                h_crop = inputs[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)]
-                b_crop = inputs[int(b_y * h):int((b_y + b_h) * h), int(b_x * w):int((b_x + b_w) * w)]
-                h_crop = transform(Image.fromarray(h_crop))
-                b_crop = transform(Image.fromarray(b_crop))
-
-                # load head and body masks
-                mask = torch.zeros([2, 256, 256])  # head, body, gaze location
-                mask[0, :, :][int(h_y * 256):int((h_y + h_h) * 256), int(h_x * 256):int((h_x + h_w) * 256)] = 1
-                mask[1, :, :][int(b_y * 256):int((b_y + b_h) * 256), int(b_x * 256):int((b_x + b_w) * 256)] = 1
-
-                h_crops[i, ::], b_crops[i, ::], masks[i, ::] = h_crop, b_crop, mask
-
-            h_crops, b_crops, masks = h_crops.to(device), b_crops.to(device), masks.to(device)
-
-            out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
-            gt_map = gaussian_smooth(gaze_maps, 21, 5)
-            gt_map_sums = gt_map.view(b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-            gt_map = (gt_map.view(b_size, 1, -1) / gt_map_sums).view(b_size, 1, 64, 64)
-
-            amp_factor = 1
-            loss = criterion(out_map, gt_map) * amp_factor  # amplitfy factor to avoid loss underflow
-            loss.backward()
-            opt.step()
-            loss_iter.append(loss)
-
-        print("training loss: {:.10f}".format(torch.mean(torch.stack(loss_iter))))
-        LOSS.append(torch.mean(torch.stack(loss_iter)))
-
-        if (e) % 10 == 0:
-            if os.path.isdir('finetuning_models') == False:
-                os.mkdir('finetuning_models')
-            finetuning_e = e - e_start
-            PATH = "finetuning_models/model_epoch{}.pt".format(finetuning_e)
-            torch.save({
-                'epoch': finetuning_e,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': opt.state_dict(),
-                'loss': LOSS,
-            }, PATH)
-        if e % 1 == 0:
-            # check with train images
-            if os.path.isdir('finetuning_outputs') == False:
-                os.mkdir('finetuning_outputs')
-            try:
-                for i in range(5):
-                    visualize_result(images.cpu().detach().numpy(), gt_map.cpu().detach().numpy(),
-                                     out_map.cpu().detach().numpy(), idx=i)
-                    plt.savefig('finetuning_outputs/train_epoch{}_plot{}.jpg'.format(finetuning_e, i + 1))
-                    plt.close('all')
-            except:
-                continue
-
-            # check with test images
-            model.eval()
-            test_data = GazeDataloader_gazevideo(anno_path, test_img_path, test_bbx_path)
-            test_dataloader = DataLoader(test_data, batch_size=10, shuffle=True, num_workers=0)
-            test_dataiter = iter(test_dataloader)
-            images_name, images, gaze_maps = test_dataiter.next()
-            images = images.to(device)
-            test_b_size = images.shape[0]
-            h_crops, b_crops, masks = torch.zeros(images.shape), torch.zeros(images.shape), torch.zeros(
-                [test_b_size, 2, 256, 256])
-            for i in range(test_b_size):  # for each image, train with all gaze-orienting people present in the image
-                # load image
-                inputs = plt.imread('{}/{}'.format(test_img_path, images_name[i]))
-                h, w, _ = inputs.shape
-                # load head and body region images
-                bbx_name = images_name[i].split('.jpg')[0] + '.json'
-                with open('{}/{}'.format(test_bbx_path, bbx_name)) as file:
-                    headbody = json.load(file)
-                num_people = int(len(headbody) / 8)
-                # randomly choose one gaze-orienting people to train
-                p = random.choice(np.arange(num_people))
-                h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w = headbody['h_y{}'.format(p)], headbody['h_x{}'.format(p)], \
-                                                         headbody['h_h{}'.format(p)], headbody['h_w{}'.format(p)], \
-                                                         headbody['b_y{}'.format(p)], headbody['b_x{}'.format(p)], \
-                                                         headbody['b_h{}'.format(p)], headbody['b_w{}'.format(p)]
-                h_crop = inputs[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)]
-                b_crop = inputs[int(b_y * h):int((b_y + b_h) * h), int(b_x * w):int((b_x + b_w) * w)]
-                h_crop = transform(Image.fromarray(h_crop))
-                b_crop = transform(Image.fromarray(b_crop))
-
-                # load head and body masks
-                mask = torch.zeros([2, 256, 256])  # head, body, gaze location
-                mask[0, :, :][int(h_y * 256):int((h_y + h_h) * 256), int(h_x * 256):int((h_x + h_w) * 256)] = 1
-                mask[1, :, :][int(b_y * 256):int((b_y + b_h) * 256), int(b_x * 256):int((b_x + b_w) * 256)] = 1
-
-                h_crops[i, ::], b_crops[i, ::], masks[i, ::] = h_crop, b_crop, mask
-
-            h_crops, b_crops, masks = h_crops.to(device), b_crops.to(device), masks.to(device)
-            out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
-            gt_map = gaussian_smooth(gaze_maps, 21, 5)
-            gt_map_sums = gt_map.view(test_b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-            gt_map = (gt_map.view(test_b_size, 1, -1) / gt_map_sums).view(test_b_size, 1, 64, 64)
-
-            try:
-                for i in range(5):
-                    visualize_result(images.cpu().detach().numpy(), gt_map.cpu().detach().numpy(),
-                                     out_map.cpu().detach().numpy(), idx=i)
-                    plt.savefig('finetuning_outputs/test_epoch{}_plot{}.jpg'.format(finetuning_e, i + 1))
-                    plt.close('all')
-            except:
-                continue
+        return img_name, img, {'labels':torch.tensor([1]) ,'boxes':torch.tensor([g_x,g_y])}
 
 
-def evaluate_model_gaze(anno_path, test_img_path, test_bbx_path, model, fig_path):
+def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
+    # take original image and coordinations
+    # flip the image and coordination if flip==True
+    try:
+        h, w, _ = img.shape
+    except:
+        h, w = img.shape
+
+    fig, axs = plt.subplots(1, 1, figsize=(8, 8))
+    # transformer gaze estimation (blue)
+    gaze_pred_x, gaze_pred_y = int(transxy[0] * w), \
+                               int(transxy[1]* h)
+    try:
+        chong_pred_x, chong_pred_y = int(chongxy[0] * w), \
+                                     int(chongxy[1] * h)
+    except:
+        pass
+    gaze_s_x, gaze_s_y, gaze_e_x, gaze_e_y = int(eyexy[0] * w), \
+                                             int(eyexy[1] * h), \
+                                             int(targetxy[0] * w), \
+                                             int(targetxy[1] * h)
+    # transformer prediction (blue)
+    img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
+
+    # chong prediction (yellow)
+    try: img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_pred_x, chong_pred_y), (255, 255, 0), 2)
+    except: pass
+
+    # groundtruth gaze (green)
+    img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
+    plt.imshow(img)
+
+def evaluate_2model(anno_path, test_img_path, test_bbx_path, bbx_path, chong_est, model, fig_path, criterion,
+                    bbx_noise=False, gazer_bbox='hb'):
     '''
     @param anno_path: gazed location
     @param test_img_path: test image path
     @param test_bbx_path: test bounding box path
-    @param model: transformer model
-    @param fig_path: figure destination path
-    @return:
-        output: excel sheet with euclidean error and angular error
-    '''
-    model.eval()
-
-    test_data = GazeDataloader_gazevideo(anno_path, test_img_path, test_bbx_path)
-    test_dataloader = DataLoader(test_data, batch_size=10, shuffle=True, num_workers=0)
-    test_dataiter = iter(test_dataloader)
-
-    IMAGES = []
-    GAZE_START = []
-    PREDICT_GAZE = []
-    GT_GAZE = []
-    for images_name, images, gaze_maps in test_dataiter:
-        # images_name, images, gaze_maps = test_dataiter.next()
-        images, gaze_maps = images.to(device), gaze_maps.to(device)
-        test_b_size = images.shape[0]
-        h_crops, b_crops, masks = torch.zeros(images.shape), torch.zeros(images.shape), torch.zeros(
-            [test_b_size, 2, 256, 256])
-        person_idx = []
-        for i in range(test_b_size):  # for each image, train with all gaze-orienting people present in the image
-            # load image
-            inputs = plt.imread('{}/{}'.format(test_img_path, images_name[i]))
-            h, w, _ = inputs.shape
-            # load head and body region images
-            bbx_name = images_name[i].split('.jpg')[0] + '.json'
-            with open('{}/{}'.format(test_bbx_path, bbx_name)) as file:
-                headbody = json.load(file)
-            num_people = int(len(headbody) / 8)
-            # randomly choose one gaze-orienting people to train
-            p = random.choice(np.arange(num_people))
-            person_idx.append(p)
-            h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w = headbody['h_y{}'.format(p)], headbody['h_x{}'.format(p)], \
-                                                     headbody['h_h{}'.format(p)], headbody['h_w{}'.format(p)], \
-                                                     headbody['b_y{}'.format(p)], headbody['b_x{}'.format(p)], \
-                                                     headbody['b_h{}'.format(p)], headbody['b_w{}'.format(p)]
-            h_crop = inputs[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)]
-            b_crop = inputs[int(b_y * h):int((b_y + b_h) * h), int(b_x * w):int((b_x + b_w) * w)]
-            h_crop = transform(Image.fromarray(h_crop))
-            b_crop = transform(Image.fromarray(b_crop))
-
-            # load head and body masks
-            mask = torch.zeros([2, 256, 256])  # head, body, gaze location
-            mask[0, :, :][int(h_y * 256):int((h_y + h_h) * 256), int(h_x * 256):int((h_x + h_w) * 256)] = 1
-            mask[1, :, :][int(b_y * 256):int((b_y + b_h) * 256), int(b_x * 256):int((b_x + b_w) * 256)] = 1
-
-            h_crops[i, ::], b_crops[i, ::], masks[i, ::] = h_crop, b_crop, mask
-
-        h_crops, b_crops, masks = h_crops.to(device), b_crops.to(device), masks.to(device)
-        out_map = model(images, h_crops, b_crops, masks)  # model prediction of gaze map
-        gt_map = gaussian_smooth(gaze_maps, 21, 5)
-        gt_map_sums = gt_map.view(test_b_size, 1, -1).sum(dim=2).unsqueeze(1)  # normalize sum up to 1
-        gt_map = (gt_map.view(test_b_size, 1, -1) / gt_map_sums).view(test_b_size, 1, 64, 64)
-
-        # visualization
-        for i in range(test_b_size):
-            p = person_idx[i]
-            bbx_name = images_name[i].split('.jpg')[0] + '.json'
-            with open('{}/{}'.format(test_bbx_path, bbx_name)) as file:
-                headbody = json.load(file)
-            h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w = headbody['h_y{}'.format(p)], headbody['h_x{}'.format(p)], \
-                                                     headbody['h_h{}'.format(p)], headbody['h_w{}'.format(p)], \
-                                                     headbody['b_y{}'.format(p)], headbody['b_x{}'.format(p)], \
-                                                     headbody['b_h{}'.format(p)], headbody['b_w{}'.format(p)]
-            gaze_start, pred_gaze, gt_gaze = plot_gaze((h_y, h_x, h_h, h_w), (b_y, b_x, b_h, b_w),
-                                                       images.cpu().detach().numpy(), gt_map.cpu().detach().numpy(),
-                                                       out_map.cpu().detach().numpy(), idx=i)
-            plt.savefig('{}/{}_result.jpg'.format(fig_path, images_name[i]))
-            plt.close('all')
-            IMAGES.append(images_name[i])
-            GAZE_START.append(gaze_start)
-            PREDICT_GAZE.append(pred_gaze)
-            GT_GAZE.append(gt_gaze)
-
-        output = pd.DataFrame({'image': IMAGES,
-                               'gaze_start_y': np.array(GAZE_START)[:, 0],
-                               'gaze_start_x': np.array(GAZE_START)[:, 1],
-                               'gazed_y': np.array(GT_GAZE)[:, 0],
-                               'gazed_x': np.array(GT_GAZE)[:, 1],
-                               'est_y': np.array(PREDICT_GAZE)[:, 0],
-                               'est_x': np.array(PREDICT_GAZE)[:, 1]})
-    return output
-
-
-def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chong_est, model, fig_path,
-                    bbx_noise=False):
-    '''
-    @param anno_path: gazed location
-    @param test_img_path: test image path
-    @param test_bbx_path: test bounding box path
-    @param head_bbx_path: gaze-orienting people bounding box path
     @param chong_est: chong model estimation excel
     @param model: transformer model
     @param fig_path: figure destination path
+    @param bbx_noise: add jitter to box position or not
+    @param gazer_bbox: what region used to predict gaze 'h':head, 'b':body, 'hb':whole head and body region
     @return:
         output: excel sheet with euclidean error and angular error of both models (gaze transformer and chong et 2020)
     '''
 
     model.eval()
-    test_data = GazeDataloader_gazevideo(anno_path, test_img_path, test_bbx_path)
+    test_data = GazeDataloader_gazevideo(anno_path, test_img_path, test_bbx_path, gazer_bbox)
     test_dataloader = DataLoader(test_data, batch_size=1, shuffle=True, num_workers=0)
     test_dataiter = iter(test_dataloader)
 
@@ -444,13 +252,9 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
 
     bbx = np.load('/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/bbx_viu_images.npy', allow_pickle=True)
     bbx = bbx[()]
-    for images_name, images, gaze_maps, img_anno in test_dataiter:
+    for images_name, images, targetgaze in test_dataiter:
         print(images_name)
-        # images_name, images, gaze_maps, img_anno = test_dataiter.next()
         test_b_size = images.shape[0]
-        images, gaze_maps = images.to(device), gaze_maps.to(device)
-        h_crops, b_crops, masks = torch.zeros(images.shape), torch.zeros(images.shape), torch.zeros(
-            [test_b_size, 1, 224, 224])
 
         # load chong model estimation for the image
         try:
@@ -478,15 +282,27 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
             try:
                 h_y, h_x, h_h, h_w = headbody['head{}'.format(p)]
                 b_y, b_x, b_h, b_w = headbody['body{}'.format(p)]
+                hb_y, hb_x, hb_h, hb_w = min(h_y,b_y), min(h_x,b_x), max(h_h,b_h), max(h_w,b_w)
                 if bbx_noise:
                     h_x += .01
                     b_x += .01
+                    hb_x += .01
             except:
                 continue
-            h_crop = inputs[int(h_y * h):int((h_y + h_h) * h), int(h_x * w):int((h_x + h_w) * w)]
-            b_crop = inputs[int(b_y * h):int((b_y + b_h) * h), int(b_x * w):int((b_x + b_w) * w)]
-            h_crop = transform(Image.fromarray(h_crop))
-            b_crop = transform(Image.fromarray(b_crop))
+
+            if gazer_bbox == 'h':
+                bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
+            elif gazer_bbox == 'b':
+                bbx_y, bbx_x, bbx_h, bbx_w = b_y, b_x, b_h, b_w
+            elif gazer_bbox == 'hb':
+                bbx_y, bbx_x, bbx_h, bbx_w = hb_y, hb_x, hb_h, hb_w
+
+            # load head and body masks + crops
+            masks = torch.zeros([224, 224])
+            masks[int(bbx_y * 224):int((bbx_y + bbx_h) * 224), int(bbx_x * 224):int((bbx_x + bbx_w) * 224)] = 1
+            masks = masks.unsqueeze(0).unsqueeze(0)
+            box_crops = inputs[int(bbx_y * h):int((bbx_y + bbx_h) * h), int(bbx_x * w):int((bbx_x + bbx_w) * w)]
+            box_crops = transform(Image.fromarray(box_crops)).unsqueeze(0)
 
             # find corresponding gaze-orienting in the chong model estimation
             try:
@@ -506,48 +322,39 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
                 # print(chong_model_est)
             except: pass
 
-            # load head and body masks
-            masks[0, :, :][int(h_y * 224):int((h_y + h_h) * 224), int(h_x * 224):int((h_x + h_w) * 224)] = 1
-            # mask[1, :, :][int(b_y * 224):int((b_y + b_h) * 224), int(b_x * 224):int((b_x + b_w) * 224)] = 1
-            h_crops[0, ::], b_crops[0, ::], masks[0, ::] = h_crop, b_crop, masks
-            h_crops, b_crops, masks = h_crops.to(device), b_crops.to(device), masks.to(device)
-            flips = torch.zeros(1)
+            gaze_pred = model(images, box_crops, masks)
+            gaze_pred_logits = np.array(gaze_pred['pred_logits'].detach()) # bs x 100 x 2
+            gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())  # bs x 100 x 4
 
-            gaze_pred = model(images, h_crops, masks).squeeze(1).detach().numpy()
-            gaze_pos = torch.vstack([img_anno['gaze_x'], img_anno['gaze_y']]).permute(1, 0).to(device)
-            out_map = torch.zeros([1,1,224,224])
-            out_map[0,0, int((gaze_pred[0][1] - .05) * 224):int((gaze_pred[0][1] + .05) * 224),\
-                    int((gaze_pred[0][0] - .05) * 224):int((gaze_pred[0][0] + .05) * 224)] = 1
-            out_map = gaussian_smooth(out_map, 21, 10)
+            # loss
+            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
+                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
+                       for i in range(test_b_size)]
+            indices = np.array(criterion.matcher(gaze_pred, targets))
+            idx = indices[0][0]
 
-            gt_map = torch.zeros([1,1,224,224])
-            gt_map[0,0, int((gaze_pos[0][1] - .05) * 224):int((gaze_pos[0][1] + .05) * 224),\
-                    int((gaze_pos[0][0] - .05) * 224):int((gaze_pos[0][0] + .05) * 224)] = 1
-            gt_map = gaussian_smooth(gt_map, 21, 10)
+            # result
+            transxy = gaze_pred_bbx[0][idx]
+            eyexy = np.array([h_x+0.5*h_w, h_y+0.5*h_h])
+            targetxy = np.array(targetgaze['boxes'][0])
+
             # visualization
-            if os.path.isdir(fig_path) == False:
-                os.mkdir(fig_path)
-            h_yxhw, b_yxhw = (h_y, h_x, h_h, h_w), (b_y, b_x, b_h, b_w)
-            try:
-                gaze_start, pred_gaze, gt_gaze = plot_gaze(h_yxhw, b_yxhw, images.cpu().detach().numpy(),
-                                                           gt_map.cpu().detach().numpy(), out_map.cpu().detach().numpy(),
-                                                           chong_model_est)
-            except:
-                gaze_start, pred_gaze, gt_gaze = plot_gaze(h_yxhw, b_yxhw, images.cpu().detach().numpy(),
-                                                           gt_map.cpu().detach().numpy(),
-                                                           out_map.cpu().detach().numpy())
+            os.makedirs(fig_path, exist_ok=True)
+            plt.clf()
+            outfig = plot_gaze_viudata(inputs, eyexy, targetxy, transxy)
             plt.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
             plt.clf()
             plt.close('all')
             IMAGES.append(images_name[0])
-            GAZE_START.append(gaze_start)
-            PREDICT_GAZE.append(pred_gaze)
-            GT_GAZE.append(gt_gaze)
+            GAZE_START.append(eyexy)
+            PREDICT_GAZE.append(transxy)
+            GT_GAZE.append(targetxy)
             try: CHONG_PREDICT_GAZE.append(chong_model_est)
             except: pass
 
     try:
         output = pd.DataFrame({'image': IMAGES,
+                               'gazer': PERSON_IDX,
                                'gaze_start_y': np.array(GAZE_START)[:, 0],
                                'gaze_start_x': np.array(GAZE_START)[:, 1],
                                'gazed_y': np.array(GT_GAZE)[:, 0],
@@ -559,6 +366,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, head_bbx_path, chon
                                })
     except:
         output = pd.DataFrame({'image': IMAGES,
+                               'gazer': PERSON_IDX,
                                'gaze_start_y': np.array(GAZE_START)[:, 0],
                                'gaze_start_x': np.array(GAZE_START)[:, 1],
                                'gazed_y': np.array(GT_GAZE)[:, 0],
