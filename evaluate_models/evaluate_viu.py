@@ -6,8 +6,8 @@ from functions.data_ana_vis import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=200
-checkpoint = torch.load('trainedmodels/model_head/model_epoch{}.pt'.format(epoch), map_location='cpu')
+epoch=82
+checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 # checkpoint['test_loss']
 loaded_dict = checkpoint['model_state_dict']
@@ -18,31 +18,23 @@ adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
 model.load_state_dict(adapted_dict)
 model.to(device)
 
-# #fine tuning model on viu dataset
-# train(e_start, num_e, anno_path, train_img_path, train_bbx_path, test_img_path, test_bbx_path)
 
-# # evaluate model on viu dataset
-# model = Gaze_Transformer()
-# checkpoint = torch.load('models/model_epoch{}.pt'.format(epoch), map_location='cpu')
-# model.load_state_dict(checkpoint['model_state_dict'])
-# model.to(device)
 # output = evaluate_model_gaze(anno_path, test_img_path, test_bbx_path, model, fig_path)
 # output.to_excel('gaze_video_data/model_epoch{}_result.xlsx'.format(epoch))
 
 # evaluate both models' estimation on viu dataset
 datapath = "/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data"
+outpath = '/Users/nicolehan/Documents/Research/gazetransformer'
 anno_path = '{}/Video_Info.xlsx'.format(datapath)
-# test_img_path = "{}/transformer_all_img_intact".format(datapath)
-# test_bbx_path = "{}/transformer_all_bbx".format(datapath)
+cond = 'intact'
+test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
+test_bbx_path = "{}/transformer_all_bbx".format(datapath)
 # train_img_path='gaze_video_data/transformer_train_img'
 # train_bbx_path='gaze_video_data/transformer_train_bbx'
-test_img_path='{}/transformer_all_img_intact'.format(datapath)
-test_bbx_path='{}/transformer_all_bbx'.format(datapath)
-if 'nb' in test_img_path: cond='nb'
-elif 'nh' in test_img_path : cond='nh'
-else: cond='intact'
+# test_img_path='{}/transformer_all_img_intact'.format(datapath)
+# test_bbx_path='{}/transformer_all_bbx'.format(datapath)
 head_bbx_path='{}/boundingbox_head (gaze-orienting people)'.format(datapath)
-fig_path='{}/viT_epoch{}_{}_outputs'.format(datapath,epoch,cond)
+fig_path='{}/model_eval_viu_outputs/transformer_hb_{}_epoch{}'.format(outpath,epoch,cond)
 
 
 try:
