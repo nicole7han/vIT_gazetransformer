@@ -276,8 +276,8 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=10
-checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
+epoch=82
+checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 plt.plot(checkpoint['test_loss'])
 loaded_dict = checkpoint['model_state_dict']
@@ -290,7 +290,7 @@ model.load_state_dict(adapted_dict)
 
 # evaluate both models' estimation on viu dataset
 datapath = '/Users/nicolehan/Documents/Research/gazetransformer'
-fig_path='{}/model_eval_outputs/epoch{}_headbody_outputs'.format(datapath,epoch)
+fig_path='{}/model_eval_outputs/epoch{}_head_outputs'.format(datapath,epoch)
 anno_path = "{}/data/annotations".format(datapath)
 train_img_path = "{}/data/train_s".format(datapath)
 train_bbx_path = "{}/data/train_bbox".format(datapath)
@@ -299,12 +299,12 @@ test_bbx_path = "{}/data/test_bbox".format(datapath)
 matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
 weight_dict = {'loss_ce': 1, 'loss_bbox': 100, 'loss_giou': 2}
 losses = ['labels', 'boxes']
-num_classes = 2
+num_classes = 1
 criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                          eos_coef=0.01, losses=losses)
 # eos_coef: weight to the non-gazed location for class imbalance
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
 # output = evaluate_train(anno_path, train_img_path, train_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
 output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
-output.to_excel('{}/model_eval_outputs/transformer_headbody_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
+output.to_excel('{}/model_eval_outputs/transformer_head_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
 analyze_error(output, epoch, filename='{}/model_eval_outputs'.format(datapath))
