@@ -297,9 +297,9 @@ train_bbx_path = "{}/data/train_bbox".format(datapath)
 test_img_path = "{}/data/test".format(datapath)
 test_bbx_path = "{}/data/test_bbox".format(datapath)
 matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
-weight_dict = {'loss_ce': 1, 'loss_bbox': 100, 'loss_giou': 2}
+weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
 losses = ['labels', 'boxes']
-num_classes = 2
+num_classes = 1
 criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                          eos_coef=0.01, losses=losses)
 # eos_coef: weight to the non-gazed location for class imbalance
