@@ -224,7 +224,7 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
     plt.imshow(img)
 
 def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                    bbx_noise=False, gazer_bbox='hb', cond, savefigure=True):
+                    bbx_noise=False, gazer_bbox='hb', cond='intact', savefigure=True):
     '''
     @param anno_path:    output = evaluate_2model(anno_path, test_img_path, test_bbx_path, None, model, fig_path, criterion, gazer_bbox=gazer_bbox) gazed location
     @param test_img_path: test image path
