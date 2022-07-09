@@ -27,7 +27,7 @@ model.to(device)
 datapath = "/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data"
 outpath = '/Users/nicolehan/Documents/Research/gazetransformer'
 anno_path = '{}/Video_Info.xlsx'.format(datapath)
-cond = 'intact'
+cond = 'nb'
 test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
 test_bbx_path = "{}/transformer_all_bbx".format(datapath)
 if cond == 'intact':
@@ -49,19 +49,14 @@ losses = ['labels', 'boxes']
 num_classes = 1
 criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                          eos_coef=0.01, losses=losses)
+chong_est = pd.read_csv('{}/chong_estimation.csv'.format(outpath))
+transformer_est = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
+                    bbx_noise=False, gazer_bbox='hb')
 
-try:
-    chong_est = pd.read_excel('{}/Chong_model_estimation.xlsx'.format(datapath))
-    output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path,
-                          bbx_noise=False)
-except:
-    output = evaluate_2model(anno_path, test_img_path, test_bbx_path, None, model, fig_path, criterion,
-                              bbx_noise=False, bbox_region=gazer_bbox)
-output.to_excel('{}/chong&transformer_epoch{}_{}_result.xlsx'.format(datapath,epoch), index=None)
-analyze_error(output, epoch, filename=datapath)
+output.to_excel('{}/model_eval_viu_outputs/transformer_TRAINhb_TEST{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
+analyze_error(output, epoch, path='{}/model_eval_viu_outputs'.format(outpath))
 
-#
-#
+
 # ## compare intact, floating heads and headless bodies
 # intact = pd.read_excel('{}/chong&transformer_epoch{}_intact_result.xlsx'.format(datapath,epoch))
 # fh = pd.read_excel('{}/chong&transformer_epoch{}_nb_result.xlsx'.format(datapath,epoch))

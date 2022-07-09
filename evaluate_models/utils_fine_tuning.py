@@ -223,10 +223,10 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
     plt.imshow(img)
 
-def evaluate_2model(anno_path, test_img_path, test_bbx_path, bbx_path, chong_est, model, fig_path, criterion,
-                    bbx_noise=False, gazer_bbox='hb'):
+def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
+                    bbx_noise=False, gazer_bbox='hb', savefigure=True):
     '''
-    @param anno_path: gazed location
+    @param anno_path:    output = evaluate_2model(anno_path, test_img_path, test_bbx_path, None, model, fig_path, criterion, gazer_bbox=gazer_bbox) gazed location
     @param test_img_path: test image path
     @param test_bbx_path: test bounding box path
     @param chong_est: chong model estimation excel
@@ -260,7 +260,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, bbx_path, chong_est
         try:
             chong_image_est = chong_est[chong_est['image'] == images_name[0]]
             if len(chong_image_est) == 0:
-                continue
+                pass
         except: pass
         ref_h, ref_w = 600, 800
 
@@ -278,7 +278,6 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, bbx_path, chong_est
 
         # for each image, loop through all the gaze-orienting individual
         for p in range(num_people):
-            PERSON_IDX.append(p + 1)
             try:
                 h_y, h_x, h_h, h_w = headbody['head{}'.format(p)]
                 b_y, b_x, b_h, b_w = headbody['body{}'.format(p)]
@@ -306,20 +305,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, bbx_path, chong_est
 
             # find corresponding gaze-orienting in the chong model estimation
             try:
-                ref_h_x1, ref_h_x2, ref_h_x3 = chong_image_est['h_x1'].iloc[0] / ref_w, \
-                                               chong_image_est['h_x2'].iloc[0] / ref_w, \
-                                               chong_image_est['h_x3'].iloc[0] / ref_w
-                ref_heads = [ref_h_x1, ref_h_x2, ref_h_x3]
-                ref_heads = [i for i in ref_heads if i > 0]
-                # print('{}_person{}'.format(images_name[0], p + 1))
-                # print(ref_heads)
-                ref_index = np.argmin(abs(np.array(ref_heads) - h_x)) + 1
-
-                chong_estx, chong_esty = chong_image_est['model_estx.{}'.format(ref_index)].iloc[0] / ref_w, \
-                                         chong_image_est['model_esty.{}'.format(ref_index)].iloc[0] / ref_h
-                chong_model_est = np.array([chong_estx, chong_esty])
-                # print('{}_person{} no chong model estimation'.format(images_name[0], p + 1))
-                # print(chong_model_est)
+                chong_model_est = np.array([chong_image_est['chong_est_x'].item(), chong_image_est['chong_est_y'].item()])
             except: pass
 
             gaze_pred = model(images, box_crops, masks)
@@ -339,16 +325,17 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, bbx_path, chong_est
             targetxy = np.array(targetgaze['boxes'][0])
 
             # visualization
-            os.makedirs(fig_path, exist_ok=True)
-            plt.clf()
-            outfig = plot_gaze_viudata(inputs, eyexy, targetxy, transxy)
-            plt.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
-            plt.clf()
-            plt.close('all')
+            if savefigure:
+                os.makedirs(fig_path, exist_ok=True)
+                outfig = plot_gaze_viudata(inputs, eyexy, targetxy, transxy)
+                plt.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
+                plt.close()
+
             IMAGES.append(images_name[0])
             GAZE_START.append(eyexy)
             PREDICT_GAZE.append(transxy)
             GT_GAZE.append(targetxy)
+            PERSON_IDX.append(p + 1)
             try: CHONG_PREDICT_GAZE.append(chong_model_est)
             except: pass
 
