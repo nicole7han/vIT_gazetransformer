@@ -30,11 +30,7 @@ def change_width(ax, new_value) :
         patch.set_x(patch.get_x() + diff * .5)
 
 def compute_angle(row, model_name):
-    img = plt.imread(row.image)
-    try:
-        h, w, _ = img.shape
-    except:
-        h, w = img.shape
+    h, w = 1080, 1920
     if model_name == 'centroid':
         vector_2 = [.5 - row['gaze_start_x'],.5 - row['gaze_start_y']]
     else:
@@ -48,11 +44,14 @@ def compute_angle(row, model_name):
     angle = np.arccos(dot_product)*180/np.pi #angle in degrees
     return angle
 
-def analyze_error(result_df, epoch, filename):
+def analyze_error(result_df, epoch, path):
+    if 'chong_eucli_error' not in result_df:
+        result_df['chong_eucli_error'] = np.sqrt( (result_df['gazed_x']-result_df['chong_est_x'])**2 + (result_df['gazed_y']-result_df['chong_est_y'])**2 )
+        result_df['chong_ang_error'] = result_df.apply(lambda row: compute_angle(row, 'chong'), axis=1)
+    if 'transformer_eucli_error' not in result_df:
+        result_df['transformer_eucli_error'] = np.sqrt( (result_df['gazed_x']-result_df['transformer_est_x'])**2 + (result_df['gazed_y']-result_df['transformer_est_y'])**2 )
+        result_df['transformer_ang_error'] = result_df.apply(lambda row: compute_angle(row, 'transformer'), axis=1)
 
-    # result_df['chong_eucli_error2'] = np.sqrt( (result_df['gazed_x']-result_df['chong_est_x'])**2 + (result_df['gazed_y']-result_df['chong_est_y'])**2 )
-    # result_df['chong_ang_error2'] = result_df.apply(lambda row: compute_angle(row, 'chong'), axis=1)
-    # result_df['transformer_eucli_error2'] = np.sqrt( (result_df['gazed_x']-result_df['transformer_est_x'])**2 + (result_df['gazed_y']-result_df['transformer_est_y'])**2 )
     result_df['centroid_ang_error'] = result_df.apply(lambda row: compute_angle(row, 'centroid'), axis=1)
     result_df['centroid_eucli_error'] = np.sqrt( (result_df['gazed_x']-.5)**2 + (result_df['gazed_y']-.5)**2 )
 
@@ -71,7 +70,7 @@ def analyze_error(result_df, epoch, filename):
     ax.set(xlabel='Euclidean Error (pixels)', ylabel='Probability')
     ax.spines['top'].set_color('white')
     ax.spines['right'].set_color('white')
-    ax.figure.savefig("{}/errors_epoch{}.png".format(filename,epoch),  bbox_inches='tight')
+    ax.figure.savefig("{}/errors_epoch{}.png".format(path,epoch),  bbox_inches='tight')
     plt.close()
 
     # plot euclidean error barplot
@@ -81,7 +80,7 @@ def analyze_error(result_df, epoch, filename):
     change_width(ax, .4)
     ax.spines['top'].set_color('white')
     ax.spines['right'].set_color('white')
-    ax.figure.savefig("{}/errors_epoch{}.png".format(filename,epoch),  bbox_inches='tight')
+    ax.figure.savefig("{}/errors_epoch{}.png".format(path,epoch),  bbox_inches='tight')
     plt.close()
 
     # plot angular error histogram
@@ -99,5 +98,5 @@ def analyze_error(result_df, epoch, filename):
     ax.set(xlabel='Angular Error (degree)', ylabel='Probability')
     ax.spines['top'].set_color('white')
     ax.spines['right'].set_color('white')
-    ax.figure.savefig("{}/ang_errors_epoch{}.png".format(filename,epoch),  bbox_inches='tight')
+    ax.figure.savefig("{}/ang_errors_epoch{}.png".format(path,epoch),  bbox_inches='tight')
     plt.close()
