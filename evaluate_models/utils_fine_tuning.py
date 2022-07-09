@@ -224,7 +224,7 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
     plt.imshow(img)
 
 def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                    bbx_noise=False, gazer_bbox='hb', savefigure=True):
+                    bbx_noise=False, gazer_bbox='hb', cond, savefigure=True):
     '''
     @param anno_path:    output = evaluate_2model(anno_path, test_img_path, test_bbx_path, None, model, fig_path, criterion, gazer_bbox=gazer_bbox) gazed location
     @param test_img_path: test image path
@@ -258,7 +258,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 
         # load chong model estimation for the image
         try:
-            chong_image_est = chong_est[chong_est['image'] == images_name[0]]
+            chong_image_est = chong_est[chong_est['image']==images_name[0]]
             if len(chong_image_est) == 0:
                 pass
         except: pass
@@ -271,7 +271,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
         try:
             headbody = bbx[
                 '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img/{}'.format(
-                    images_name[0])]
+                    images_name[0].replace('{}_'.format(cond),''))]
         except:
             continue
         num_people = int(len(headbody) / 2)
@@ -325,8 +325,8 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             targetxy = np.array(targetgaze['boxes'][0])
 
             # visualization
+            os.makedirs(fig_path, exist_ok=True)
             if savefigure:
-                os.makedirs(fig_path, exist_ok=True)
                 outfig = plot_gaze_viudata(inputs, eyexy, targetxy, transxy)
                 plt.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
                 plt.close()

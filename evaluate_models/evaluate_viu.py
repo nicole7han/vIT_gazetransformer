@@ -10,7 +10,7 @@ model = Gaze_Transformer()
 epoch=230
 checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
-# checkpoint['test_loss']
+plt.plot(checkpoint['test_loss'])
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
@@ -51,7 +51,7 @@ criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                          eos_coef=0.01, losses=losses)
 chong_est = pd.read_csv('{}/chong_estimation.csv'.format(outpath))
 transformer_est = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                    bbx_noise=False, gazer_bbox='hb')
+                    bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
 
 output.to_excel('{}/model_eval_viu_outputs/transformer_TRAINhb_TEST{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
 analyze_error(output, epoch, path='{}/model_eval_viu_outputs'.format(outpath))
