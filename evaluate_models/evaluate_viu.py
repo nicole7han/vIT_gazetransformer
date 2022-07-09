@@ -36,7 +36,7 @@ for cond in ['intact','nb','nh']:
         gazer_bbox = 'h'
     elif cond == 'nh':
         gazer_bbox = 'b'
-    fig_path='{}/model_eval_viu_outputs/transformer_TRAINh_TEST{}_epoch{}'.format(outpath,cond, epoch)
+    fig_path='{}/model_eval_viu_outputs/transformer_TRAIN_h_TEST_{}_epoch{}'.format(outpath,cond, epoch)
 
     matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
     weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
@@ -48,5 +48,5 @@ for cond in ['intact','nb','nh']:
     output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
                         bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
 
-    output.to_excel('{}/model_eval_viu_outputs/transformer_TRAINh_TEST{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
+    output.to_excel('{}/model_eval_viu_outputs/transformer_TRAIN_h_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
     analyze_error(output, epoch,'{}/model_eval_viu_outputs'.format(outpath))
