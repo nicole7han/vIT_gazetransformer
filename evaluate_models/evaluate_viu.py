@@ -9,8 +9,8 @@ basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
 epoch=230
 checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-plt.plot(checkpoint['train_loss'])
-plt.plot(checkpoint['test_loss'])
+# plt.plot(checkpoint['train_loss'])
+# plt.plot(checkpoint['test_loss'])
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
@@ -24,8 +24,9 @@ model.to(device)
 # output.to_excel('gaze_video_data/model_epoch{}_result.xlsx'.format(epoch))
 
 # evaluate both models' estimation on viu dataset
-datapath = "/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data"
-outpath = '/Users/nicolehan/Documents/Research/gazetransformer'
+datapath = "{}/gaze_video_data".format(basepath)
+outpath = '{}/model_eval_viu_outputs/TrainedFloatingHeads'.format(basepath)
+os.makedirs(outpath, exist_ok=True)
 anno_path = '{}/Video_Info.xlsx'.format(datapath)
 for cond in ['intact','nb','nh']:
     test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
@@ -36,7 +37,7 @@ for cond in ['intact','nb','nh']:
         gazer_bbox = 'h'
     elif cond == 'nh':
         gazer_bbox = 'b'
-    fig_path='{}/model_eval_viu_outputs/transformer_TRAIN_h_TEST_{}_epoch{}'.format(outpath,cond, epoch)
+    fig_path='{}/transformer_TEST_{}_epoch{}'.format(outpath,cond,epoch)
 
     matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
     weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
@@ -44,9 +45,14 @@ for cond in ['intact','nb','nh']:
     num_classes = 1
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                              eos_coef=0.01, losses=losses)
-    chong_est = pd.read_csv('{}/chong_estimation.csv'.format(outpath))
+    # chong model test and trained on just head
+    if cond == 'intact':
+        chong_est = pd.read_csv('{}/chong_estimation.csv'.format(basepath))
+    else: 
+        chong_est = None
+
     output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
                         bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
 
-    output.to_excel('{}/model_eval_viu_outputs/transformer_TRAIN_h_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
-    analyze_error(output, epoch,'{}/model_eval_viu_outputs'.format(outpath))
+    output.to_excel('{}/transformer_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
+    analyze_error(output, epoch, path=outpath, cond=cond)

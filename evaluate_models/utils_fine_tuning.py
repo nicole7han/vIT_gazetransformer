@@ -199,7 +199,7 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
     except:
         h, w = img.shape
 
-    fig, axs = plt.subplots(1, 1, figsize=(8, 8))
+    # fig, axs = plt.subplots(1, 1, figsize=(8, 8))
     # transformer gaze estimation (blue)
     gaze_pred_x, gaze_pred_y = int(transxy[0] * w), \
                                int(transxy[1]* h)
@@ -221,7 +221,7 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
 
     # groundtruth gaze (green)
     img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
-    plt.imshow(img)
+    return img
 
 def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
                     bbx_noise=False, gazer_bbox='hb', cond='intact', savefigure=True):
@@ -253,17 +253,17 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
     bbx = np.load('/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/bbx_viu_images.npy', allow_pickle=True)
     bbx = bbx[()]
     for images_name, images, targetgaze in test_dataiter:
+#        print(len(IMAGES))
         print(images_name)
         test_b_size = images.shape[0]
 
         # load chong model estimation for the image
         try:
-            chong_image_est = chong_est[chong_est['image']==images_name[0]]
+            chong_image_est = None
+            chong_image_est = chong_est[chong_est['image']==images_name[0].replace('{}_'.format(cond),'')]
             if len(chong_image_est) == 0:
                 pass
         except: pass
-        ref_h, ref_w = 600, 800
-
         # load image
         inputs = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
         h, w, _ = inputs.shape
@@ -282,10 +282,6 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                 h_y, h_x, h_h, h_w = headbody['head{}'.format(p)]
                 b_y, b_x, b_h, b_w = headbody['body{}'.format(p)]
                 hb_y, hb_x, hb_h, hb_w = min(h_y,b_y), min(h_x,b_x), max(h_h,b_h), max(h_w,b_w)
-                if bbx_noise:
-                    h_x += .01
-                    b_x += .01
-                    hb_x += .01
             except:
                 continue
 
@@ -305,11 +301,17 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 
             # find corresponding gaze-orienting in the chong model estimation
             try:
-                chong_model_est = np.array([chong_image_est['chong_est_x'].item(), chong_image_est['chong_est_y'].item()])
+                cenx, ceny = h_x+.5*h_w, h_y+.5*h_h
+                chong_model_est = chong_image_est[abs(chong_image_est['gaze_start_x']-cenx)<0.001]
+                if len(chong_model_est)>1:
+                    print(images_name[0])
+                    print('not unique!!')
+                    continue
+                chong_model_est = np.array([chong_model_est['chong_est_x'].item(), chong_model_est['chong_est_y'].item()])
+
             except: pass
 
             gaze_pred = model(images, box_crops, masks)
-            gaze_pred_logits = np.array(gaze_pred['pred_logits'].detach()) # bs x 100 x 2
             gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())  # bs x 100 x 4
 
             # loss
@@ -327,8 +329,11 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             # visualization
             os.makedirs(fig_path, exist_ok=True)
             if savefigure:
-                outfig = plot_gaze_viudata(inputs, eyexy, targetxy, transxy)
-                plt.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
+                fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+                img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
+                plt.imshow(plot_gaze_viudata(img, eyexy, targetxy, transxy))
+                fig.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
+                plt.clf()
                 plt.close()
 
             IMAGES.append(images_name[0])
@@ -342,24 +347,24 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
     try:
         output = pd.DataFrame({'image': IMAGES,
                                'gazer': PERSON_IDX,
-                               'gaze_start_y': np.array(GAZE_START)[:, 0],
-                               'gaze_start_x': np.array(GAZE_START)[:, 1],
-                               'gazed_y': np.array(GT_GAZE)[:, 0],
-                               'gazed_x': np.array(GT_GAZE)[:, 1],
-                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 0],
-                               'transformer_est_x': np.array(PREDICT_GAZE)[:, 1],
+                               'gaze_start_x': np.array(GAZE_START)[:, 0],
+                               'gaze_start_y': np.array(GAZE_START)[:, 1],
+                               'gazed_x': np.array(GT_GAZE)[:, 0],
+                               'gazed_y': np.array(GT_GAZE)[:, 1],
+                               'transformer_est_x': np.array(PREDICT_GAZE)[:, 0],
+                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 1],
                                'chong_est_x': np.array(CHONG_PREDICT_GAZE)[:, 0],
                                'chong_est_y': np.array(CHONG_PREDICT_GAZE)[:, 1],
                                })
     except:
         output = pd.DataFrame({'image': IMAGES,
                                'gazer': PERSON_IDX,
-                               'gaze_start_y': np.array(GAZE_START)[:, 0],
-                               'gaze_start_x': np.array(GAZE_START)[:, 1],
-                               'gazed_y': np.array(GT_GAZE)[:, 0],
-                               'gazed_x': np.array(GT_GAZE)[:, 1],
-                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 0],
-                               'transformer_est_x': np.array(PREDICT_GAZE)[:, 1],
+                               'gaze_start_x': np.array(GAZE_START)[:, 0],
+                               'gaze_start_y': np.array(GAZE_START)[:, 1],
+                               'gazed_x': np.array(GT_GAZE)[:, 0],
+                               'gazed_y': np.array(GT_GAZE)[:, 1],
+                               'transformer_est_x': np.array(PREDICT_GAZE)[:, 0],
+                               'transformer_est_y': np.array(PREDICT_GAZE)[:, 1],
                                })
     return output
 
