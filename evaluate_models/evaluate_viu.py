@@ -45,8 +45,8 @@ for cond in ['intact','nb','nh']:
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                              eos_coef=0.01, losses=losses)
     chong_est = pd.read_csv('{}/chong_estimation.csv'.format(outpath))
-    transformer_est = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
+    output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
                         bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
-    
+
     output.to_excel('{}/model_eval_viu_outputs/transformer_TRAINh_TEST{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
-    analyze_error(output, epoch, path='{}/model_eval_viu_outputs'.format(outpath))
+    analyze_error(output, epoch,'{}/model_eval_viu_outputs'.format(outpath))
