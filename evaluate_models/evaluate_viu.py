@@ -28,7 +28,6 @@ datapath = "/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data"
 outpath = '/Users/nicolehan/Documents/Research/gazetransformer'
 anno_path = '{}/Video_Info.xlsx'.format(datapath)
 for cond in ['intact','nb','nh']:
-    cond = 'nb'
     test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
     test_bbx_path = "{}/transformer_all_bbx".format(datapath)
     if cond == 'intact':
