@@ -27,26 +27,26 @@ model.to(device)
 datapath = "/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data"
 outpath = '/Users/nicolehan/Documents/Research/gazetransformer'
 anno_path = '{}/Video_Info.xlsx'.format(datapath)
-cond = 'nb'
-test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
-test_bbx_path = "{}/transformer_all_bbx".format(datapath)
-if cond == 'intact':
-    gazer_bbox = 'hb' # indicate what bounding box needs to feed into the model
-elif cond == 'nb':
-    gazer_bbox = 'h'
-elif cond == 'nh':
-    gazer_bbox = 'b'
-fig_path='{}/model_eval_viu_outputs/transformer_TRAINhb_TEST{}_epoch{}'.format(outpath,cond, epoch)
+for cond in ['intact','nb','nh']:
+    test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
+    test_bbx_path = "{}/transformer_all_bbx".format(datapath)
+    if cond == 'intact':
+        gazer_bbox = 'hb' # indicate what bounding box needs to feed into the model
+    elif cond == 'nb':
+        gazer_bbox = 'h'
+    elif cond == 'nh':
+        gazer_bbox = 'b'
+    fig_path='{}/model_eval_viu_outputs/transformer_TRAINh_TEST{}_epoch{}'.format(outpath,cond, epoch)
 
-matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
-weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
-losses = ['labels', 'boxes']
-num_classes = 1
-criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
-                         eos_coef=0.01, losses=losses)
-chong_est = pd.read_csv('{}/chong_estimation.csv'.format(outpath))
-transformer_est = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                    bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
-
-output.to_excel('{}/model_eval_viu_outputs/transformer_TRAINhb_TEST{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
-analyze_error(output, epoch, path='{}/model_eval_viu_outputs'.format(outpath))
+    matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
+    weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
+    losses = ['labels', 'boxes']
+    num_classes = 1
+    criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
+                             eos_coef=0.01, losses=losses)
+    chong_est = pd.read_csv('{}/chong_estimation.csv'.format(outpath))
+    transformer_est = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
+                        bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
+    
+    output.to_excel('{}/model_eval_viu_outputs/transformer_TRAINh_TEST{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
+    analyze_error(output, epoch, path='{}/model_eval_viu_outputs'.format(outpath))
