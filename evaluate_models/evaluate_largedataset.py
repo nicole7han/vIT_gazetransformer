@@ -276,8 +276,8 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=182
-checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
+epoch=230
+checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 plt.plot(checkpoint['test_loss'])
 loaded_dict = checkpoint['model_state_dict']
@@ -290,7 +290,7 @@ model.load_state_dict(adapted_dict)
 
 # evaluate both models' estimation on viu dataset
 datapath = '/Users/nicolehan/Documents/Research/gazetransformer'
-fig_path='{}/model_eval_outputs/epoch{}_headbody_outputs'.format(datapath,epoch)
+fig_path='{}/model_eval_outputs/epoch{}_head_outputs'.format(datapath,epoch)
 anno_path = "{}/data/annotations".format(datapath)
 train_img_path = "{}/data/train_s".format(datapath)
 train_bbx_path = "{}/data/train_bbox".format(datapath)
@@ -306,5 +306,5 @@ criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
 chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
 # output = evaluate_train(anno_path, train_img_path, train_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
 output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
-output.to_excel('{}/model_eval_outputs/transformer_headbody_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
-analyze_error(output, epoch, filename='{}/model_eval_outputs'.format(datapath))
+output.to_excel('{}/model_eval_outputs/transformer_head_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
+analyze_error(output, epoch, '{}/model_eval_outputs'.format(datapath))
