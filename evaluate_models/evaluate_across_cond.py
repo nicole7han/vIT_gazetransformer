@@ -47,6 +47,7 @@ cnn['model'] = 'CNN'
 plot_data = pd.concat([transformer, cnn])
 
 
+
 sns_setup_small(sns, (9,7))
 ax = sns.barplot(data = plot_data, x = 'model', y = 'Euclidean_error', hue='test_cond')
 ax.set(xlabel='', ylabel='Euclidean Error', title='Trained condition: Intact')
