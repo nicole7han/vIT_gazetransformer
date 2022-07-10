@@ -22,7 +22,7 @@ model.load_state_dict(adapted_dict)
 model.to(device)
 
 
-Trained_cond = 'Intact'
+Trained_cond = 'HeadBody'
 outpath = '{}/model_eval_viu_outputs/Trained{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
