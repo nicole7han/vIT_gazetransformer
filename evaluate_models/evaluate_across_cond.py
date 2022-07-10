@@ -62,11 +62,13 @@ cnn['model'] = 'cnn'
 
 
 plot_data = pd.concat([transformer, cnn])
+plot_data['test_cond'] = plot_data['test_cond'].astype('category')
+plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
 sns_setup_small(sns, (9,7))
 ax = sns.barplot(data = plot_data, x = 'model', y = 'Euclidean_error', hue='test_cond')
 ax.set(xlabel='', ylabel='Euclidean Error', title='Trained condition: {}'.format(Trained_cond))
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
-ax.legend(title='Test condition', frameon=False,loc='upper right', bbox_to_anchor=(1.25, 1.05))
+ax.legend(title='Test condition', frameon=False,loc='upper right', bbox_to_anchor=(1.35, 1.05))
 ax.figure.savefig("figures/{}_model_comparison.jpg".format(Trained_cond), bbox_inches='tight')
 plt.close()
