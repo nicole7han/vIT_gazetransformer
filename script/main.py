@@ -34,7 +34,7 @@ def main():
                         help='learning rate, (default:1e-4)')
     parser.add_argument('--lbd', type=float, default=.7,
                         help='map loss weight, (default:.7)')
-    parser.add_argument('--outpath', type=str, default='sscript_head_chong_detr/trainedmodels',
+    parser.add_argument('--outpath', type=str, default='script_head_chong_detr/trainedmodels',
                         help='output path')
     parser.add_argument('--train_img_path', type=str, default='train',
                         help='train path')
