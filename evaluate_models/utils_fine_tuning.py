@@ -246,14 +246,15 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
                                              int(targetxy[0] * w), \
                                              int(targetxy[1] * h)
     # transformer prediction (blue)
-    img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
+    cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
 
-    # chong prediction (yellow)
-    try: img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_pred_x, chong_pred_y), (255, 255, 0), 2)
+    # chong prediction (orange)
+    try: cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_pred_x, chong_pred_y), (255, 255, 0), 2)
     except: pass
 
     # groundtruth gaze (green)
-    img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
+    cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
+
     return img
 
 def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
@@ -318,12 +319,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             except:
                 continue
 
-            if gazer_bbox == 'h':
-                bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
-            elif gazer_bbox == 'b':
-                bbx_y, bbx_x, bbx_h, bbx_w = b_y, b_x, b_h, b_w
-            elif gazer_bbox == 'hb':
-                bbx_y, bbx_x, bbx_h, bbx_w = hb_y, hb_x, hb_h, hb_w
+            bbx_y, bbx_x, bbx_h, bbx_w = hb_y, hb_x, hb_h, hb_w
 
             # load head and body masks + crops
             masks = torch.zeros([224, 224])
@@ -362,11 +358,16 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             # visualization
             os.makedirs(fig_path, exist_ok=True)
             if savefigure:
-                fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+                plt.close()
+                fig = plt.figure()
+                plt.axis('off')
+
                 img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
-                plt.imshow(plot_gaze_viudata(img, eyexy, targetxy, transxy))
+                img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
+                plt.imshow(img)
+                plt.show(block=False)
+                plt.pause(0.1)
                 fig.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
-                plt.clf()
                 plt.close()
 
             IMAGES.append(images_name[0])
