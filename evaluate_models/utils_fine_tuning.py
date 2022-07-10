@@ -15,9 +15,44 @@ from script.model import *
 from script.utils import *
 
 
-# from model_patches_training.train_model_imageclips import *
-def change_width(ax, new_value) :
-    for patch in ax.patches :
+def sns_setup(sns, fig_size=(10, 8)):
+    sns.set(rc={'figure.figsize': fig_size})
+    sns.set_context("paper", rc={"font.size": 30, "axes.titlesize": 40, "axes.labelsize": 30,
+                                 "legend.title_fontsize": 30, "legend.fontsize": 20,
+                                 "xtick.labelsize": 30, "ytick.labelsize": 30,
+                                 "figure.titlesize": 20,
+                                 })
+
+    sns.set_style("white")
+    sns.set_palette("deep")
+    return
+
+
+def sns_setup_wide(sns):
+    sns.set(rc={'figure.figsize': (12, 7)})
+    sns.set_context("paper", rc={"font.size": 35, "axes.titlesize": 40, "axes.labelsize": 30,
+                                 "legend.title_fontsize": 30, "legend.fontsize": 30,
+                                 "xtick.labelsize": 30, "ytick.labelsize": 30,
+                                 "legend.frameon": False, "figure.titlesize": 20,
+                                 })
+
+    sns.set_style("white")
+    sns.set_palette("deep")
+    return
+
+
+def sns_setup_small(sns, fig_size=(12, 8)):
+    sns.set(rc={'figure.figsize': fig_size})
+    sns.set_context("paper", rc={"font.size": 20, "axes.titlesize": 20, "axes.labelsize": 20,
+                                 "legend.title_fontsize": 20, "legend.fontsize": 15,
+                                 "xtick.labelsize": 20, "ytick.labelsize": 20})
+    sns.set_style("white")
+    sns.set_palette("deep")
+    return
+
+
+def change_width(ax, new_value):
+    for patch in ax.patches:
         current_width = patch.get_width()
         diff = current_width - new_value
 
@@ -25,8 +60,6 @@ def change_width(ax, new_value) :
         patch.set_width(new_value)
         # we recenter the bar
         patch.set_x(patch.get_x() + diff * .5)
-
-
 def transform(x):
     trans = transforms.Compose([
         transforms.Resize([224, 224]),
@@ -213,14 +246,15 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
                                              int(targetxy[0] * w), \
                                              int(targetxy[1] * h)
     # transformer prediction (blue)
-    img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
+    cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
 
-    # chong prediction (yellow)
-    try: img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_pred_x, chong_pred_y), (255, 255, 0), 2)
+    # chong prediction (orange)
+    try: cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_pred_x, chong_pred_y), (255, 255, 0), 2)
     except: pass
 
     # groundtruth gaze (green)
-    img = cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
+    cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
+
     return img
 
 def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
@@ -285,12 +319,8 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             except:
                 continue
 
-            if gazer_bbox == 'h':
-                bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
-            elif gazer_bbox == 'b':
-                bbx_y, bbx_x, bbx_h, bbx_w = b_y, b_x, b_h, b_w
-            elif gazer_bbox == 'hb':
-                bbx_y, bbx_x, bbx_h, bbx_w = hb_y, hb_x, hb_h, hb_w
+            # model trained on heads
+            bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
 
             # load head and body masks + crops
             masks = torch.zeros([224, 224])
@@ -329,11 +359,16 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             # visualization
             os.makedirs(fig_path, exist_ok=True)
             if savefigure:
-                fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+                plt.close()
+                fig = plt.figure()
+                plt.axis('off')
+
                 img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
-                plt.imshow(plot_gaze_viudata(img, eyexy, targetxy, transxy))
+                img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
+                plt.imshow(img)
+                plt.show(block=False)
+                plt.pause(0.1)
                 fig.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
-                plt.clf()
                 plt.close()
 
             IMAGES.append(images_name[0])
