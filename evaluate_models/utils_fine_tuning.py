@@ -15,9 +15,44 @@ from script.model import *
 from script.utils import *
 
 
-# from model_patches_training.train_model_imageclips import *
-def change_width(ax, new_value) :
-    for patch in ax.patches :
+def sns_setup(sns, fig_size=(10, 8)):
+    sns.set(rc={'figure.figsize': fig_size})
+    sns.set_context("paper", rc={"font.size": 30, "axes.titlesize": 40, "axes.labelsize": 30,
+                                 "legend.title_fontsize": 30, "legend.fontsize": 20,
+                                 "xtick.labelsize": 30, "ytick.labelsize": 30,
+                                 "figure.titlesize": 20,
+                                 })
+
+    sns.set_style("white")
+    sns.set_palette("deep")
+    return
+
+
+def sns_setup_wide(sns):
+    sns.set(rc={'figure.figsize': (12, 7)})
+    sns.set_context("paper", rc={"font.size": 35, "axes.titlesize": 40, "axes.labelsize": 30,
+                                 "legend.title_fontsize": 30, "legend.fontsize": 30,
+                                 "xtick.labelsize": 30, "ytick.labelsize": 30,
+                                 "legend.frameon": False, "figure.titlesize": 20,
+                                 })
+
+    sns.set_style("white")
+    sns.set_palette("deep")
+    return
+
+
+def sns_setup_small(sns, fig_size=(12, 8)):
+    sns.set(rc={'figure.figsize': fig_size})
+    sns.set_context("paper", rc={"font.size": 20, "axes.titlesize": 20, "axes.labelsize": 20,
+                                 "legend.title_fontsize": 20, "legend.fontsize": 15,
+                                 "xtick.labelsize": 20, "ytick.labelsize": 20})
+    sns.set_style("white")
+    sns.set_palette("deep")
+    return
+
+
+def change_width(ax, new_value):
+    for patch in ax.patches:
         current_width = patch.get_width()
         diff = current_width - new_value
 
@@ -25,8 +60,6 @@ def change_width(ax, new_value) :
         patch.set_width(new_value)
         # we recenter the bar
         patch.set_x(patch.get_x() + diff * .5)
-
-
 def transform(x):
     trans = transforms.Compose([
         transforms.Resize([224, 224]),
