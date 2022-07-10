@@ -276,7 +276,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=230
+epoch=260
 checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 plt.plot(checkpoint['test_loss'])
@@ -307,4 +307,4 @@ chong_est = pd.read_excel('{}/data/Chong_estimation_test.xlsx'.format(datapath))
 # output = evaluate_train(anno_path, train_img_path, train_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
 output = evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion, model, fig_path, savefigure=True)
 output.to_excel('{}/model_eval_outputs/transformer_head_epoch{}_result.xlsx'.format(datapath, epoch), index=None)
-analyze_error(output, epoch, '{}/model_eval_outputs'.format(datapath))
+analyze_error(output, epoch, '{}/model_eval_outputs'.format(datapath), cond='head')
