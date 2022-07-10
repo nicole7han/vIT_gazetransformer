@@ -371,10 +371,9 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                 img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
                 plt.imshow(img)
                 ax.add_patch(rect)
-                plt.show(block=False)
-                plt.pause(0.1)
+                # plt.show(block=False)
+                # plt.pause(0.1)
                 fig.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
-                plt.close()
 
             IMAGES.append(images_name[0])
             GAZE_START.append(eyexy)
