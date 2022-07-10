@@ -318,7 +318,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                 hb_y, hb_x, hb_h, hb_w = min(h_y,b_y), min(h_x,b_x), max(h_h,b_h), max(h_w,b_w)
             except:
                 continue
-
+            # model trained on head + body
             bbx_y, bbx_x, bbx_h, bbx_w = hb_y, hb_x, hb_h, hb_w
 
             # load head and body masks + crops
