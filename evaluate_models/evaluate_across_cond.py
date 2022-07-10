@@ -9,7 +9,7 @@ setpallet = sns.color_palette("Set2")
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=182
+epoch=40
 checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 # plt.plot(checkpoint['train_loss'])
 # plt.plot(checkpoint['test_loss'])
@@ -24,8 +24,10 @@ model.to(device)
 
 Trained_cond = 'Intact'
 outpath = '{}/model_eval_viu_outputs/Trained{}'.format(basepath,Trained_cond)
+
+'''transformer results'''
 results = glob.glob('{}/*.xlsx'.format(outpath))
-allresult = pd.DataFrame()
+transformer = pd.DataFrame()
 for f in results:
     df = pd.read_excel(f)
     if 'TEST_intact' in f: Test_cond = 'intact'
@@ -33,24 +35,38 @@ for f in results:
     elif 'TEST_nh' in f: Test_cond = 'headless bodies'
 
     df['test_cond'] = Test_cond
-    allresult = pd.concat([allresult,df])
-
-allresult['transformer_Euclidean_error'] = np.sqrt( (allresult['gazed_x']-allresult['transformer_est_x'])**2 + (allresult['gazed_y']-allresult['transformer_est_y'])**2 )
-allresult['CNN_Euclidean_error'] = np.sqrt( (allresult['gazed_x']-allresult['chong_est_x'])**2 + (allresult['gazed_y']-allresult['chong_est_y'])**2 )
-transformer = allresult[['test_cond','transformer_Euclidean_error']]
-transformer.columns = ['test_cond','Euclidean_error']
+    transformer = pd.concat([transformer,df])
+image_info = transformer[['image','gazed_x','gazed_y']].drop_duplicates()
+transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformer_est_x'])**2 + (transformer['gazed_y']-transformer['transformer_est_y'])**2 )
+transformer = transformer[['test_cond','Euclidean_error']]
 transformer['model'] = 'transformer'
-cnn = allresult[['test_cond','CNN_Euclidean_error']]
-cnn = cnn.dropna()
-cnn.columns = ['test_cond','Euclidean_error']
-cnn['model'] = 'CNN'
+
+'''CNN results'''
+results = glob.glob('{}/*.csv'.format(basepath))
+cnn = pd.DataFrame()
+for f in results:
+    df = pd.read_csv(f)
+    if 'intact' in f: Test_cond = 'intact'
+    elif 'nb' in f: Test_cond = 'floating heads'
+    elif 'nh' in f: Test_cond = 'headless bodies'
+
+    df['test_cond'] = Test_cond
+    cnn = pd.concat([cnn,df])
+
+cnn = cnn.merge(image_info, on=['image'])
+cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
+cnn = cnn[['test_cond','Euclidean_error']]
+cnn['model'] = 'cnn'
+
+
+
+
 plot_data = pd.concat([transformer, cnn])
-
-
-
 sns_setup_small(sns, (9,7))
 ax = sns.barplot(data = plot_data, x = 'model', y = 'Euclidean_error', hue='test_cond')
-ax.set(xlabel='', ylabel='Euclidean Error', title='Trained condition: Intact')
+ax.set(xlabel='', ylabel='Euclidean Error', title='Trained condition: {}'.format(Trained_cond))
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
-ax.legend(title='Test condition', frameon=False,loc='upper right', bbox_to_anchor=(1.05, 1.05))
+ax.legend(title='Test condition', frameon=False,loc='upper right', bbox_to_anchor=(1.25, 1.05))
+ax.figure.savefig("figures/{}_model_comparison.jpg".format(Trained_cond), bbox_inches='tight')
+plt.close()
