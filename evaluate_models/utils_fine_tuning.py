@@ -37,7 +37,7 @@ def sns_setup_wide(sns):
                                  })
 
     sns.set_style("white")
-    sns.set_palette("deep")
+    sns.set_palette("Set2")
     return
 
 
@@ -47,7 +47,7 @@ def sns_setup_small(sns, fig_size=(12, 8)):
                                  "legend.title_fontsize": 20, "legend.fontsize": 15,
                                  "xtick.labelsize": 20, "ytick.labelsize": 20})
     sns.set_style("white")
-    sns.set_palette("deep")
+    sns.set_palette("Set2")
     return
 
 
@@ -319,12 +319,8 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             except:
                 continue
 
-            if gazer_bbox == 'h':
-                bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
-            elif gazer_bbox == 'b':
-                bbx_y, bbx_x, bbx_h, bbx_w = b_y, b_x, b_h, b_w
-            elif gazer_bbox == 'hb':
-                bbx_y, bbx_x, bbx_h, bbx_w = hb_y, hb_x, hb_h, hb_w
+            # model trained on heads
+            bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
 
             # load head and body masks + crops
             masks = torch.zeros([224, 224])
@@ -366,12 +362,17 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                 plt.close()
                 fig = plt.figure()
                 plt.axis('off')
-
+                ax = plt.gca()
+                # left, bottom, width, height
+                rect = patches.Rectangle((int(bbx_x*w), int((bbx_y)*h)),
+                                         int(bbx_w*w), int(bbx_h*h), linewidth=2, edgecolor=(0, 1, 0), facecolor='none')
                 img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
+                # img = Image.fromarray(img).resize((224,224))
                 img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
                 plt.imshow(img)
-                plt.show(block=False)
-                plt.pause(0.1)
+                ax.add_patch(rect)
+                # plt.show(block=False)
+                # plt.pause(0.1)
                 fig.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
                 plt.close()
 

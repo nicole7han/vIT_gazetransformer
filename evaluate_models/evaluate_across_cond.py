@@ -8,22 +8,22 @@ from script.matcher import *
 setpallet = sns.color_palette("Set2")
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
-model = Gaze_Transformer()
+# model = Gaze_Transformer()
 epoch=230
-checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-# plt.plot(checkpoint['train_loss'])
-# plt.plot(checkpoint['test_loss'])
-loaded_dict = checkpoint['model_state_dict']
-prefix = 'module.'
-n_clip = len(prefix)
-adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
-                if k.startswith(prefix)}
-model.load_state_dict(adapted_dict)
-model.to(device)
+# checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
+# # plt.plot(checkpoint['train_loss'])
+# # plt.plot(checkpoint['test_loss'])
+# loaded_dict = checkpoint['model_state_dict']
+# prefix = 'module.'
+# n_clip = len(prefix)
+# adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
+#                 if k.startswith(prefix)}
+# model.load_state_dict(adapted_dict)
+# model.to(device)
 
 
 Trained_cond = 'Head'
-outpath = '{}/model_eval_viu_outputs/Trained{}'.format(basepath,Trained_cond)
+outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
 results = glob.glob('{}/*.xlsx'.format(outpath))
@@ -70,5 +70,5 @@ ax.set(xlabel='', ylabel='Euclidean Error', title='Trained condition: {}'.format
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 ax.legend(title='Test condition', frameon=False,loc='upper right', bbox_to_anchor=(1.35, 1.05))
-ax.figure.savefig("figures/{}_model_comparison.jpg".format(Trained_cond), bbox_inches='tight')
+ax.figure.savefig("figures/{}_{}_model_comparison.jpg".format(Trained_cond, epoch), bbox_inches='tight')
 plt.close()
