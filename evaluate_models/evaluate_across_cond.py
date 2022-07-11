@@ -23,7 +23,7 @@ model.to(device)
 
 
 Trained_cond = 'Body'
-outpath = '{}/model_eval_viu_outputs/Trained{}'.format(basepath,Trained_cond)
+outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
 results = glob.glob('{}/*.xlsx'.format(outpath))
@@ -70,5 +70,5 @@ ax.set(xlabel='', ylabel='Euclidean Error', title='Trained condition: {}'.format
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 ax.legend(title='Test condition', frameon=False,loc='upper right', bbox_to_anchor=(1.35, 1.05))
-ax.figure.savefig("figures/{}_model_comparison.jpg".format(Trained_cond), bbox_inches='tight')
+ax.figure.savefig("figures/{}_{}_model_comparison.jpg".format(Trained_cond, epoch), bbox_inches='tight')
 plt.close()
