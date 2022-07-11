@@ -23,7 +23,7 @@ model.to(device)
 
 
 Trained_cond = 'HeadBody'
-outpath = '{}/model_eval_viu_outputs/Trained{}'.format(basepath,Trained_cond)
+outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
 results = glob.glob('{}/*{}.xlsx'.format(outpath,epoch))

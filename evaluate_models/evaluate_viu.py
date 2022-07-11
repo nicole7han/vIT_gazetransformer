@@ -7,7 +7,7 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=40
+epoch=70
 checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 # plt.plot(checkpoint['train_loss'])
 # plt.plot(checkpoint['test_loss'])
@@ -47,7 +47,7 @@ for cond in ['intact','nb','nh']: #
                              eos_coef=0.01, losses=losses)
     # chong model test and trained on just head
     if cond == 'intact':
-        chong_est = pd.read_csv('{}/chong_estimation.csv'.format(basepath))
+        chong_est = pd.read_csv('{}/chong_estimation_intact.csv'.format(basepath))
     else: 
         chong_est = None
 
