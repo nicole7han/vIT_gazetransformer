@@ -37,7 +37,7 @@ def sns_setup_wide(sns):
                                  })
 
     sns.set_style("white")
-    sns.set_palette("deep")
+    sns.set_palette("Set2")
     return
 
 
@@ -47,7 +47,7 @@ def sns_setup_small(sns, fig_size=(12, 8)):
                                  "legend.title_fontsize": 20, "legend.fontsize": 15,
                                  "xtick.labelsize": 20, "ytick.labelsize": 20})
     sns.set_style("white")
-    sns.set_palette("deep")
+    sns.set_palette("Set2")
     return
 
 
