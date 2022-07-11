@@ -189,8 +189,9 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         pretrained_dict = pretrained_dict['model']
         model_dict.update(pretrained_dict)
         self.targetatten.load_state_dict(model_dict)
-        for param in self.targetatten.parameters():  # freeze all parameters
-            param.requires_grad = False
+        for name,param in self.targetatten.named_parameters():  # freeze all parameters except face crop region
+            if 'face' not in name:
+                param.requires_grad = False
         self.conv = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0, bias=False) #(UPDATING)
         self.bn = nn.BatchNorm2d(256)
         self.relu = nn.ReLU(inplace=True)
