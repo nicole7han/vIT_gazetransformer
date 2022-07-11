@@ -9,7 +9,7 @@ setpallet = sns.color_palette("Set2")
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=40
+epoch=70
 checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 # plt.plot(checkpoint['train_loss'])
 # plt.plot(checkpoint['test_loss'])
@@ -26,7 +26,7 @@ Trained_cond = 'HeadBody'
 outpath = '{}/model_eval_viu_outputs/Trained{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
-results = glob.glob('{}/*.xlsx'.format(outpath))
+results = glob.glob('{}/*{}.xlsx'.format(outpath,epoch))
 transformer = pd.DataFrame()
 for f in results:
     df = pd.read_excel(f)
