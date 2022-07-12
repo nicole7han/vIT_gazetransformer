@@ -5,25 +5,25 @@ from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 from script.matcher import *
 
+def rescale_bboxes(out_bbox, size):
+    img_w, img_h = size
+    b = box_cxcywh_to_xyxy(out_bbox)
+    b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
+    return b
+
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch= 70
-checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-plt.plot(checkpoint['train_loss'])
-plt.plot(checkpoint['test_loss'])
-loaded_dict = checkpoint['model_state_dict']
-prefix = 'module.'
-n_clip = len(prefix)
-adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
-                if k.startswith(prefix)}
-model.load_state_dict(adapted_dict)
-
-
-def get_activation(name):
-    def hook(model, input, output):
-        activation[name] = output
-    return hook
+# epoch= 70
+# checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
+# plt.plot(checkpoint['train_loss'])
+# plt.plot(checkpoint['test_loss'])
+# loaded_dict = checkpoint['model_state_dict']
+# prefix = 'module.'
+# n_clip = len(prefix)
+# adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
+#                 if k.startswith(prefix)}
+# model.load_state_dict(adapted_dict)
 
 ann_path = "{}/data/annotations".format(basepath)
 train_img_path = "{}/data/train_s".format(basepath)
@@ -56,7 +56,6 @@ hooks = [
         lambda self, input, output: dec_attn_weights.append(output[1])
     ),
 ]
-
 # propagate through the model
 outputs = model(images, h_crops, masks)
 for hook in hooks:
@@ -65,51 +64,69 @@ conv_features = conv_features[0]
 enc_attn_weights = enc_attn_weights[0] # bs x 49 x 49
 dec_attn_weights = dec_attn_weights[0] # bs x 100 x 49
 
+# keep only predictions with 0.6+ confidence
+probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
+keep = probas.max(-1).values > 0.6
 
+'''  Visualize Decoder Attention  '''
+# get the feature map shape
+h, w = conv_features['0'].tensors.shape[-2:]
 
-
-
-fig, axs = plt.subplots(ncols=len(bboxes_scaled), nrows=2, figsize=(22, 7))
+CLASSES = ['gazed','N/A']
+COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
+          [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
 colors = COLORS * 100
-for idx, ax_i, (xmin, ymin, xmax, ymax) in zip(keep.nonzero(), axs.T, bboxes_scaled):
-   ax = ax_i[0]
-   ax.imshow(dec_attn_weights[0, idx].view(h, w))
-   ax.axis('off')
-   ax.set_title(f'query id: {idx.item()}')
-   ax = ax_i[1]
-   ax.imshow(im)
-   ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
-                              fill=False, color='blue', linewidth=3))
-   ax.axis('off')
-   ax.set_title(CLASSES[probas[idx].argmax()])
+fig, axs = plt.subplots(ncols=int(keep.sum()), nrows=2, figsize=(7, 7), squeeze=False)
+for idx, ax_i in zip(keep.nonzero(), axs.T):
+    ax = ax_i[0]
+    ax.imshow(dec_attn_weights[0, idx].view(h, w).detach().numpy())
+    ax.axis('off')
+    ax.set_title('decoder attention weights')
+    ax = ax_i[1]
+    ax.imshow(images[0,0,::])
+    ax.axis('off')
+    # ax.set_title(CLASSES[probas[idx].argmax()])
 fig.tight_layout()
 
-''' visualize encoder attention map'''
+
+''' Visualize Encoder Attention '''
+# get the HxW shape of the feature maps of the CNN
+f_map = conv_features['0']
+shape = f_map.tensors.shape[-2:]
+# and reshape the self-attention to a more interpretable shape
+sattn = enc_attn_weights[0].reshape(shape + shape).detach().numpy()
+print("Reshaped self-attention:", sattn.shape)
+
 # downsampling factor for the CNN, is 32 for DETR and 16 for DETR DC5
-fact = 16
-eyex, eyey = eye[0], eye[1]
-idxs = [(int(eyey.item() * 224), int(eyex.item() * 224))]  # the gazer's head position
-# create the canvas
+fact = 32
+
+# let's select 4 reference points for visualization
+idxs = [(100, 100), (50, 50), (200, 200), (100, 150),]
+
+# here we create the canvas
 fig = plt.figure(constrained_layout=True, figsize=(25 * 0.7, 8.5 * 0.7))
-# add one plot per reference point
-gs = fig.add_gridspec(1, 3)
+# and we add one plot per reference point
+gs = fig.add_gridspec(2, 4)
 axs = [
     fig.add_subplot(gs[0, 0]),
+    fig.add_subplot(gs[1, 0]),
+    fig.add_subplot(gs[0, -1]),
+    fig.add_subplot(gs[1, -1]),
 ]
 # for each one of the reference points, let's plot the self-attention
+# for that point
 for idx_o, ax in zip(idxs, axs):
     idx = (idx_o[0] // fact, idx_o[1] // fact)
-    ax.imshow(sattn[..., idx[0], idx[1]].detach().numpy(), cmap='cividis', interpolation='nearest')
+    ax.imshow(sattn[..., idx[0], idx[1]], cmap='cividis', interpolation='nearest')
     ax.axis('off')
     ax.set_title(f'self-attention{idx_o}')
 
 # and now let's add the central image, with the reference points as red circles
 fcenter_ax = fig.add_subplot(gs[:, 1:-1])
-fcenter_ax.imshow(images[img_idx, 0, ::].detach().numpy())
+fcenter_ax.imshow(images[0,0,::])
 for (y, x) in idxs:
-    scale = images[0, 0, ::].shape[-1] / images[0, 0, ::].shape[-2]
-    x = ((x // fact + 0.5)) * fact
-    y = ((y // fact + 0.5)) * fact
-    fcenter_ax.add_patch(plt.Circle((x * scale, y * scale), fact // 2, color='r', alpha=0.5))
+    scale = 1 #im.height / img.shape[-2]
+    x = ((x // fact) + 0.5) * fact
+    y = ((y // fact) + 0.5) * fact
+    fcenter_ax.add_patch(plt.Circle((x * scale, y * scale), fact // 2, color='r'))
     fcenter_ax.axis('off')
-plt.savefig('{}/{}'.format(attention_path, os.path.split(images_name[0])[-1]))
