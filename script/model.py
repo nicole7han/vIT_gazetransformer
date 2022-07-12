@@ -265,7 +265,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         attn_applied_scene_feat = torch.mul(attn_weights,
                                             scene_feat)  # (N, 1, 7, 7) # applying attention weights on scene feat
 
-        ''' weighted scene feature + '''
+        ''' weighted scene feature + gazer feat '''
         scene_gazer_feat = torch.cat((attn_applied_scene_feat, gazer_feat), 1) #torch.Size([bs, 2048, 7, 7])
 
         encoding = self.targetatten.compress_conv1(scene_gazer_feat) # conv from 2048 -> 256 to feed to vit encdoer
@@ -275,8 +275,6 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         encoding = self.bn(encoding)
         encoding = self.relu(encoding) # torch.Size([bs, 256, 7, 7])
         memory = encoding.flatten(2).permute(2,0,1) # torch.Size([49, bs, 256])
-
-
 
         '''image vit feature from DETR'''
         # activation = {}
@@ -295,6 +293,8 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         # memory = img_vit_out + mask_vit_out # final encoder output
 
         ''' encoder output + query embedding -> decoder '''
+        memory = self.encoder(memory) # torch.Size([49, bs, 256])
+
         _, bs, _ = memory.shape # 49 x bs x 256
         query_embed = self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1) #  1 x bs x 256
         tgt = torch.zeros_like(query_embed).to(device) # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])

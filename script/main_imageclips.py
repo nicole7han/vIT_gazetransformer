@@ -192,36 +192,36 @@ for images_name, images, flips, h_crops, masks, eye, targetgaze, randpos in trai
     #    ax.set_title(CLASSES[probas[idx].argmax()])
     #fig.tight_layout()
     
-    
-    ''' visualize encoder attention map'''
-    # downsampling factor for the CNN, is 32 for DETR and 16 for DETR DC5
-    fact = 16
-    eyex, eyey = eye[0], eye[1]
-    idxs = [(int(eyey.item()*224), int(eyex.item()*224))] # the gazer's head position
-    # create the canvas
-    fig = plt.figure(constrained_layout=True, figsize=(25 * 0.7, 8.5 * 0.7))
-    # add one plot per reference point
-    gs = fig.add_gridspec(1, 3)
-    axs = [
-        fig.add_subplot(gs[0, 0]),
-    ]
-    # for each one of the reference points, let's plot the self-attention
-    for idx_o, ax in zip(idxs, axs):
-        idx = (idx_o[0] // fact, idx_o[1] // fact)
-        ax.imshow(sattn[..., idx[0], idx[1]].detach().numpy(), cmap='cividis', interpolation='nearest')
-        ax.axis('off')
-        ax.set_title(f'self-attention{idx_o}')
-    
-    # and now let's add the central image, with the reference points as red circles
-    fcenter_ax = fig.add_subplot(gs[:, 1:-1])
-    fcenter_ax.imshow(images[img_idx, 0, ::].detach().numpy())
-    for (y, x) in idxs:
-        scale = images[0, 0, ::].shape[-1] / images[0, 0, ::].shape[-2]
-        x = ((x // fact+0.5)) * fact
-        y = ((y // fact+0.5)) * fact
-        fcenter_ax.add_patch(plt.Circle((x* scale, y* scale), fact//2, color='r', alpha=0.5))
-        fcenter_ax.axis('off')
-    plt.savefig('{}/{}'.format(attention_path,os.path.split(images_name[0])[-1]))
+    #
+    # ''' visualize encoder attention map'''
+    # # downsampling factor for the CNN, is 32 for DETR and 16 for DETR DC5
+    # fact = 16
+    # eyex, eyey = eye[0], eye[1]
+    # idxs = [(int(eyey.item()*224), int(eyex.item()*224))] # the gazer's head position
+    # # create the canvas
+    # fig = plt.figure(constrained_layout=True, figsize=(25 * 0.7, 8.5 * 0.7))
+    # # add one plot per reference point
+    # gs = fig.add_gridspec(1, 3)
+    # axs = [
+    #     fig.add_subplot(gs[0, 0]),
+    # ]
+    # # for each one of the reference points, let's plot the self-attention
+    # for idx_o, ax in zip(idxs, axs):
+    #     idx = (idx_o[0] // fact, idx_o[1] // fact)
+    #     ax.imshow(sattn[..., idx[0], idx[1]].detach().numpy(), cmap='cividis', interpolation='nearest')
+    #     ax.axis('off')
+    #     ax.set_title(f'self-attention{idx_o}')
+    #
+    # # and now let's add the central image, with the reference points as red circles
+    # fcenter_ax = fig.add_subplot(gs[:, 1:-1])
+    # fcenter_ax.imshow(images[img_idx, 0, ::].detach().numpy())
+    # for (y, x) in idxs:
+    #     scale = images[0, 0, ::].shape[-1] / images[0, 0, ::].shape[-2]
+    #     x = ((x // fact+0.5)) * fact
+    #     y = ((y // fact+0.5)) * fact
+    #     fcenter_ax.add_patch(plt.Circle((x* scale, y* scale), fact//2, color='r', alpha=0.5))
+    #     fcenter_ax.axis('off')
+    # plt.savefig('{}/{}'.format(attention_path,os.path.split(images_name[0])[-1]))
 
 
 
