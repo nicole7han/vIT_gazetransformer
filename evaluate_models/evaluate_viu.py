@@ -7,10 +7,10 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-epoch=230
+epoch=178
 checkpoint = torch.load('trainedmodels/model_body_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-# plt.plot(checkpoint['train_loss'])
-# plt.plot(checkpoint['test_loss'])
+plt.plot(checkpoint['train_loss'])
+plt.plot(checkpoint['test_loss'])
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
@@ -25,7 +25,7 @@ model.to(device)
 
 # evaluate both models' estimation on viu dataset
 datapath = "{}/gaze_video_data".format(basepath)
-outpath = '{}/model_eval_viu_outputs/TrainedBody'.format(basepath)
+outpath = '{}/model_eval_viu_outputs/Trained_Body'.format(basepath)
 os.makedirs(outpath, exist_ok=True)
 anno_path = '{}/Video_Info.xlsx'.format(datapath)
 for cond in ['intact','nb','nh']:
@@ -47,7 +47,7 @@ for cond in ['intact','nb','nh']:
                              eos_coef=0.01, losses=losses)
     # chong model test and trained on just head
     if cond == 'intact':
-        chong_est = pd.read_csv('{}/chong_estimation.csv'.format(basepath))
+        chong_est = pd.read_csv('{}/chong_estimation_intact.csv'.format(basepath))
     else: 
         chong_est = None
 
