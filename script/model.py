@@ -294,6 +294,8 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         # memory = img_vit_out + mask_vit_out # final encoder output
 
         ''' encoder output + query embedding -> decoder '''
+        memory = self.encoder(memory) # torch.Size([49, bs, 256])
+
         _, bs, _ = memory.shape # 49 x bs x 256
         query_embed = self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1) #  1 x bs x 256
         tgt = torch.zeros_like(query_embed).to(device) # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])
