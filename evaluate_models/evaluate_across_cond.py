@@ -9,7 +9,7 @@ setpallet = sns.color_palette("Set2")
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 # model = Gaze_Transformer()
-epoch=230
+epoch=108
 # checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 # # plt.plot(checkpoint['train_loss'])
 # # plt.plot(checkpoint['test_loss'])
