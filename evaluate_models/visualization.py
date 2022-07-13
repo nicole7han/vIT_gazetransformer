@@ -5,25 +5,19 @@ from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 from script.matcher import *
 
-def rescale_bboxes(out_bbox, size):
-    img_w, img_h = size
-    b = box_cxcywh_to_xyxy(out_bbox)
-    b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
-    return b
-
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-# epoch= 70
-# checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-# plt.plot(checkpoint['train_loss'])
-# plt.plot(checkpoint['test_loss'])
-# loaded_dict = checkpoint['model_state_dict']
-# prefix = 'module.'
-# n_clip = len(prefix)
-# adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
-#                 if k.startswith(prefix)}
-# model.load_state_dict(adapted_dict)
+epoch= 100
+checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
+plt.plot(checkpoint['train_loss'])
+plt.plot(checkpoint['test_loss'])
+loaded_dict = checkpoint['model_state_dict']
+prefix = 'module.'
+n_clip = len(prefix)
+adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
+                if k.startswith(prefix)}
+model.load_state_dict(adapted_dict)
 
 ann_path = "{}/data/annotations".format(basepath)
 train_img_path = "{}/data/train_s".format(basepath)
@@ -65,9 +59,8 @@ enc_attn_weights = enc_attn_weights[0] # bs x 49 x 49
 dec_attn_weights = dec_attn_weights[0] # bs x 100 x 49
 
 # keep only predictions with 0.6+ confidence
-probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
-keep = probas.max(-1).values > 0.6
-
+probas = outputs['pred_logits'].softmax(-1)[0, :, :-1].detach()
+keep = (probas.max(-1).values==max(probas)) #probas.max(-1).values > 0.6
 '''  Visualize Decoder Attention  '''
 # get the feature map shape
 h, w = conv_features['0'].tensors.shape[-2:]
