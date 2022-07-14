@@ -35,8 +35,10 @@ for f in results:
     elif 'TEST_nb' in f: Test_cond = 'floating heads'
     elif 'TEST_nh' in f: Test_cond = 'headless bodies'
 
+    df = df.groupby('image').mean().reset_index()  # compute estimation for each image
     df['test_cond'] = Test_cond
     transformer = pd.concat([transformer,df])
+
 image_info = transformer[['image','gazed_x','gazed_y']].drop_duplicates()
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformer_est_x'])**2 + (transformer['gazed_y']-transformer['transformer_est_y'])**2 )
 transformer = transformer[['test_cond','Euclidean_error']]
@@ -51,6 +53,7 @@ for f in results:
     elif 'nb' in f: Test_cond = 'floating heads'
     elif 'nh' in f: Test_cond = 'headless bodies'
 
+    df = df.groupby('image').mean().reset_index()  # compute estimation for each image
     df['test_cond'] = Test_cond
     cnn = pd.concat([cnn,df])
 
