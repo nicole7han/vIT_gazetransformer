@@ -47,7 +47,7 @@ for cond in ['intact']: #
                              eos_coef=0.01, losses=losses)
     # chong model test and trained on just head
     if cond == 'intact':
-        chong_est = pd.read_csv('{}/chong_estimation_intact.csv'.format(basepath))
+        chong_est = pd.read_csv('{}/chong_estimation_intact_present.csv'.format(basepath))
     else: 
         chong_est = None
 
