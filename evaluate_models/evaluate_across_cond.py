@@ -7,10 +7,11 @@ from functions.data_ana_vis import *
 from script.matcher import *
 setpallet = sns.color_palette("Set2")
 
+
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 # model = Gaze_Transformer()
 epoch=108
-# checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
+# checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 # # plt.plot(checkpoint['train_loss'])
 # # plt.plot(checkpoint['test_loss'])
 # loaded_dict = checkpoint['model_state_dict']
@@ -26,7 +27,7 @@ Trained_cond = 'Head'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
-results = glob.glob('{}/*.xlsx'.format(outpath))
+results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
 transformer = pd.DataFrame()
 for f in results:
     df = pd.read_excel(f)
@@ -34,8 +35,10 @@ for f in results:
     elif 'TEST_nb' in f: Test_cond = 'floating heads'
     elif 'TEST_nh' in f: Test_cond = 'headless bodies'
 
+    df = df.groupby('image').mean().reset_index()  # compute estimation for each image
     df['test_cond'] = Test_cond
     transformer = pd.concat([transformer,df])
+
 image_info = transformer[['image','gazed_x','gazed_y']].drop_duplicates()
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformer_est_x'])**2 + (transformer['gazed_y']-transformer['transformer_est_y'])**2 )
 transformer = transformer[['test_cond','Euclidean_error']]
@@ -50,6 +53,7 @@ for f in results:
     elif 'nb' in f: Test_cond = 'floating heads'
     elif 'nh' in f: Test_cond = 'headless bodies'
 
+    df = df.groupby('image').mean().reset_index()  # compute estimation for each image
     df['test_cond'] = Test_cond
     cnn = pd.concat([cnn,df])
 
@@ -57,6 +61,7 @@ cnn = cnn.merge(image_info, on=['image'])
 cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
 cnn = cnn[['test_cond','Euclidean_error']]
 cnn['model'] = 'cnn'
+
 
 '''human results'''
 human_path = '/Users/nicolehan/Documents/Research/GazeExperiment/Mechanical turk/Analysis_absent'
