@@ -33,7 +33,7 @@ for f in results:
     if 'TEST_intact' in f: Test_cond = 'intact'
     elif 'TEST_nb' in f: Test_cond = 'floating heads'
     elif 'TEST_nh' in f: Test_cond = 'headless bodies'
-
+    df = df.groupby('image').mean().reset_index()  # compute estimation for each image
     df['test_cond'] = Test_cond
     transformer = pd.concat([transformer,df])
 image_info = transformer[['image','gazed_x','gazed_y']].drop_duplicates()
@@ -49,7 +49,7 @@ for f in results:
     if 'intact' in f: Test_cond = 'intact'
     elif 'nb' in f: Test_cond = 'floating heads'
     elif 'nh' in f: Test_cond = 'headless bodies'
-
+    df = df.groupby('image').mean().reset_index()  # compute estimation for each image
     df['test_cond'] = Test_cond
     cnn = pd.concat([cnn,df])
 
