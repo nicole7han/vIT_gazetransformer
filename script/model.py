@@ -192,6 +192,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         for name,param in self.targetatten.named_parameters():  # freeze all parameters except face crop region
             if 'face' not in name:
                 param.requires_grad = False
+
         self.conv = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0, bias=False) #(UPDATING)
         self.bn = nn.BatchNorm2d(256)
         self.relu = nn.ReLU(inplace=True)

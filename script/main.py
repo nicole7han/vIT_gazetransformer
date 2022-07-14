@@ -57,7 +57,20 @@ def main():
     lr = args.lr * args.b_size / args.b_size
     print('learning rate = {}'.format(lr))
     beta1 = .9
-    opt = optim.AdamW(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.0001)
+    # opt = optim.AdamW(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.0001)
+    opt = optim.AdamW(
+        [
+            {"params": model.targetatten.layer1_face.parameters(), "lr": 5e-5},
+            {"params": model.targetatten.layer2_face.parameters(), "lr": 5e-5},
+            {"params": model.targetatten.layer3_face.parameters(), "lr": 5e-5},
+            {"params": model.targetatten.layer4_face.parameters(), "lr": 5e-5},
+            {"params": model.targetatten.layer5_face.parameters(), "lr": 5e-5},
+        ],
+        lr=lr,
+        betas=(beta1, .999),
+        weight_decay=0.0001
+    )
+
     # criterion = nn.MSELoss()
     # criterion = nn.BCELoss(reduction='mean')
     matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
