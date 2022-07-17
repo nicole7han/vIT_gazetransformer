@@ -104,7 +104,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
         LOSS.append(train_stats['train loss'])
         LOSS_TEST.append(train_stats['test loss'])
 
-        if e % 2 == 0:
+        if e % 10 == 0:
             PATH = "{}/model_epoch{}.pt".format(outpath, e)
             torch.save({
                 'epoch': e,
