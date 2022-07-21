@@ -223,10 +223,10 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
                                        nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, 2, bias=True))
 
-    # def get_activation(name):
-    #     def hook(model, input, output):
-    #         activation[name] = output
-    #     return hook
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            torch.nn.init.xavier_uniform_(m.weight)
+            m.bias.data.fill_(0.01)
 
     def forward(self, images, gazer, masks):
         ''' cropped gazer feature '''

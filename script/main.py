@@ -70,9 +70,8 @@ def main():
         betas=(beta1, .999),
         weight_decay=0.0001
     )
+    # torch.nn.init.xavier_uniform_(model.targetatten.layer1_face.weight)
 
-    # criterion = nn.MSELoss()
-    # criterion = nn.BCELoss(reduction='mean')
     matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
     weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
     losses = ['labels', 'boxes']
