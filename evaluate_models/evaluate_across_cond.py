@@ -30,7 +30,7 @@ outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [108,60,50]:
+for epoch in [108,60,150]:
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
@@ -91,7 +91,7 @@ humans['model'] = 'humans'
 plot_data = pd.concat([transformer, cnn, humans])
 plot_data['test_cond'] = plot_data['test_cond'].astype('category')
 plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
+# plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
 aov = pg.anova(dv='Euclidean_error', between=['model', 'test_cond'], data=plot_data,
              detailed=True)
 print(aov)
