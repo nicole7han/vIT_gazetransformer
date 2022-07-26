@@ -84,6 +84,7 @@ for f in results:
     df['Euclidean_error'] = np.sqrt(
         (df['gazed_x'] - df['human_est_x']) ** 2 + (df['gazed_y'] - df['human_est_y']) ** 2)
     df['Angular_error'] = df.apply(lambda r: compute_angle(r,'human'),axis=1)
+    df = df[(df['subj'] != 99401) & (humans['subj'] != 99807)]
     df = df.groupby('image').mean().reset_index()  # mean subject error
     df['test_cond'] = Test_cond
     humans = pd.concat([humans,df])
