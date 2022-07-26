@@ -35,7 +35,7 @@ image_info = transformer[['image','gazed_x','gazed_y']].drop_duplicates()
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformer_est_x'])**2 + (transformer['gazed_y']-transformer['transformer_est_y'])**2 )
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
 transformer = transformer[['test_cond','Euclidean_error']]
-transformer['model'] = 'transformer'
+transformer['model'] = 'Transformer'
 
 '''CNN results'''
 results = glob.glob('{}/chong*.csv'.format(basepath))
@@ -53,7 +53,7 @@ for f in results:
 cnn = cnn.merge(image_info, on=['image'])
 cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
 cnn = cnn[['test_cond','Euclidean_error']]
-cnn['model'] = 'cnn'
+cnn['model'] = 'CNN'
 
 
 '''human results'''
@@ -74,7 +74,7 @@ for f in results:
     humans = pd.concat([humans,df])
 
 humans = humans[['test_cond','Euclidean_error']]
-humans['model'] = 'humans'
+humans['model'] = 'Humans'
 
 
 plot_data = pd.concat([transformer, cnn, humans])
@@ -101,9 +101,9 @@ ax.spines['right'].set_color('white')
 # add_stat_annotation(ax, data=plot_data, x = 'model', y = 'Euclidean_error',
 #                     box_pairs= box_pairs_model, perform_stat_test=False, pvalues=ps_models,
 #                     loc='outside',line_offset=0.015, line_offset_to_box=0.005, verbose=2)
-box_pairs = [(('cnn','headless bodies'),('cnn','floating heads')),(('cnn','headless bodies'),('cnn','intact')),
-             (('humans','headless bodies'),('humans','floating heads')),(('humans','headless bodies'),('humans','intact')),
-             (('transformer','intact'),('transformer','headless bodies'))]
+box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
+             (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),
+             (('Transformer','intact'),('Transformer','headless bodies'))]
 ps = [0.001, 0.001,0.001, 0.001,0.04]
 add_stat_annotation(ax, data=plot_data, x = 'model', y = 'Euclidean_error', hue='test_cond',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
