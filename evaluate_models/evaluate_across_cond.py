@@ -60,7 +60,7 @@ for f in results:
     df['test_cond'] = Test_cond
     cnn = pd.concat([cnn,df])
 
-cnn = cnn.merge(image_info, on=['image'])
+cnn = cnn.merge(image_info[['image', 'gazed_x', 'gazed_y']], on=['image'])
 cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
 cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chong'),axis=1)
 cnn = cnn[['test_cond','Euclidean_error','Angular_error']]
@@ -93,7 +93,7 @@ humans['model'] = 'Humans'
 plot_data = pd.concat([transformer, cnn, humans])
 plot_data['test_cond'] = plot_data['test_cond'].astype('category')
 plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
+plot_data.to_excel('data/{}_summary2.xlsx'.format(Trained_cond), index=None)
 
 
 error = 'Euclidean' # Angular or Euclidean
@@ -114,8 +114,8 @@ ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
              (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),
-             (('Transformer','intact'),('Transformer','headless bodies'))]
-ps = [0.001, 0.001,0.001, 0.001,0.04]
+             (('Transformer','floating heads'),('Transformer','intact')), (('Transformer','floating heads'),('Transformer','headless bodies'))]
+ps = [0.001, 0.001,0.001, 0.001,0.001,0.01]
 add_stat_annotation(ax, data=plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                     loc='outside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)
