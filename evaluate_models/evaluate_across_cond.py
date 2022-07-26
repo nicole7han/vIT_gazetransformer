@@ -80,7 +80,7 @@ humans['model'] = 'humans'
 plot_data = pd.concat([transformer, cnn, humans])
 plot_data['test_cond'] = plot_data['test_cond'].astype('category')
 plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-# plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
+plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
 aov = pg.anova(dv='Euclidean_error', between=['model', 'test_cond'], data=plot_data,
              detailed=True)
 print(aov)
@@ -111,3 +111,5 @@ add_stat_annotation(ax, data=plot_data, x = 'model', y = 'Euclidean_error', hue=
 ax.legend(title='Test condition', loc='upper left', frameon=False)
 ax.figure.savefig("figures/{}_model_comparison.jpg".format(Trained_cond), bbox_inches='tight')
 plt.close()
+
+
