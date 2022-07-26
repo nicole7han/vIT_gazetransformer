@@ -42,7 +42,7 @@ image_info = transformer[['image','gaze_start_x','gaze_start_y','gazed_x','gazed
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformer_est_x'])**2 + (transformer['gazed_y']-transformer['transformer_est_y'])**2 )
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformer'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
-transformer = transformer[['test_cond','Euclidean_error','Angular_error']]
+transformer = transformer[['image','test_cond','Euclidean_error','Angular_error']]
 transformer['model'] = 'Transformer'
 
 
@@ -62,7 +62,7 @@ for f in results:
 cnn = cnn.merge(image_info[['image', 'gazed_x', 'gazed_y']], on=['image'])
 cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
 cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chong'),axis=1)
-cnn = cnn[['test_cond','Euclidean_error','Angular_error']]
+cnn = cnn[['image','test_cond','Euclidean_error','Angular_error']]
 cnn['model'] = 'CNN'
 
 
@@ -85,7 +85,7 @@ for f in results:
     df['test_cond'] = Test_cond
     humans = pd.concat([humans,df])
 
-humans = humans[['test_cond','Euclidean_error','Angular_error']]
+humans = humans[['image','test_cond','Euclidean_error','Angular_error']]
 humans['model'] = 'Humans'
 
 
@@ -93,7 +93,7 @@ humans['model'] = 'Humans'
 plot_data = pd.concat([transformer, cnn, humans])
 plot_data['test_cond'] = plot_data['test_cond'].astype('category')
 plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-# plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
+plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
 
 
 
