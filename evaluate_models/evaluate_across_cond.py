@@ -10,20 +10,17 @@ from functions.data_ana_vis import *
 from script.matcher import *
 setpallet = sns.color_palette("Set2")
 
+def compute_angle(row, model):
+    vector_1 = [row['gazed_x'] - row['gaze_start_x'], row['gazed_y'] - row['gaze_start_y']]
+    vector_2 = [row['{}_est_x'.format(model)] - row['gaze_start_x'], row['{}_est_y'.format(model)] - row['gaze_start_y']]
+
+    unit_vector_1 = vector_1 / np.linalg.norm(vector_1)
+    unit_vector_2 = vector_2 / np.linalg.norm(vector_2)
+    dot_product = np.dot(unit_vector_1, unit_vector_2)
+    angle = np.arccos(dot_product) * 180 / np.pi  # angle in degrees
+    return angle
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
-# model = Gaze_Transformer()
-# checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-# # plt.plot(checkpoint['train_loss'])
-# # plt.plot(checkpoint['test_loss'])
-# loaded_dict = checkpoint['model_state_dict']
-# prefix = 'module.'
-# n_clip = len(prefix)
-# adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
-#                 if k.startswith(prefix)}
-# model.load_state_dict(adapted_dict)
-# model.to(device)
-
 
 Trained_cond = 'Head'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
@@ -42,11 +39,13 @@ for epoch in [108,60,150]:
         df['test_cond'] = Test_cond
         transformer = pd.concat([transformer,df])
 
-image_info = transformer[['image','gazed_x','gazed_y']].drop_duplicates()
+image_info = transformer[['image','gaze_start_x','gaze_start_y','gazed_x','gazed_y']].drop_duplicates()
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformer_est_x'])**2 + (transformer['gazed_y']-transformer['transformer_est_y'])**2 )
+transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformer'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
-transformer = transformer[['test_cond','Euclidean_error']]
-transformer['model'] = 'transformer'
+transformer = transformer[['test_cond','Euclidean_error','Angular_error']]
+transformer['model'] = 'Transformer'
+
 
 '''CNN results'''
 results = glob.glob('{}/chong*.csv'.format(basepath))
@@ -63,8 +62,9 @@ for f in results:
 
 cnn = cnn.merge(image_info, on=['image'])
 cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
-cnn = cnn[['test_cond','Euclidean_error']]
-cnn['model'] = 'cnn'
+cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chong'),axis=1)
+cnn = cnn[['test_cond','Euclidean_error','Angular_error']]
+cnn['model'] = 'CNN'
 
 
 '''human results'''
@@ -73,29 +73,34 @@ results = glob.glob('{}/human*.xlsx'.format(human_path))
 humans = pd.DataFrame()
 for f in results:
     df = pd.read_excel(f)
+    df.columns = ['human_est_x', 'human_est_y', 'subj', 'condition', 'movie', 'image']
     if 'intact' in f: Test_cond = 'intact'
     elif 'floating heads' in f: Test_cond = 'floating heads'
     elif 'headless bodies' in f: Test_cond = 'headless bodies'
     df = df.drop(['condition','movie'],axis=1)
     df = df.merge(image_info, on=['image'])
     df['Euclidean_error'] = np.sqrt(
-        (df['gazed_x'] - df['human_x']) ** 2 + (df['gazed_y'] - df['human_y']) ** 2)
+        (df['gazed_x'] - df['human_est_x']) ** 2 + (df['gazed_y'] - df['human_est_y']) ** 2)
+    df['Angular_error'] = df.apply(lambda r: compute_angle(r,'human'),axis=1)
     df = df.groupby('image').mean().reset_index()  # mean subject error
     df['test_cond'] = Test_cond
     humans = pd.concat([humans,df])
 
-humans = humans[['test_cond','Euclidean_error']]
-humans['model'] = 'humans'
+humans = humans[['test_cond','Euclidean_error','Angular_error']]
+humans['model'] = 'Humans'
 
 
 plot_data = pd.concat([transformer, cnn, humans])
 plot_data['test_cond'] = plot_data['test_cond'].astype('category')
 plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-# plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
-aov = pg.anova(dv='Euclidean_error', between=['model', 'test_cond'], data=plot_data,
+plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
+
+
+error = 'Euclidean' # Angular or Euclidean
+aov = pg.anova(dv='{}_error'.format(error), between=['model', 'test_cond'], data=plot_data,
              detailed=True)
 print(aov)
-postdoc =plot_data.pairwise_ttests(dv='Euclidean_error',
+postdoc =plot_data.pairwise_ttests(dv='{}_error'.format(error),
                                    between=['model', 'test_cond'],
                                    padjust='fdr_bh',
                                    parametric=True).round(3)
@@ -103,22 +108,17 @@ sig_results = postdoc[postdoc['p-corr']<0.05]
 
 from statannot import add_stat_annotation
 sns_setup_small(sns, (8,6))
-ax = sns.barplot(data = plot_data, x = 'model', y = 'Euclidean_error', hue='test_cond')
-ax.set(xlabel='', ylabel='Euclidean Error', title='Transformer Trained: {}'.format(Trained_cond))
+ax = sns.barplot(data = plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond')
+ax.set(xlabel='', ylabel='{} Error'.format(error), title='Transformer Trained: {}'.format(Trained_cond))
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
-box_pairs_model = [('cnn','transformer'),('humans','transformer')]
-# ps_models = [0.001, 0.001]
-# add_stat_annotation(ax, data=plot_data, x = 'model', y = 'Euclidean_error',
-#                     box_pairs= box_pairs_model, perform_stat_test=False, pvalues=ps_models,
-#                     loc='outside',line_offset=0.015, line_offset_to_box=0.005, verbose=2)
-box_pairs = [(('cnn','headless bodies'),('cnn','floating heads')),(('cnn','headless bodies'),('cnn','intact')),
-             (('humans','headless bodies'),('humans','floating heads')),(('humans','headless bodies'),('humans','intact')),
-             (('transformer','floating heads'),('transformer','intact')),(('transformer','floating heads'),('transformer','headless bodies'))]
-ps = [0.001, 0.001,0.001, 0.001,0.001, 0.001]
-add_stat_annotation(ax, data=plot_data, x = 'model', y = 'Euclidean_error', hue='test_cond',
+box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
+             (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),
+             (('Transformer','intact'),('Transformer','headless bodies'))]
+ps = [0.001, 0.001,0.001, 0.001,0.04]
+add_stat_annotation(ax, data=plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
-                    loc='inside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)
+                    loc='outside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)
 ax.legend(title='Test condition', loc='upper left', frameon=False)
-ax.figure.savefig("figures/{}_model_comparison.jpg".format(Trained_cond), bbox_inches='tight')
+ax.figure.savefig("figures/{}_{}_model_comparison.png".format(error, Trained_cond), bbox_inches='tight')
 plt.close()
