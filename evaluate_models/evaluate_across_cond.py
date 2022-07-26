@@ -30,7 +30,7 @@ outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [100,300,120]:
+for epoch in [300,100,120]: #100,120
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
@@ -46,7 +46,7 @@ image_info = transformer[['image','gaze_start_x','gaze_start_y','gazed_x','gazed
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformer_est_x'])**2 + (transformer['gazed_y']-transformer['transformer_est_y'])**2 )
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformer'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
-transformer = transformer[['test_cond','Euclidean_error','Angular_error']]
+transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
 transformer['model'] = 'Transformer'
 
 '''CNN results'''
@@ -65,7 +65,7 @@ for f in results:
 cnn = cnn.merge(image_info[['image', 'gazed_x', 'gazed_y']], on=['image'])
 cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
 cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chong'),axis=1)
-cnn = cnn[['test_cond','Euclidean_error','Angular_error']]
+cnn = cnn[['image', 'test_cond','Euclidean_error','Angular_error']]
 cnn['model'] = 'CNN'
 
 
@@ -88,7 +88,7 @@ for f in results:
     df['test_cond'] = Test_cond
     humans = pd.concat([humans,df])
 
-humans = humans[['test_cond','Euclidean_error','Angular_error']]
+humans = humans[['image', 'test_cond','Euclidean_error','Angular_error']]
 humans['model'] = 'Humans'
 
 plot_data = pd.concat([transformer, cnn, humans])
@@ -127,7 +127,7 @@ ax.spines['right'].set_color('white')
 box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
              (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),
              (('Transformer','intact'),('Transformer','headless bodies'))]
-ps = [0.001, 0.001,0.001, 0.001,0.04]
+ps = [0.001, 0.001,0.001, 0.001,0.045]
 add_stat_annotation(ax, data=plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                     loc='outside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)

@@ -24,6 +24,7 @@ results['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headle
 results['model'] = results['model'].astype('category')
 results['model'].cat.reorder_categories(['Humans', 'CNN', 'Transformer'], inplace=True)
 
+
 ''' human, cnn, transformer performance on intact, floating heads, headless bodies (transformer only trained with heads) '''
 plot_data = results.copy()
 plot_data = plot_data[plot_data['train_cond']=='Head']
@@ -50,6 +51,13 @@ ax.spines['right'].set_color('white')
 add_stat_annotation(ax, data=plot_data, x = 'model', y = 'Euclidean_error', hue='test_cond',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                     loc='outside', verbose=2)
-ax.legend(title='test condition', loc='upper right', frameon=False, bbox_to_anchor=[1.3, 1], )
+ax.legend(title='test condition', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
 ax.figure.savefig("figures/modelxtest_cond.png", dpi=300, bbox_inches='tight')
 plt.close()
+
+
+
+''' human vs. model correlation'''
+plot_data = results.copy()
+plot_data = plot_data[plot_data['train_cond']=='Head']
+plot_data['model'] = plot_data['model'].cat.rename_categories(['Humans', 'CNN', 'Head Gazetransformer'])
