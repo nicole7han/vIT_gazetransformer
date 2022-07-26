@@ -4,12 +4,14 @@ from script.model import *
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 import pingouin as pg
+from scipy import stats
 from statannot import add_stat_annotation
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 from script.matcher import *
 setpallet = sns.color_palette("Set2")
+custom_colors = sns.color_palette("Set1", 10)
 
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
@@ -57,7 +59,174 @@ plt.close()
 
 
 
-''' human vs. model correlation'''
+''' human vs. CNN vs. Transformer correlation'''
 plot_data = results.copy()
-plot_data = plot_data[plot_data['train_cond']=='Head']
-plot_data['model'] = plot_data['model'].cat.rename_categories(['Humans', 'CNN', 'Head Gazetransformer'])
+error = 'Angular' #Euclidean, Angular
+train_cond = 'Body' #HeadBody, Head, Body
+
+plot_data = plot_data[(plot_data['train_cond']==train_cond) & (plot_data['test_cond']=='intact')]
+plot_data['model'] = plot_data['model'].cat.rename_categories(['Humans', 'CNN', '{} Gazetransformer'.format(train_cond)])
+# plot_data_melt = pd.melt(plot_data, id_vars=['image','train_cond','test_cond','model'], value_vars='Euclidean_error')
+plot_data_piv = plot_data.pivot(index="image", columns=["model"]).dropna().reset_index()
+plot_data_piv.columns = plot_data_piv.columns.droplevel(1)
+plot_data_piv.columns = ['image','test_cond','test_cond','test_cond',
+                         'Euclidean_Humans','Euclidean_CNN','Euclidean_Transformer',
+                         'Angular_Humans','Angular_CNN','Angular_Transformer',
+                         'train_cond','train_cond','train_cond']
+
+
+cnn = plot_data_piv[['image', '{}_Humans'.format(error),'{}_CNN'.format(error)]]
+cnn.columns = ['image', 'Humans', 'Model']
+cnn['model'] = 'Human-CNN'
+tran = plot_data_piv[['image', '{}_Humans'.format(error),'{}_Transformer'.format(error)]]
+tran.columns = ['image', 'Humans', 'Model']
+tran['model'] = 'Human-Transformer'
+plotdata1 = pd.concat([cnn, tran])
+
+labels = []
+for cond in ['Human-CNN','Human-Transformer']:
+    cond_data = plotdata1[plotdata1['model']==cond]
+    r, p = stats.pearsonr(cond_data["Humans"], cond_data["Model"])
+    r = round(r,2)
+    ptxt = 'p<0.001' if p<0.001 else 'p={}'.format(round(p,3))
+    label = 'r={}, {}'.format(r, ptxt)
+    labels.append(label)
+
+if error == 'Euclidean':
+    sns_setup_small(sns)
+    colrs = [custom_colors[2], custom_colors[4]]
+    sns.set_palette(colrs)
+    ax = sns.lmplot(x="Humans", y='Model', data=plotdata1,hue='model')
+    ax.set(xlabel='Human Euclidean Error', ylabel='Model Euclidean Error')
+    ax.ax.text(0.2, .50, labels[0], color=colrs[0],fontsize=20)
+    ax.ax.text(0.2, .46, labels[1], color=colrs[1],fontsize=20)
+    ax._legend.set_title('')
+    ax.ax.spines['top'].set_color('white')
+    ax.ax.spines['right'].set_color('white')
+    ax.fig.savefig("figures/Euclidean_{}_intact.png".format(train_cond), dpi=300, bbox_inches='tight')
+    plt.close()
+
+if error == 'Angular':
+    sns_setup_small(sns)
+    colrs = [custom_colors[2], custom_colors[4]]
+    sns.set_palette(colrs)
+    ax = sns.lmplot(x="Humans", y='Model', data=plotdata1,hue='model')
+    ax.set(xlabel='Human Angular Error (˚)', ylabel='Model Angular Error (˚)')
+    ax.ax.text(20, 150, labels[0], color=colrs[0],fontsize=20)
+    ax.ax.text(20, 135, labels[1], color=colrs[1],fontsize=20)
+    ax._legend.set_title('')
+    ax.ax.spines['top'].set_color('white')
+    ax.ax.spines['right'].set_color('white')
+    ax.fig.savefig("figures/Angular_{}_intact.png".format(train_cond), dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+
+
+
+''' human vs. Transformer across different training conditions'''
+plot_data = results.copy()
+error = 'Euclidean' #Euclidean, Angular
+img_cond = 'intact'
+plot_data = plot_data[(plot_data['test_cond']==img_cond)]
+
+plot_data['model'] = plot_data['model'].cat.rename_categories(['Humans', 'CNN', '{} Gazetransformer'.format(train_cond)])
+plot_data_piv = plot_data.pivot(index=["image","train_cond"], columns=["model"]).dropna().reset_index()
+plot_data_piv.columns = plot_data_piv.columns.droplevel(1)
+plot_data_piv.columns = ['image','train_cond','test_cond','test_cond','test_cond',
+                         'Euclidean_Humans','Euclidean_CNN','Euclidean_Transformer',
+                         'Angular_Humans','Angular_CNN','Angular_Transformer',
+                         ]
+
+plotdata1 = plot_data_piv[['image', 'train_cond','{}_Humans'.format(error),'{}_Transformer'.format(error)]]
+plotdata1.columns = ['image','train_cond', 'Humans', 'Model']
+
+labels = []
+for cond in ['Body','Head','HeadBody']:
+    cond_data = plotdata1[plotdata1['train_cond']==cond]
+    r, p = stats.pearsonr(cond_data["Humans"], cond_data["Model"])
+    r = round(r,2)
+    ptxt = 'p<0.001' if p<0.001 else 'p={}'.format(round(p,3))
+    label = 'r={}, {}'.format(r, ptxt)
+    labels.append(label)
+
+
+if error == 'Euclidean':
+    sns_setup_small(sns)
+    colrs = [custom_colors[2], custom_colors[4], custom_colors[6]]
+    sns.set_palette(colrs)
+    ax = sns.lmplot(x="Humans", y='Model', data=plotdata1,hue='train_cond')
+    ax.set(xlabel='Human Euclidean Error', ylabel='Model Euclidean Error')
+    ax.ax.text(0.38, 0.4, labels[0], color=colrs[0],fontsize=15)
+    ax.ax.text(0.38, 0.36, labels[1], color=colrs[1],fontsize=15)
+    ax.ax.text(0.38, 0.32, labels[2], color=colrs[2],fontsize=15)
+    ax._legend.set_title('')
+    ax.ax.spines['top'].set_color('white')
+    ax.ax.spines['right'].set_color('white')
+    ax.fig.savefig("figures/corr_Human_Transformers_EuclideanError_{}.png".format(train_cond,img_cond), dpi=300, bbox_inches='tight')
+    plt.close()
+
+if error == 'Angular':
+    sns_setup_small(sns)
+    colrs = [custom_colors[2], custom_colors[4], custom_colors[6]]
+    sns.set_palette(colrs)
+    ax = sns.lmplot(x="Humans", y='Model', data=plotdata1,hue='train_cond')
+    ax.set(xlabel='Human Angular Error (˚)', ylabel='Model Angular Error (˚)')
+    ax.ax.text(130, 150, labels[0], color=colrs[0],fontsize=15)
+    ax.ax.text(130, 140, labels[1], color=colrs[1],fontsize=15)
+    ax.ax.text(130, 130, labels[2], color=colrs[2],fontsize=15)
+    ax._legend.set_title('')
+    ax.ax.spines['top'].set_color('white')
+    ax.ax.spines['right'].set_color('white')
+    ax.fig.savefig("figures/corr_Human_Transformers_AngularError_{}.png".format(train_cond,img_cond), dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+
+
+''' human vs. CNN'''
+plot_data = results.copy()
+error = 'Angular' #Euclidean, Angular
+img_cond = 'intact'
+plot_data = plot_data[(plot_data['test_cond']==img_cond)]
+
+plot_data['model'] = plot_data['model'].cat.rename_categories(['Humans', 'CNN', '{} Gazetransformer'.format(train_cond)])
+plot_data_piv = plot_data.pivot(index=["image","train_cond"], columns=["model"]).dropna().reset_index()
+plot_data_piv.columns = plot_data_piv.columns.droplevel(1)
+plot_data_piv.columns = ['image','train_cond','test_cond','test_cond','test_cond',
+                         'Euclidean_Humans','Euclidean_CNN','Euclidean_Transformer',
+                         'Angular_Humans','Angular_CNN','Angular_Transformer',
+                         ]
+
+plotdata1 = plot_data_piv[['image', 'train_cond','{}_Humans'.format(error),'{}_CNN'.format(error)]]
+plotdata1.columns = ['image','train_cond', 'Humans', 'Model']
+plotdata1 = plotdata1.drop('train_cond',axis=1).drop_duplicates()
+
+r, p = stats.pearsonr(plotdata1["Humans"], plotdata1["Model"])
+r = round(r, 2)
+ptxt = 'p<0.001' if p < 0.001 else 'p={}'.format(round(p, 3))
+label = 'r={}, {}'.format(r, ptxt)
+
+if error == 'Euclidean':
+    sns_setup_small(sns)
+    colrs = [custom_colors[2]]
+    sns.set_palette(colrs)
+    ax = sns.lmplot(x="Humans", y='Model', data=plotdata1)
+    ax.set(xlabel='Human Euclidean Error', ylabel='Model Euclidean Error')
+    ax.ax.text(0.38, 0.4, label, color=colrs[0],fontsize=15)
+    ax.ax.spines['top'].set_color('white')
+    ax.ax.spines['right'].set_color('white')
+    ax.fig.savefig("figures/corr_Human_CNN_EuclideanError_{}.png".format(train_cond,img_cond), dpi=300, bbox_inches='tight')
+    plt.close()
+
+if error == 'Angular':
+    sns_setup_small(sns)
+    colrs = [custom_colors[2]]
+    sns.set_palette(colrs)
+    ax = sns.lmplot(x="Humans", y='Model', data=plotdata1)
+    ax.set(xlabel='Human Angular Error (˚)', ylabel='Model Angular Error (˚)')
+    ax.ax.text(130, 150, label, color=colrs[0],fontsize=15)
+    ax.ax.spines['top'].set_color('white')
+    ax.ax.spines['right'].set_color('white')
+    ax.fig.savefig("figures/corr_Human_CNN_AngularError_{}.png".format(train_cond,img_cond), dpi=300, bbox_inches='tight')
+    plt.close()
