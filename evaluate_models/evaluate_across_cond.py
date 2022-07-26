@@ -97,6 +97,11 @@ plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'head
 
 
 
+plot_data = pd.read_excel('data/{}_summary.xlsx'.format(Trained_cond))
+plot_data['test_cond'] = plot_data['test_cond'].astype('category')
+plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
+plot_data['model'] = plot_data['model'].astype('category')
+plot_data['model'].cat.reorder_categories(['Humans', 'CNN', 'Transformer'], inplace=True)
 
 '''Euclidean Error '''
 error = 'Euclidean' # Angular or Euclidean
