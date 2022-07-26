@@ -61,7 +61,7 @@ for f in results:
     df['test_cond'] = Test_cond
     cnn = pd.concat([cnn,df])
 
-cnn = cnn.merge(image_info, on=['image'])
+cnn = cnn.merge(image_info[['image', 'gazed_x', 'gazed_y']], on=['image'])
 cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
 cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chong'),axis=1)
 cnn = cnn[['test_cond','Euclidean_error','Angular_error']]
