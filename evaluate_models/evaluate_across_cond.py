@@ -4,6 +4,7 @@ from script.model import *
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 import pingouin as pg
+from statannot import add_stat_annotation
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
@@ -92,9 +93,40 @@ humans['model'] = 'Humans'
 plot_data = pd.concat([transformer, cnn, humans])
 plot_data['test_cond'] = plot_data['test_cond'].astype('category')
 plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
+# plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
 
 
+
+
+'''Euclidean Error '''
+error = 'Euclidean' # Angular or Euclidean
+aov = pg.anova(dv='{}_error'.format(error), between=['model', 'test_cond'], data=plot_data,
+             detailed=True)
+print(aov)
+postdoc =plot_data.pairwise_ttests(dv='{}_error'.format(error),
+                                   between=['model', 'test_cond'],
+                                   padjust='fdr_bh',
+                                   parametric=True).round(3)
+sig_results = postdoc[postdoc['p-corr']<0.05]
+
+sns_setup_small(sns, (8,6))
+ax = sns.barplot(data = plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond')
+ax.set(xlabel='', ylabel='{} Error (normalized)'.format(error), title='Transformer Trained: {}'.format(Trained_cond))
+ax.spines['top'].set_color('white')
+ax.spines['right'].set_color('white')
+box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
+             (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),]
+ps = [0.001, 0.001,0.001, 0.001]
+add_stat_annotation(ax, data=plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond',
+                    box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
+                    loc='outside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)
+ax.legend(title='Test condition', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
+ax.figure.savefig("figures/{}_{}_model_comparison.png".format(error, Trained_cond), bbox_inches='tight')
+plt.close()
+
+
+
+'''Angular Error '''
 error = 'Angular' # Angular or Euclidean
 aov = pg.anova(dv='{}_error'.format(error), between=['model', 'test_cond'], data=plot_data,
              detailed=True)
@@ -105,19 +137,17 @@ postdoc =plot_data.pairwise_ttests(dv='{}_error'.format(error),
                                    parametric=True).round(3)
 sig_results = postdoc[postdoc['p-corr']<0.05]
 
-from statannot import add_stat_annotation
 sns_setup_small(sns, (8,6))
 ax = sns.barplot(data = plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond')
-ax.set(xlabel='', ylabel='{} Error'.format(error), title='Transformer Trained: {}'.format(Trained_cond))
+ax.set(xlabel='', ylabel='{} Error (˚)'.format(error), title='Transformer Trained: {}'.format(Trained_cond))
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
-             (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),
-             (('Transformer','intact'),('Transformer','headless bodies'))]
-ps = [0.001, 0.001,0.001, 0.001,0.04]
+             (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),]
+ps = [0.001, 0.001,0.001, 0.001]
 add_stat_annotation(ax, data=plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                     loc='outside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)
-ax.legend(title='Test condition', loc='upper left', frameon=False)
+ax.legend(title='Test condition', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
 ax.figure.savefig("figures/{}_{}_model_comparison.png".format(error, Trained_cond), bbox_inches='tight')
 plt.close()
