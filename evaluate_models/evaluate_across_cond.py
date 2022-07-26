@@ -31,7 +31,7 @@ outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [108,60,50]:
+for epoch in [130,160,190]:
     results = glob.glob('{}/*{}*.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
@@ -107,15 +107,15 @@ ax = sns.barplot(data = plot_data, x = 'model', y = 'Euclidean_error', hue='test
 ax.set(xlabel='', ylabel='Euclidean Error', title='Transformer Trained: {}'.format(Trained_cond))
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
-box_pairs_model = [('cnn','transformer'),('humans','transformer')]
+# box_pairs_model = [('cnn','transformer'),('humans','transformer')]
 # ps_models = [0.001, 0.001]
 # add_stat_annotation(ax, data=plot_data, x = 'model', y = 'Euclidean_error',
 #                     box_pairs= box_pairs_model, perform_stat_test=False, pvalues=ps_models,
 #                     loc='outside',line_offset=0.015, line_offset_to_box=0.005, verbose=2)
 box_pairs = [(('cnn','headless bodies'),('cnn','floating heads')),(('cnn','headless bodies'),('cnn','intact')),
              (('humans','headless bodies'),('humans','floating heads')),(('humans','headless bodies'),('humans','intact')),
-             (('transformer','floating heads'),('transformer','intact')),(('transformer','floating heads'),('transformer','headless bodies'))]
-ps = [0.001, 0.001,0.001, 0.001,0.001, 0.001]
+             ]
+ps = [0.001, 0.001,0.001, 0.001]
 add_stat_annotation(ax, data=plot_data, x = 'model', y = 'Euclidean_error', hue='test_cond',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                     loc='inside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)
