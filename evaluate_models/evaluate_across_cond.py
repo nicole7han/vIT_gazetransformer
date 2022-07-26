@@ -104,6 +104,7 @@ plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'head
 plot_data['model'] = plot_data['model'].astype('category')
 plot_data['model'].cat.reorder_categories(['Humans', 'CNN', 'Transformer'], inplace=True)
 
+
 '''Euclidean Error '''
 error = 'Euclidean' # Angular or Euclidean
 aov = pg.anova(dv='{}_error'.format(error), between=['model', 'test_cond'], data=plot_data,
@@ -117,7 +118,7 @@ sig_results = postdoc[postdoc['p-corr']<0.05]
 
 sns_setup_small(sns, (8,6))
 ax = sns.barplot(data = plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond')
-ax.set(xlabel='', ylabel='{} Error'.format(error), title='Transformer Trained: {}'.format(Trained_cond))
+ax.set(xlabel='', ylabel='{} Error (normalized)'.format(error), title='Transformer Trained: {}'.format(Trained_cond))
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
@@ -145,7 +146,7 @@ sig_results = postdoc[postdoc['p-corr']<0.05]
 
 sns_setup_small(sns, (8,6))
 ax = sns.barplot(data = plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond')
-ax.set(xlabel='', ylabel='{} Error'.format(error), title='Transformer Trained: {}'.format(Trained_cond))
+ax.set(xlabel='', ylabel='{} Error (˚)'.format(error), title='Transformer Trained: {}'.format(Trained_cond))
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
