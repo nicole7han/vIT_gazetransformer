@@ -120,4 +120,4 @@ add_stat_annotation(ax, data=plot_data, x = 'model', y = '{}_error'.format(error
                     loc='outside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)
 ax.legend(title='Test condition', loc='upper left', frameon=False)
 ax.figure.savefig("figures/{}_{}_model_comparison.png".format(error, Trained_cond), bbox_inches='tight')
-plt.close()plt.close()
+plt.close()
