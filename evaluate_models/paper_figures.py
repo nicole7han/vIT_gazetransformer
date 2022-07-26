@@ -22,11 +22,12 @@ for f in summaries:
 results['test_cond'] = results['test_cond'].astype('category')
 results['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
 results['model'] = results['model'].astype('category')
-results['model'].cat.reorder_categories(['humans', 'cnn', 'transformer'], inplace=True)
+results['model'].cat.reorder_categories(['Humans', 'CNN', 'Transformer'], inplace=True)
 
 ''' human, cnn, transformer performance on intact, floating heads, headless bodies (transformer only trained with heads) '''
 plot_data = results.copy()
 plot_data = plot_data[plot_data['train_cond']=='Head']
+plot_data['model'] = plot_data['model'].cat.rename_categories(['Humans', 'CNN', 'Head Gazetransformer'])
 aov = pg.anova(dv='Euclidean_error', between=['model', 'test_cond'], data=plot_data,
              detailed=True)
 print(aov)
@@ -35,9 +36,9 @@ postdoc =plot_data.pairwise_ttests(dv='Euclidean_error',
                                    padjust='fdr_bh',
                                    parametric=True).round(3)
 sig_results = postdoc[postdoc['p-corr']<0.05]
-box_pairs = [(('cnn','headless bodies'),('cnn','floating heads')),(('cnn','headless bodies'),('cnn','intact')),
-             (('humans','headless bodies'),('humans','floating heads')),(('humans','headless bodies'),('humans','intact')),
-             (('transformer','floating heads'),('transformer','intact')), (('transformer','floating heads'),('transformer','headless bodies'))]
+box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
+             (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),
+             (('Head Gazetransformer','floating heads'),('Head Gazetransformer','intact')), (('Head Gazetransformer','floating heads'),('Head Gazetransformer','headless bodies'))]
 ps = [0.001, 0.001,0.001, 0.001,0.001,0.001]
 
 sns_setup_small(sns, (8,6))
