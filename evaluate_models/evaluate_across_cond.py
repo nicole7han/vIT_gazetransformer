@@ -154,8 +154,8 @@ ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 box_pairs = [(('CNN','headless bodies'),('CNN','floating heads')),(('CNN','headless bodies'),('CNN','intact')),
              (('Humans','headless bodies'),('Humans','floating heads')),(('Humans','headless bodies'),('Humans','intact')),
-              (('Transformer','floating heads'),('Transformer','headless bodies'))]
-ps = [0.001, 0.001,0.001, 0.001,0.029]
+              ]
+ps = [0.001, 0.001,0.001, 0.001]
 add_stat_annotation(ax, data=plot_data, x = 'model', y = '{}_error'.format(error), hue='test_cond',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                     loc='outside',line_offset=0.1, line_offset_to_box=0.005, verbose=0)
