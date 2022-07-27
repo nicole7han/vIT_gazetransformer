@@ -9,15 +9,6 @@ import numpy as np
 mycolors = sns.color_palette("RdBu", 10)
 deeppallet = sns.color_palette("deep")
 
-def sns_setup(sns):
-    sns.set(rc={'figure.figsize':(12,8)})
-    sns.set_context("paper", rc={"font.size":30,"axes.titlesize":40,"axes.labelsize":30,
-                                 "legend.title_fontsize":40,"legend.fontsize":25,
-                                 "xtick.labelsize":30, "ytick.labelsize":30,
-                                 'legend.frameon': False})
-    sns.set_style("white")
-    sns.set_palette("deep")
-    return
 
 def change_width(ax, new_value) :
     for patch in ax.patches :

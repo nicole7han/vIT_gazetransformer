@@ -255,5 +255,39 @@ if error == 'Angular':
 # humans.to_excel('data/Human_estimations.xlsx',index=None)
 
 humans = pd.read_excel('data/Human_estimations.xlsx')
-n_bootstrap = 10000
-subjects = np.unique(humans['subj'])
+humans_intact = humans[humans['test_cond']=='intact']
+# n_bootstrap = 50000
+subjects = list(np.unique(humans_intact['subj']))
+subj1, subj2, euc_error, ang_error = [], [], [], []
+for s1 in subjects:
+    print(s1)
+    rest_subjects = subjects.copy()
+    rest_subjects.remove(s1)
+    for s2 in rest_subjects:
+        # subjs = random.sample(list(subjects), 2)
+        tempdata = humans_intact[(humans_intact['subj']==s1) | (humans_intact['subj']==s2)]
+        tempdata = tempdata[['image','subj','Euclidean_error','Angular_error']]
+        tempdata= tempdata.pivot(index=["image"], columns=["subj"]).dropna().reset_index()
+        tempdata.columns = tempdata.columns.droplevel(1)
+        tempdata.columns = ['image', 'Euclidean_subj1', 'Euclidean_subj2', 'Angular_subj1', 'Angular_subj2']
+        subj1.append(s1)
+        subj2.append(s2)
+        r, p = stats.pearsonr(tempdata["Euclidean_subj1"], tempdata["Euclidean_subj2"])
+        euc_error.append(r)
+        r, p = stats.pearsonr(tempdata["Angular_subj1"], tempdata["Angular_subj2"])
+        ang_error.append(r)
+
+human_corr = pd.DataFrame({'subj1':subj1, 'subj2':subj2, 'Euclidean Error':euc_error, 'Angular Error':ang_error})
+print(human_corr.mean())
+r1,p1 = stats.ttest_ind(human_corr['Euclidean Error'],[0]*len(human_corr))
+r2,p2 = stats.ttest_ind(human_corr['Angular Error'],[0]*len(human_corr))
+
+plot_data = human_corr.melt(id_vars=['subj1','subj2'])
+sns_setup_small(sns, (6,6))
+ax = sns.barplot(data=plot_data, x='variable', y='value',color=setpallet[0])
+change_width(ax, .4)
+ax.set(xlabel='',ylabel='Mean Correlation')
+ax.spines['top'].set_color('white')
+ax.spines['right'].set_color('white')
+ax.figure.savefig("figures/corr_Human_Human_{}.png".format(img_cond), dpi=300, bbox_inches='tight')
+plt.close()
