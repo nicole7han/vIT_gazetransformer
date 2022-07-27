@@ -255,9 +255,8 @@ if error == 'Angular':
 # humans.to_excel('data/Human_estimations.xlsx',index=None)
 
 humans = pd.read_excel('data/Human_estimations.xlsx')
-humans_intact = humans[humans['test_cond']=='intact']
-# n_bootstrap = 50000
-subjects = list(np.unique(humans_intact['subj']))
+humans = humans[humans['test_cond']=='intact']
+subjects = list(np.unique(humans['subj']))
 subj1, subj2, euc_error, ang_error = [], [], [], []
 for s1 in subjects:
     print(s1)
@@ -265,7 +264,7 @@ for s1 in subjects:
     rest_subjects.remove(s1)
     for s2 in rest_subjects:
         # subjs = random.sample(list(subjects), 2)
-        tempdata = humans_intact[(humans_intact['subj']==s1) | (humans_intact['subj']==s2)]
+        tempdata = humans[(humans['subj']==s1) | (humans['subj']==s2)]
         tempdata = tempdata[['image','subj','Euclidean_error','Angular_error']]
         tempdata= tempdata.pivot(index=["image"], columns=["subj"]).dropna().reset_index()
         tempdata.columns = tempdata.columns.droplevel(1)
@@ -278,6 +277,7 @@ for s1 in subjects:
         ang_error.append(r)
 
 human_corr = pd.DataFrame({'subj1':subj1, 'subj2':subj2, 'Euclidean Error':euc_error, 'Angular Error':ang_error})
+human_corr.to_excel('data/Human_error_corr.xlsx',index=None)
 print(human_corr.mean())
 r1,p1 = stats.ttest_ind(human_corr['Euclidean Error'],[0]*len(human_corr))
 r2,p2 = stats.ttest_ind(human_corr['Angular Error'],[0]*len(human_corr))
@@ -291,3 +291,68 @@ ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 ax.figure.savefig("figures/corr_Human_Human_{}.png".format(img_cond), dpi=300, bbox_inches='tight')
 plt.close()
+
+
+
+
+''' Human-Human, Human-CNN, Human-3transformers Correlation '''
+# for both euclidean and angular error
+# human-human correlation
+humans = pd.read_excel('data/Human_error_corr.xlsx')
+humans['corr_rel'] = 'Human-Human'
+
+# human-CNN correlation
+humans_CNN = results[(results['model']=='CNN') | (results['model']=='Humans')]
+humans_CNN = humans_CNN[(humans_CNN['test_cond']=='intact') & (humans_CNN['train_cond']=='Head')]
+humans_CNN = humans_CNN.drop('test_cond',axis=1)
+plot_data_piv = humans_CNN.pivot(index=["image","train_cond"], columns=["model"]).dropna().reset_index()
+plot_data_piv.columns = plot_data_piv.columns.droplevel(1)
+plot_data_piv.columns = ['image', 'train_cond', 'Euclidean_CNN', 'Euclidean_Humans',
+       'Angular_CNN', 'Angular_Humans']
+eu_r, eu_p = stats.pearsonr(plot_data_piv["Euclidean_CNN"], plot_data_piv["Euclidean_Humans"])
+eu_r = round(eu_r, 2)
+eu_p = round(eu_p, 5)
+ang_r, ang_p = stats.pearsonr(plot_data_piv["Angular_CNN"], plot_data_piv["Angular_Humans"])
+ang_r = round(ang_r, 2)
+ang_p = round(ang_p, 5)
+humans_CNN_corr = pd.DataFrame()
+humans_CNN_corr = humans_CNN_corr.append({'subj1':'Humans', 'subj2':'CNN',
+                                'Euclidean Error': eu_r, 'Euclidean Error p':eu_p,
+                                'Angular Error': ang_r, 'Angular Error p':ang_p}, ignore_index=True)
+humans_CNN_corr['corr_rel'] = 'Humans-CNN'
+
+# human-transformer correlation
+humans_transformer = results[(results['model']=='Transformer') | (results['model']=='Humans')]
+humans_transformer = humans_transformer[humans_transformer['test_cond']=='intact']
+humans_transformer = humans_transformer.drop('test_cond',axis=1)
+plot_data_piv = humans_transformer.pivot(index=["image","train_cond"], columns=["model"]).dropna().reset_index()
+plot_data_piv.columns = plot_data_piv.columns.droplevel(1)
+plot_data_piv.columns = ['image', 'train_cond', 'Euclidean_Transformer', 'Euclidean_Humans',
+       'Angular_Transformer', 'Angular_Humans']
+humans_trans_corr = pd.DataFrame()
+for cond in ['HeadBody', 'Head','Body']:
+    tempdata = plot_data_piv[plot_data_piv['train_cond']==cond]
+    eu_r, eu_p = stats.pearsonr(tempdata["Euclidean_Transformer"], tempdata["Euclidean_Humans"])
+    eu_r = round(eu_r, 2)
+    eu_p = round(eu_p, 5)
+    ang_r, ang_p = stats.pearsonr(tempdata["Angular_Transformer"], tempdata["Angular_Humans"])
+    ang_r = round(ang_r, 2)
+    ang_p = round(ang_p, 5)
+    humans_trans_corr = humans_trans_corr.append({'subj1':'Humans', 'subj2':'{} Transformer'.format(cond),
+                                                  'Euclidean Error': eu_r, 'Euclidean Error p':eu_p,
+                                                  'Angular Error': ang_r, 'Angular Error p':ang_p,
+                                                  'corr_rel': 'Human-{}Transformer'.format(cond)},
+                                                 ignore_index=True)
+
+all_corr = pd.concat([humans, humans_CNN_corr, humans_trans_corr])
+plot_data = all_corr[['Euclidean Error','Angular Error', 'corr_rel']]
+plot_data = plot_data.melt(id_vars=['corr_rel'])
+sns_setup_small(sns, (8,6))
+ax = sns.barplot(data=plot_data, x='value', y='corr_rel', hue='variable')
+ax.set(xlabel='Correlation',ylabel='')
+ax.spines['top'].set_color('white')
+ax.spines['right'].set_color('white')
+ax.legend(frameon=False)
+ax.figure.savefig("figures/allcorr_intact.png", dpi=300, bbox_inches='tight')
+plt.close()
+
