@@ -15,7 +15,7 @@ custom_colors = sns.color_palette("Set1", 10)
 
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
-summaries = glob.glob('data/*summary*')
+summaries = glob.glob('data/GroundTruth_humanest/*summary*')
 results = pd.DataFrame()
 for f in summaries:
     data = pd.read_excel(f)
@@ -24,7 +24,7 @@ for f in summaries:
 results['test_cond'] = results['test_cond'].astype('category')
 results['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
 results['model'] = results['model'].astype('category')
-results['model'].cat.reorder_categories(['Humans', 'CNN', 'Transformer'], inplace=True)
+results['model'].cat.reorder_categories(['Humans', 'CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
 
 
 ''' human, cnn, transformer performance on intact, floating heads, headless bodies (transformer only trained with heads) '''

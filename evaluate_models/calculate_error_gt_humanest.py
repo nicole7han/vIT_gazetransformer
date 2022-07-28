@@ -96,7 +96,7 @@ for f in results:
     df = df.drop(['gazed_x','gazed_y','gaze_start_x','gaze_start_y'], axis=1)
     humans = pd.concat([humans,df])
 humans['model'] = 'Humans'
-humans.to_excel('data/GroundTruth_humanest/Humans_summary.xlsx'.format(Trained_cond), index=None)
+humans.to_excel('data/GroundTruth_humanest/Humans_summary.xlsx', index=None)
 
 
 
