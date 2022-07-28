@@ -51,8 +51,7 @@ transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['t
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
 transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
-transformer['model'] = 'Transformer'
-
+transformer['model'] = '{} Transformer'.format(Trained_cond)
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
 
 '''CNN results'''
