@@ -53,6 +53,8 @@ transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
 transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
 transformer['model'] = 'Transformer'
 
+transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
+
 '''CNN results'''
 results = glob.glob('{}/chong*.csv'.format(basepath))
 cnn = pd.DataFrame()
@@ -76,6 +78,8 @@ cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chongmean'),axis=1)
 cnn = cnn.groupby(['image','test_cond']).mean().reset_index()
 cnn = cnn[['image', 'test_cond','Euclidean_error','Angular_error']]
 cnn['model'] = 'CNN'
+
+cnn.to_excel('data/GroundTruth_gazedperson/CNN_summary.xlsx'.format(Trained_cond), index=None)
 
 
 '''human results'''
@@ -101,10 +105,12 @@ humans = humans.groupby(['image','test_cond']).mean().reset_index()
 humans = humans[['image', 'test_cond','Euclidean_error','Angular_error']]
 humans['model'] = 'Humans'
 
-plot_data = pd.concat([transformer, cnn, humans])
-plot_data['test_cond'] = plot_data['test_cond'].astype('category')
-plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-plot_data.to_excel('data/GroundTruth_gazedperson/{}_summary.xlsx'.format(Trained_cond), index=None)
+humans.to_excel('data/GroundTruth_gazedperson/Humans_summary.xlsx'.format(Trained_cond), index=None)
+#
+# plot_data = pd.concat([transformer, cnn, humans])
+# plot_data['test_cond'] = plot_data['test_cond'].astype('category')
+# plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
+# plot_data.to_excel('data/GroundTruth_gazedperson/{}_summary.xlsx'.format(Trained_cond), index=None)
 
 
 
