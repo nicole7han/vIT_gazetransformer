@@ -27,33 +27,44 @@ basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 Trained_cond = 'HeadBody'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
-# human_estimations = pd.read_excel('data/Human_estimations.xlsx')
-# # calculate error with respective to mean humans
-# mean_gt = human_estimations.groupby(['test_cond','image']).mean().reset_index()[
-#     ['test_cond','image', 'human_est_x', 'human_est_y', 'gaze_start_x', 'gaze_start_y']]
-# mean_gt.columns = ['test_cond','image', 'gazed_x', 'gazed_y', 'gaze_start_x', 'gaze_start_y']
-# mean_gt['subj'] = 'mean'
-#
-#
-# # calculate error with respective to all the rest humans (leave one out)
-# ind_gt = pd.DataFrame()
-# for test_cond in ['intact','floating heads','headless bodies']:
-#     print(test_cond)
-#     for subj in np.unique(human_estimations['subj']):
-#         rest = human_estimations[(human_estimations['test_cond']==test_cond) & (human_estimations['subj']!=subj)]
-#         rest = rest.groupby('image').mean().reset_index()[
-#         ['image', 'human_est_x', 'human_est_y', 'gaze_start_x', 'gaze_start_y']]
-#         rest.columns = ['image', 'gazed_x', 'gazed_y', 'gaze_start_x', 'gaze_start_y']
-#         rest['test_cond'] = test_cond
-#         rest['subj'] = subj # this is the gt for this particular subject (averaged using leave one out)
-#         ind_gt = ind_gt.append(rest, ignore_index=True)
-#
-# image_info_humanmean = pd.concat([mean_gt,ind_gt])
-# image_info_humanmean.to_excel('data/GroundTruth_gazedperson/image_info_humanmean.xlsx', index=None)
-
-
-
 image_info = pd.read_excel('data/GroundTruth_humanest/image_info_humanmean.xlsx')
+# gazed_x and gazed_y is human average annotations
+
+'''transformer results'''
+transformer = pd.DataFrame()
+for epoch in [300,100,120]: #100,120
+    results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
+    for f in results:
+        df = pd.read_excel(f)
+        if 'TEST_intact' in f: Test_cond = 'intact'
+        elif 'TEST_nb' in f: Test_cond = 'floating heads'
+        elif 'TEST_nh' in f: Test_cond = 'headless bodies'
+        df['test_cond'] = Test_cond
+        df['image'] = df.apply(lambda r: r['image'].replace('_nh', '') if '_nh' in r['image'] else  r['image'].replace('_nb', ''), axis=1)
+        df = df.drop(['gazed_x','gazed_y','gazer'],axis=1)
+
+        # calculate error based on mean
+        img_info = image_info[(image_info['test_cond'] == Test_cond) & (image_info['subj'] == 'mean')]
+        df = df.merge(img_info.drop(['test_cond','gaze_start_x', 'gaze_start_y',  'subj'], axis=1), on=['image'])
+        df['Euclidean_error_meanest'] = np.sqrt(
+            (df['gazed_x'] - df['transformer_est_x']) ** 2 + (df['gazed_y'] - df['transformer_est_y']) ** 2)
+        df['Angular_error_meanest'] = df.apply(lambda r: compute_angle(r, 'transformer'), axis=1)
+        df = df.drop(['gazed_x', 'gazed_y', 'gaze_start_x', 'gaze_start_y'], axis=1)
+
+        # calculate error based on individual
+        img_info = image_info[(image_info['test_cond'] == Test_cond) & (image_info['subj'] != 'mean')]
+        df = df.merge(img_info[['image', 'gaze_start_x', 'gaze_start_y', 'gazed_x', 'gazed_y','subj']], on=['image'])
+        df['Euclidean_error_lou'] = np.sqrt(
+            (df['gazed_x'] - df['transformer_est_x']) ** 2 + (df['gazed_y'] - df['transformer_est_y']) ** 2)
+        df['Angular_error_lou'] = df.apply(lambda r: compute_angle(r, 'transformer'), axis=1)
+        df = df.groupby(['test_cond','image']).mean().reset_index().drop(['gazed_x', 'gazed_y', 'gaze_start_x', 'gaze_start_y'], axis=1)
+
+        transformer = pd.concat([transformer,df])
+transformer['model'] = '{} Transformer'.format(Trained_cond)
+transformer = transformer.drop(['chong_est_x','chong_est_y'],axis=1)
+transformer.to_excel('data/GroundTruth_humanest/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
+
+
 '''human results'''
 human_path = '/Users/nicolehan/Documents/Research/GazeExperiment/Mechanical turk/Analysis_absent'
 results = glob.glob('{}/human*.xlsx'.format(human_path))
@@ -85,44 +96,9 @@ for f in results:
     df = df.drop(['gazed_x','gazed_y','gaze_start_x','gaze_start_y'], axis=1)
     humans = pd.concat([humans,df])
 humans['model'] = 'Humans'
+humans.to_excel('data/GroundTruth_humanest/Humans_summary.xlsx'.format(Trained_cond), index=None)
 
 
-
-'''transformer results'''
-transformer = pd.DataFrame()
-for epoch in [300,100,120]: #100,120
-    results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
-    for f in results:
-        df = pd.read_excel(f)
-        if 'TEST_intact' in f: Test_cond = 'intact'
-        elif 'TEST_nb' in f: Test_cond = 'floating heads'
-        elif 'TEST_nh' in f: Test_cond = 'headless bodies'
-        df = df.groupby('image').mean().reset_index()  # compute estimation for each image
-        df['test_cond'] = Test_cond
-        df['image'] = df.apply(lambda r: r['image'].replace('_nh', '') if '_nh' in r['image'] else  r['image'].replace('_nb', ''), axis=1)
-        df = df.drop(['gazed_x','gazed_y','gazer'],axis=1)
-
-        # calculate error based on mean
-        img_info = image_info[(image_info['test_cond'] == Test_cond) & (image_info['subj'] == 'mean')]
-        df = df.merge(img_info[['image', 'gazed_x', 'gazed_y']], on=['image'])
-        df['Euclidean_error_meanest'] = np.sqrt(
-            (df['gazed_x'] - df['transformer_est_x']) ** 2 + (df['gazed_y'] - df['transformer_est_y']) ** 2)
-        df['Angular_error_meanest'] = df.apply(lambda r: compute_angle(r, 'transformer'), axis=1)
-        df = df.drop(['gazed_x', 'gazed_y'], axis=1)
-
-        # calculate error based on individual
-        img_info = image_info[(image_info['test_cond'] == Test_cond) & (image_info['subj'] != 'mean')]
-        df = df.merge(img_info[['image', 'gazed_x', 'gazed_y','subj']], on=['image'])
-        df['Euclidean_error_lou'] = np.sqrt(
-            (df['gazed_x'] - df['transformer_est_x']) ** 2 + (df['gazed_y'] - df['transformer_est_y']) ** 2)
-        df['Angular_error_lou'] = df.apply(lambda r: compute_angle(r, 'transformer'), axis=1)
-        df = df.groupby(['test_cond','image']).mean().reset_index().drop(['gazed_x', 'gazed_y', 'gaze_start_x', 'gaze_start_y'], axis=1)
-
-        transformer = pd.concat([transformer,df])
-transformer['model']='Transformer'
-transformer = transformer.drop(['chong_est_x','chong_est_y'],axis=1)
-image_info_gazer = transformer[['image','gaze_start_x','gaze_start_y']].drop_duplicates()
-image_info = image_info_gazer.merge(image_info_gazer, on='image')
 
 
 '''CNN results'''
@@ -133,16 +109,31 @@ for f in results:
     if 'intact' in f: Test_cond = 'intact'
     elif 'nb' in f: Test_cond = 'floating heads'
     elif 'nh' in f: Test_cond = 'headless bodies'
-
-    df = df.groupby('image').mean().reset_index()  # compute estimation for each image
     df['test_cond'] = Test_cond
+
+    # calculate error based on mean
+    img_info = image_info[(image_info['test_cond']==Test_cond) & (image_info['subj']=='mean')]
+    df = df.merge(img_info.drop(['test_cond','subj','gaze_start_x','gaze_start_y'],axis=1), on=['image'])
+    df['Euclidean_error_meanest'] = np.sqrt(
+        (df['gazed_x'] - df['chong_est_x']) ** 2 + (df['gazed_y'] - df['chong_est_y']) ** 2)
+    df['Angular_error_meanest'] = df.apply(lambda r: compute_angle(r, 'chong'), axis=1)
+    df = df.drop(['gazed_x','gazed_y','gaze_start_x','gaze_start_y'], axis=1)
+
+    # calculate error based on individual
+    img_info = image_info[(image_info['test_cond']==Test_cond) & (image_info['subj']!='mean')]
+    df = df.merge(img_info.drop(['test_cond'],axis=1), on=['image'])
+    df['Euclidean_error_lou'] = np.sqrt(
+        (df['gazed_x'] - df['chong_est_x']) ** 2 + (df['gazed_y'] - df['chong_est_y']) ** 2)
+    df['Angular_error_lou'] = df.apply(lambda r: compute_angle(r, 'chong'), axis=1)
+    df = df.groupby(['test_cond', 'image']).mean().reset_index().drop(
+        ['gazed_x', 'gazed_y', 'gaze_start_x', 'gaze_start_y'], axis=1)
+
     cnn = pd.concat([cnn,df])
 
-cnn = cnn.merge(image_info[['image', 'gazed_x', 'gazed_y']], on=['image'])
-cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
-cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chong'),axis=1)
-cnn = cnn[['image', 'test_cond','Euclidean_error','Angular_error']]
 cnn['model'] = 'CNN'
+cnn.to_excel('data/GroundTruth_humanest/CNN_summary.xlsx', index=None)
+
+
 
 plot_data = pd.concat([transformer, cnn, humans])
 plot_data['test_cond'] = plot_data['test_cond'].astype('category')
