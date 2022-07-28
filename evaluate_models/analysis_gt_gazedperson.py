@@ -71,8 +71,8 @@ plt.close()
 
 ''' Human-Human, Human-CNN, Human-Transformer Correlation on Euclidean and Angular Error '''
 # calculate human-human error wrt gazed person
-image_info = pd.read_excel('data/GroundTruth_gazedperson/image_info.xlsx')
-human_path = '/Users/nicolehan/Documents/Research/GazeExperiment/Mechanical turk/Analysis_absent'
+# image_info = pd.read_excel('data/GroundTruth_gazedperson/image_info.xlsx')
+# human_path = '/Users/nicolehan/Documents/Research/GazeExperiment/Mechanical turk/Analysis_absent'
 # results = glob.glob('{}/human*.xlsx'.format(human_path))
 # humans = pd.DataFrame()
 # for f in results:
@@ -125,7 +125,7 @@ subjects = list(np.unique(humans['subj']))
 
 # 1. human-human correlation
 humans_humans = pd.read_excel('data/GroundTruth_gazedperson/Human_intact_error_corr.xlsx')
-humans_humans['corr_rel'] = 'Human-Human'
+humans_humans['corr_rel'] = 'Humans-Humans'
 
 
 # 2. human-model correlation
