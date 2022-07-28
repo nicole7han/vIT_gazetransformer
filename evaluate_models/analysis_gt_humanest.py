@@ -52,7 +52,7 @@ ax = sns.barplot(data = plot_data, x = error, y = 'model',color=setpallet[0])
 ax.set(xlabel='Euclidean Error', ylabel='')
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
-ax.figure.savefig("figures/intact_{}.png".format(error), dpi=300, bbox_inches='tight')
+ax.figure.savefig("figures/intact_gt_humanest{}.png".format(error), dpi=300, bbox_inches='tight')
 plt.close()
 
 
@@ -67,7 +67,7 @@ ax.spines['right'].set_color('white')
 #                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
 #                     loc='outside', verbose=2)
 # ax.legend(title='test condition', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
-ax.figure.savefig("figures/intact_{}.png".format(error), dpi=300, bbox_inches='tight')
+ax.figure.savefig("figures/intact_gt_humanest{}.png".format(error), dpi=300, bbox_inches='tight')
 plt.close()
 
 
@@ -77,7 +77,7 @@ ax = sns.barplot(data = plot_data, x = error, y = 'model',color=setpallet[0])
 ax.set(xlabel='Angular Error (˚)', ylabel='')
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
-ax.figure.savefig("figures/intact_{}.png".format(error), dpi=300, bbox_inches='tight')
+ax.figure.savefig("figures/intact_gt_humanest{}.png".format(error), dpi=300, bbox_inches='tight')
 plt.close()
 
 
@@ -87,13 +87,11 @@ ax = sns.barplot(data = plot_data, x = error, y = 'model',color=setpallet[0])
 ax.set(xlabel='Angular Error (˚)', ylabel='')
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
-ax.figure.savefig("figures/intact_{}.png".format(error), dpi=300, bbox_inches='tight')
+ax.figure.savefig("figures/intact_gt_humanest{}.png".format(error), dpi=300, bbox_inches='tight')
 plt.close()
 
 
 
 
-
-
-''' Human-Human, Human-CNN, Human-Transformer Correlation (mean human estimates as groundtruth) '''
+''' Human-Human, Human-CNN, Human-Transformer Correlation '''
 

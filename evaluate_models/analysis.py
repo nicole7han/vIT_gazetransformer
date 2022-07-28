@@ -15,11 +15,10 @@ custom_colors = sns.color_palette("Set1", 10)
 
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
-summaries = glob.glob('data/GroundTruth_humanest/*summary*')
+summaries = glob.glob('data/GroundTruth_gazedperson/*summary*')
 results = pd.DataFrame()
 for f in summaries:
     data = pd.read_excel(f)
-    data['train_cond'] = os.path.split(f)[-1].split('_')[0]
     results = results.append(data)
 results['test_cond'] = results['test_cond'].astype('category')
 results['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
@@ -234,25 +233,25 @@ if error == 'Angular':
 
 
 ''' human vs. human '''
-# human_path = '/Users/nicolehan/Documents/Research/GazeExperiment/Mechanical turk/Analysis_absent'
-# results = glob.glob('{}/human*.xlsx'.format(human_path))
-# humans = pd.DataFrame()
-# for f in results:
-#     df = pd.read_excel(f)
-#     df.columns = ['human_est_x', 'human_est_y', 'subj', 'condition', 'movie', 'image']
-#     if 'intact' in f: Test_cond = 'intact'
-#     elif 'floating heads' in f: Test_cond = 'floating heads'
-#     elif 'headless bodies' in f: Test_cond = 'headless bodies'
-#     df = df.drop(['condition','movie'],axis=1)
-#     df = df.merge(image_info, on=['image'])
-#     df['Euclidean_error'] = np.sqrt(
-#         (df['gazed_x'] - df['human_est_x']) ** 2 + (df['gazed_y'] - df['human_est_y']) ** 2)
-#     df['Angular_error'] = df.apply(lambda r: compute_angle(r,'human'),axis=1)
-#     # df = df.groupby('image').mean().reset_index()  # mean subject error
-#     df['test_cond'] = Test_cond
-#     humans = pd.concat([humans,df])
-# humans = humans[(humans['subj']!=99401) & (humans['subj']!=99807)]
-# humans.to_excel('data/Human_estimations.xlsx',index=None)
+human_path = '/Users/nicolehan/Documents/Research/GazeExperiment/Mechanical turk/Analysis_absent'
+results = glob.glob('{}/human*.xlsx'.format(human_path))
+humans = pd.DataFrame()
+for f in results:
+    df = pd.read_excel(f)
+    df.columns = ['human_est_x', 'human_est_y', 'subj', 'condition', 'movie', 'image']
+    if 'intact' in f: Test_cond = 'intact'
+    elif 'floating heads' in f: Test_cond = 'floating heads'
+    elif 'headless bodies' in f: Test_cond = 'headless bodies'
+    df = df.drop(['condition','movie'],axis=1)
+    df = df.merge(image_info, on=['image'])
+    df['Euclidean_error'] = np.sqrt(
+        (df['gazed_x'] - df['human_est_x']) ** 2 + (df['gazed_y'] - df['human_est_y']) ** 2)
+    df['Angular_error'] = df.apply(lambda r: compute_angle(r,'human'),axis=1)
+    # df = df.groupby('image').mean().reset_index()  # mean subject error
+    df['test_cond'] = Test_cond
+    humans = pd.concat([humans,df])
+humans = humans[(humans['subj']!=99401) & (humans['subj']!=99807)]
+humans.to_excel('data/Human_estimations.xlsx',index=None)
 
 humans = pd.read_excel('data/Human_estimations.xlsx')
 humans = humans[humans['test_cond']=='intact']
@@ -412,11 +411,4 @@ ax.spines['right'].set_color('white')
 ax.figure.savefig("figures/Angular_human_allmodels_intact.png", dpi=300, bbox_inches='tight')
 plt.close()
 
-
-
-''' Human, CNN, 3 Transformer performance (human estimates as groundtruth) '''
-
-
-
-''' Human-Human, Human-CNN, Human-Transformer Correlation (mean human estimates as groundtruth) '''
 
