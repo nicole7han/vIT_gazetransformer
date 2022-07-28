@@ -38,13 +38,17 @@ for epoch in [300,100,120]: #100,120
         elif 'TEST_nb' in f: Test_cond = 'floating heads'
         elif 'TEST_nh' in f: Test_cond = 'headless bodies'
 
-        df = df.groupby('image').mean().reset_index()  # compute estimation for each image
+        df_estmean = df.groupby('image').mean().reset_index()  # compute estimation for each image
+        # important to keep individual gazer for calculating angular error
+        df_estmean = df_estmean[['image','transformer_est_x','transformer_est_y']]
+        df_estmean.columns = ['image','transformermean_est_x','transformermean_est_y']
+        df = df.merge(df_estmean,on='image')
         df['test_cond'] = Test_cond
         transformer = pd.concat([transformer,df])
 
-image_info = transformer[['image','gaze_start_x','gaze_start_y','gazed_x','gazed_y']].drop_duplicates()
-transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformer_est_x'])**2 + (transformer['gazed_y']-transformer['transformer_est_y'])**2 )
-transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformer'),axis=1)
+image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x','gazed_y']].drop_duplicates()
+transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformermean_est_x'])**2 + (transformer['gazed_y']-transformer['transformermean_est_y'])**2 )
+transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
 transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
 transformer['model'] = 'Transformer'
@@ -57,14 +61,19 @@ for f in results:
     if 'intact' in f: Test_cond = 'intact'
     elif 'nb' in f: Test_cond = 'floating heads'
     elif 'nh' in f: Test_cond = 'headless bodies'
+    df_estmean = df.groupby('image').mean().reset_index()  # compute estimation for each image
+    # important to keep individual gazer for calculating angular error
+    df_estmean = df_estmean[['image','chong_est_x','chong_est_y']]
+    df_estmean.columns = ['image','chongmean_est_x','chongmean_est_y']
+    df = df.merge(df_estmean,on='image')
 
-    df = df.groupby('image').mean().reset_index()  # compute estimation for each image
     df['test_cond'] = Test_cond
     cnn = pd.concat([cnn,df])
 
-cnn = cnn.merge(image_info[['image', 'gazed_x', 'gazed_y']], on=['image'])
-cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chong_est_x'])**2 + (cnn['gazed_y']-cnn['chong_est_y'])**2 )
-cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chong'),axis=1)
+cnn = cnn.merge(image_info[['image', 'gazer','gazed_x', 'gazed_y']], on=['image','gazer'])
+cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chongmean_est_x'])**2 + (cnn['gazed_y']-cnn['chongmean_est_y'])**2 )
+cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chongmean'),axis=1)
+cnn = cnn.groupby(['image','test_cond']).mean().reset_index()
 cnn = cnn[['image', 'test_cond','Euclidean_error','Angular_error']]
 cnn['model'] = 'CNN'
 

@@ -411,3 +411,12 @@ ax.spines['right'].set_color('white')
 # ax.legend(title='test condition', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
 ax.figure.savefig("figures/Angular_human_allmodels_intact.png", dpi=300, bbox_inches='tight')
 plt.close()
+
+
+
+''' Human, CNN, 3 Transformer performance (human estimates as groundtruth) '''
+
+
+
+''' Human-Human, Human-CNN, Human-Transformer Correlation (mean human estimates as groundtruth) '''
+
