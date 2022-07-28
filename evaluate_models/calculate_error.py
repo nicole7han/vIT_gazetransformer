@@ -90,21 +90,21 @@ for f in results:
     elif 'headless bodies' in f: Test_cond = 'headless bodies'
     df = df.drop(['condition','movie'],axis=1)
     df = df.merge(image_info, on=['image'])
-    df['Euclidean_error'] = np.sqrt(
-        (df['gazed_x'] - df['human_est_x']) ** 2 + (df['gazed_y'] - df['human_est_y']) ** 2)
-    df['Angular_error'] = df.apply(lambda r: compute_angle(r,'human'),axis=1)
-    df = df[(df['subj'] != 99401) & (humans['subj'] != 99807)]
-    df = df.groupby('image').mean().reset_index()  # mean subject error
+    df = df[(df['subj'] != 99401) & (df['subj'] != 99807)]
     df['test_cond'] = Test_cond
     humans = pd.concat([humans,df])
 
+humans['Euclidean_error'] = np.sqrt(
+    (humans['gazed_x'] - humans['human_est_x']) ** 2 + (humans['gazed_y'] - humans['human_est_y']) ** 2)
+humans['Angular_error'] = humans.apply(lambda r: compute_angle(r,'human'),axis=1)
+humans = humans.groupby(['image','test_cond']).mean().reset_index()
 humans = humans[['image', 'test_cond','Euclidean_error','Angular_error']]
 humans['model'] = 'Humans'
 
 plot_data = pd.concat([transformer, cnn, humans])
 plot_data['test_cond'] = plot_data['test_cond'].astype('category')
 plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-plot_data.to_excel('data/{}_summary.xlsx'.format(Trained_cond), index=None)
+plot_data.to_excel('data/GroundTruth_gazedperson/{}_summary.xlsx'.format(Trained_cond), index=None)
 
 
 
