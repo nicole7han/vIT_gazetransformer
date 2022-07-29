@@ -270,13 +270,12 @@ for model in models:
     humans_model['corr_rel'] = 'Humans-{}'.format(model)
     humans_models = humans_models.append(humans_model, ignore_index=True)
 
+
+
+# plot
 all_corr = pd.concat([humans_humans, humans_models])
 plot_data = all_corr[['vec_angle_corr','corr_rel']]
 plot_data = plot_data.melt(id_vars=['corr_rel'])
-
-
-
-
 
 sns_setup_small(sns, (8,6))
 ax = sns.barplot(data=plot_data, x='value', y='corr_rel',color=setpallet[2])
