@@ -57,7 +57,6 @@ for epoch in [108,60,150]:
 image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x','gazed_y']].drop_duplicates()
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformermean_est_x'])**2 + (transformer['gazed_y']-transformer['transformermean_est_y'])**2 )
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
-transformer['Vector_dotprod'] = transformer.apply(lambda r: compute_dotprod(r,'transformermean'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
 transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error','Vector_dotprod']]
 transformer['model'] = '{} Transformer'.format(Trained_cond)
