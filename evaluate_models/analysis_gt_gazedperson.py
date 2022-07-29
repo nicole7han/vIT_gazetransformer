@@ -29,7 +29,7 @@ results['model'] = results['model'].astype('category')
 results['model'].cat.reorder_categories(['Humans', 'CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
 
 
-''' Human, CNN, 3 Transformer performance (human estimates as groundtruth) '''
+''' PART I Human, CNN, 3 Transformer performance (human estimates as groundtruth) '''
 plot_data = results[results['test_cond']=='intact']
 plot_data = plot_data[[ 'Euclidean_error', 'Angular_error','model']]
 
@@ -72,7 +72,7 @@ plt.close()
 
 
 
-''' Human-Human, Human-CNN, Human-Transformer Error Correlation on Euclidean and Angular Error '''
+''' PART II Human-Human, Human-CNN, Human-Transformer Error Correlation on Euclidean and Angular Error '''
 # calculate human-human error wrt gazed person
 # image_info = pd.read_excel('data/GroundTruth_gazedperson/image_info.xlsx')
 # human_path = '/Users/nicolehan/Documents/Research/GazeExperiment/Mechanical turk/Analysis_absent'
@@ -212,7 +212,7 @@ plt.close()
 
 
 
-''' Human-Human, Human-CNN, Human-Transformer Vector Angle Correlation '''
+''' PART III Human-Human, Human-CNN, Human-Transformer Vector Angle Correlation '''
 files = glob.glob('data/GroundTruth_gazedperson/*vectors.xlsx')
 results = pd.DataFrame()
 for f in files:
@@ -220,3 +220,16 @@ for f in files:
     df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
     results = results.append(df, ignore_index=True)
 
+results = results[['cond','image','gazer','Angle2Hori','model']]
+results = results.groupby(['cond','image','model']).mean().reset_index().drop('gazer',axis=1)
+plot_data = results[results['cond']=='intact']
+
+# 1. human-human correlation
+humans_humans = plot_data[plot_data['model']=='Humans']
+humans_humans['corr_rel'] = 'Humans-Humans'
+
+
+# 2. human-model correlation
+intact = results[(results['test_cond']=='intact') & (results['model']!='Humans')]
+models = ['CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']
+humans_models = pd.DataFrame()

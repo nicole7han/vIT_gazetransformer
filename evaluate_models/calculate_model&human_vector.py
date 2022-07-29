@@ -94,7 +94,7 @@ for f in results:
 
 humans = humans.merge(image_info, on=['image'])
 humans['Angle2Hori'] = humans.apply(lambda r: compute_angle2hori(r, 'human'), axis=1)
-humans = humans[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','human_est_x', 'human_est_y','gazed_x','gazed_y',]]
+humans = humans[['test_cond', 'image', 'gazer', 'subj', 'Angle2Hori', 'gaze_start_x','gaze_start_y','human_est_x', 'human_est_y','gazed_x','gazed_y',]]
 humans['model'] = 'Humans'
 
 humans.to_excel('data/GroundTruth_gazedperson/Humans_vectors.xlsx'.format(Trained_cond), index=None)
