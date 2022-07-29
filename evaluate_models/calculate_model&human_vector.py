@@ -54,5 +54,6 @@ image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x
 # image_info.to_excel('data/GroundTruth_gazedperson/image_info.xlsx', index=None)
 transformer['Angle2Hori'] = transformer.apply(lambda r: compute_angle2hori(r, 'transformer'), axis=1)
 transformer = transformer[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','transformer_est_x', 'transformer_est_y', 'gazed_x','gazed_y',]]
+transformer['model'] = '{} Transformer'.format(Trained_cond)
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_vectors.xlsx'.format(Trained_cond), index=None)
 
