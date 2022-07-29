@@ -21,6 +21,14 @@ def compute_angle(row, model):
     angle = np.arccos(dot_product) * 180 / np.pi  # angle in degrees
     return angle
 
+def compute_dotprod(row, model):
+    vector_1 = [row['gazed_x'] - row['gaze_start_x'], row['gazed_y'] - row['gaze_start_y']]
+    vector_2 = [row['{}_est_x'.format(model)] - row['gaze_start_x'], row['{}_est_y'.format(model)] - row['gaze_start_y']]
+
+    unit_vector_1 = vector_1 / np.linalg.norm(vector_1)
+    unit_vector_2 = vector_2 / np.linalg.norm(vector_2)
+    dot_product = np.dot(unit_vector_1, unit_vector_2)
+    return dot_product
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
@@ -49,8 +57,9 @@ for epoch in [108,60,150]:
 image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x','gazed_y']].drop_duplicates()
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformermean_est_x'])**2 + (transformer['gazed_y']-transformer['transformermean_est_y'])**2 )
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
+transformer['Vector_dotprod'] = transformer.apply(lambda r: compute_dotprod(r,'transformermean'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
-transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
+transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error','Vector_dotprod']]
 transformer['model'] = '{} Transformer'.format(Trained_cond)
 
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
