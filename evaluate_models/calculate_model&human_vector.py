@@ -19,20 +19,8 @@ def compute_angle2hori(row, model):
     unit_vector_2 = vector_2 / np.linalg.norm(vector_2)
     dot_product = np.dot(unit_vector_1, unit_vector_2)
     angle = np.arccos(dot_product) * 180 / np.pi  # angle in degrees
-    angle = min(180-angle, angle)
     return angle
 
-
-def compute_angle2hori(row, model):
-    vector_1 = [1, 0]
-    vector_2 = [row['{}_est_x'.format(model)] - row['gaze_start_x'], row['{}_est_y'.format(model)] - row['gaze_start_y']]
-
-    unit_vector_1 = vector_1 / np.linalg.norm(vector_1)
-    unit_vector_2 = vector_2 / np.linalg.norm(vector_2)
-    dot_product = np.dot(unit_vector_1, unit_vector_2)
-    angle = np.arccos(dot_product) * 180 / np.pi  # angle in degrees
-    angle = min(180 - angle, angle)
-    return angle
 
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
