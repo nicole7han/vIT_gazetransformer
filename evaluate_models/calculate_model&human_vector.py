@@ -47,23 +47,15 @@ for epoch in [300,100,120]: #100,120
         if 'TEST_intact' in f: Test_cond = 'intact'
         elif 'TEST_nb' in f: Test_cond = 'floating heads'
         elif 'TEST_nh' in f: Test_cond = 'headless bodies'
-
-        df_estmean = df.groupby('image').mean().reset_index()  # average across gazers
-        # important to keep individual gazer for calculating angular error
-        df_estmean = df_estmean[['image','transformer_est_x','transformer_est_y']]
-        df_estmean.columns = ['image','transformermean_est_x','transformermean_est_y']
-        df = df.merge(df_estmean,on='image')
         df['test_cond'] = Test_cond
         transformer = pd.concat([transformer,df])
-
+# COMPUTE HUMAN AND MODEL VECTOR
 image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x','gazed_y']].drop_duplicates()
 # image_info.to_excel('data/GroundTruth_gazedperson/image_info.xlsx', index=None)
-transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformermean_est_x'])**2 + (transformer['gazed_y']-transformer['transformermean_est_y'])**2 )
-transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
-transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
-transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
+transformer['Angle2Hori'] = transformer.apply(lambda r: compute_angle2hori(r, 'transformer'), axis=1)
+transformer = transformer[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','gazed_x','gazed_y',]]
 transformer['model'] = '{} Transformer'.format(Trained_cond)
-transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
+transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_vectors.xlsx'.format(Trained_cond), index=None)
 
 
 '''CNN results'''
@@ -74,22 +66,14 @@ for f in results:
     if 'intact' in f: Test_cond = 'intact'
     elif 'nb' in f: Test_cond = 'floating heads'
     elif 'nh' in f: Test_cond = 'headless bodies'
-    df_estmean = df.groupby('image').mean().reset_index() # average across gazers
-    # important to keep individual gazer for calculating angular error
-    df_estmean = df_estmean[['image','chong_est_x','chong_est_y']]
-    df_estmean.columns = ['image','chongmean_est_x','chongmean_est_y']
-    df = df.merge(df_estmean,on='image')
-
     df['test_cond'] = Test_cond
     cnn = pd.concat([cnn,df])
-
-cnn = cnn.merge(image_info[['image', 'gazer','gazed_x', 'gazed_y']], on=['image','gazer'])
-cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chongmean_est_x'])**2 + (cnn['gazed_y']-cnn['chongmean_est_y'])**2 )
-cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chongmean'),axis=1)
-cnn = cnn.groupby(['image','test_cond']).mean().reset_index()
-cnn = cnn[['image', 'test_cond','Euclidean_error','Angular_error']]
+cnn = cnn.drop([ 'gaze_start_x', 'gaze_start_y'], axis=1)
+cnn = cnn.merge(image_info, on=['image','gazer'])
+cnn['Angle2Hori'] = cnn.apply(lambda r: compute_angle2hori(r, 'chong'), axis=1)
+cnn = cnn[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','gazed_x','gazed_y',]]
 cnn['model'] = 'CNN'
-cnn.to_excel('data/GroundTruth_gazedperson/CNN_summary.xlsx'.format(Trained_cond), index=None)
+cnn.to_excel('data/GroundTruth_gazedperson/CNN_vectors.xlsx'.format(Trained_cond), index=None)
 
 
 '''human results'''
@@ -103,20 +87,18 @@ for f in results:
     elif 'floating heads' in f: Test_cond = 'floating heads'
     elif 'headless bodies' in f: Test_cond = 'headless bodies'
     df = df.drop(['condition','movie'],axis=1)
-    df = df.merge(image_info, on=['image'])
+    # df = df.merge(image_info, on=['image'])
     df = df[(df['subj'] != 99401) & (df['subj'] != 99807)]
     df['test_cond'] = Test_cond
     humans = pd.concat([humans,df])
 
-humans['Euclidean_error'] = np.sqrt(
-    (humans['gazed_x'] - humans['human_est_x']) ** 2 + (humans['gazed_y'] - humans['human_est_y']) ** 2)
-humans['Angular_error'] = humans.apply(lambda r: compute_angle(r,'human'),axis=1)
-humans = humans.groupby(['image','test_cond']).mean().reset_index()
-humans = humans[['image', 'test_cond','Euclidean_error','Angular_error']]
+humans = humans.merge(image_info, on=['image'])
+humans['Angle2Hori'] = humans.apply(lambda r: compute_angle2hori(r, 'human'), axis=1)
+humans = cnn[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','gazed_x','gazed_y',]]
 humans['model'] = 'Humans'
 
-humans.to_excel('data/GroundTruth_gazedperson/Humans_summary.xlsx'.format(Trained_cond), index=None)
-#
+humans.to_excel('data/GroundTruth_gazedperson/Humans_vectors.xlsx'.format(Trained_cond), index=None)
+
 # plot_data = pd.concat([transformer, cnn, humans])
 # plot_data['test_cond'] = plot_data['test_cond'].astype('category')
 # plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)

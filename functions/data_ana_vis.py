@@ -5,6 +5,7 @@ import seaborn as sns
 # sys.path.append('/Users/nicolehan/Documents/Research/gazetransformer/')
 # from train_model import *
 import numpy as np
+from evaluate_models.utils_fine_tuning import *
 
 mycolors = sns.color_palette("RdBu", 10)
 deeppallet = sns.color_palette("deep")
