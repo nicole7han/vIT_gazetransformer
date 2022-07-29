@@ -2,6 +2,8 @@ import pandas as pd
 import glob, os
 from script.model import *
 import statsmodels.api as sm
+from itertools import combinations
+from statsmodels.stats.multitest import multipletests as mt
 from statsmodels.formula.api import ols
 import pingouin as pg
 from scipy import stats
@@ -10,6 +12,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 from script.matcher import *
+from evaluate_models.utils import *
 setpallet = sns.color_palette("Set2")
 custom_colors = sns.color_palette("Set1", 10)
 
@@ -156,12 +159,53 @@ for model in models:
 all_corr = pd.concat([humans_humans, humans_models])
 plot_data = all_corr[['Euclidean Error','Angular Error', 'corr_rel']]
 plot_data = plot_data.melt(id_vars=['corr_rel'])
+
+
+# boostrapping
+boot_data = all_corr
+boot_data = boot_data.groupby(['corr_rel','subj1']).mean().reset_index()
+cond = list(np.unique(boot_data.corr_rel))
+conditions = set(list(combinations(cond, 2)))
+pvals = pd.DataFrame()
+for var in ['Euclidean Error','Angular Error']:
+    print(var)
+    for cond1, cond2 in conditions:
+        print(cond1)
+        print(cond2)
+        dataframe1 = boot_data[boot_data['corr_rel']==cond1]
+        dataframe2 = boot_data[boot_data['corr_rel'] == cond2]
+        ci1, ci2, p = bootstrap(dataframe1, dataframe2, var, 10000, 'mean')
+        pvals = pvals.append({'variable':var, 'cond1': cond1, 'cond2': cond2,
+                                  'ci1l':ci1[0], 'ci1u':ci1[1], 'ci2l':ci2[0], 'ci2u':ci2[1],
+                                  'p': p}, ignore_index=True)
+
+
+p_adjs = mt(pvals['p'], alpha=0.05, method='fdr_bh')[1]
+pvals['p_adj'] = p_adjs
+pvals.to_excel('data/boot_results.xlsx',index=None)
+sig_pvals = pvals[pvals['p_adj']<0.05]
+if len(sig_pvals)>0:
+    ps = list(sig_pvals['p_adj'])
+box_pairs = []
+for _, row in sig_pvals.iterrows():
+    cond1, cond2 = row['cond1'], row['cond2']
+    var = row['variable']
+    box_pairs.append(((cond1, var), (cond2,var)))
+
+
 sns_setup_small(sns, (8,6))
-ax = sns.barplot(data=plot_data, x='value', y='corr_rel', hue='variable')
-ax.set(xlabel='Correlation',ylabel='')
+ax = sns.barplot(data=plot_data, x='corr_rel', y='value', hue='variable')
+ax.set(xlabel='',ylabel='Correlation')
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 ax.legend(frameon=False)
-ax.figure.savefig("figures/intact_gt_gazedperson_allcorr.png", dpi=300, bbox_inches='tight')
+add_stat_annotation(ax, data=plot_data, x='corr_rel', y='value', hue='variable',
+                    box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
+                    loc='outside', verbose=2)
+ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
+plt.xticks(rotation=90, fontsize=20)
+ax.figure.savefig("figures/intact_gt_gazedperson_allcorr_sig.png", dpi=300, bbox_inches='tight')
 plt.close()
+
+
 
