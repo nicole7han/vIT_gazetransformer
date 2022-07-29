@@ -53,7 +53,7 @@ for epoch in [300,100,120]: #100,120
 image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x','gazed_y']].drop_duplicates()
 # image_info.to_excel('data/GroundTruth_gazedperson/image_info.xlsx', index=None)
 transformer['Angle2Hori'] = transformer.apply(lambda r: compute_angle2hori(r, 'transformer'), axis=1)
-transformer = transformer[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','gazed_x','gazed_y',]]
+transformer = transformer[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','transformer_est_x', 'transformer_est_y', 'gazed_x','gazed_y',]]
 transformer['model'] = '{} Transformer'.format(Trained_cond)
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_vectors.xlsx'.format(Trained_cond), index=None)
 
@@ -71,7 +71,7 @@ for f in results:
 cnn = cnn.drop([ 'gaze_start_x', 'gaze_start_y'], axis=1)
 cnn = cnn.merge(image_info, on=['image','gazer'])
 cnn['Angle2Hori'] = cnn.apply(lambda r: compute_angle2hori(r, 'chong'), axis=1)
-cnn = cnn[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','gazed_x','gazed_y',]]
+cnn = cnn[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','chong_est_x', 'chong_est_y','gazed_x','gazed_y',]]
 cnn['model'] = 'CNN'
 cnn.to_excel('data/GroundTruth_gazedperson/CNN_vectors.xlsx'.format(Trained_cond), index=None)
 
@@ -94,7 +94,7 @@ for f in results:
 
 humans = humans.merge(image_info, on=['image'])
 humans['Angle2Hori'] = humans.apply(lambda r: compute_angle2hori(r, 'human'), axis=1)
-humans = cnn[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','gazed_x','gazed_y',]]
+humans = humans[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','human_est_x', 'human_est_y','gazed_x','gazed_y',]]
 humans['model'] = 'Humans'
 
 humans.to_excel('data/GroundTruth_gazedperson/Humans_vectors.xlsx'.format(Trained_cond), index=None)
