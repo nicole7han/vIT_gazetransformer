@@ -15,9 +15,8 @@ from script.matcher import *
 from evaluate_models.utils import *
 setpallet = sns.color_palette("Set2")
 custom_colors = sns.color_palette("Set1", 10)
-
-
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
+
 summaries = glob.glob('data/GroundTruth_gazedperson/*summary*')
 results = pd.DataFrame()
 for f in summaries:
@@ -241,10 +240,10 @@ subjects = list(np.unique(humans['subj']))
 #         subj2.append(s2)
 #         r, p = stats.pearsonr(tempdata["Angle2Hori_subj1"], tempdata["Angle2Hori_subj2"])
 #         corr.append(r)
-#
-# human_corr = pd.DataFrame({'subj1':subj1, 'subj2':subj2, 'vec_angle_corr':corr})
-# human_corr['corr_rel'] = 'Humans-Humans'
-# human_corr.to_excel('data/GroundTruth_gazedperson/Human_intact_vec_angle_corr.xlsx',index=None)
+
+human_corr = pd.DataFrame({'subj1':subj1, 'subj2':subj2, 'vec_angle_corr':corr})
+human_corr['corr_rel'] = 'Humans-Humans'
+human_corr.to_excel('data/GroundTruth_gazedperson/Human_intact_vec_angle_corr.xlsx',index=None)
 humans_humans = pd.read_excel('data/GroundTruth_gazedperson/Human_intact_vec_angle_corr.xlsx')
 
 # 2. human-model correlation
