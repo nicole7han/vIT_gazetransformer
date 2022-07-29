@@ -21,6 +21,15 @@ def compute_angle(row, model):
     angle = np.arccos(dot_product) * 180 / np.pi  # angle in degrees
     return angle
 
+def compute_dotprod(row, model):
+    vector_1 = [row['gazed_x'] - row['gaze_start_x'], row['gazed_y'] - row['gaze_start_y']]
+    vector_2 = [row['{}_est_x'.format(model)] - row['gaze_start_x'], row['{}_est_y'.format(model)] - row['gaze_start_y']]
+
+    unit_vector_1 = vector_1 / np.linalg.norm(vector_1)
+    unit_vector_2 = vector_2 / np.linalg.norm(vector_2)
+    dot_product = np.dot(unit_vector_1, unit_vector_2)
+    return dot_product
+
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
@@ -50,8 +59,9 @@ image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x
 # image_info.to_excel('data/GroundTruth_gazedperson/image_info.xlsx', index=None)
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformermean_est_x'])**2 + (transformer['gazed_y']-transformer['transformermean_est_y'])**2 )
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
+transformer['Vector_dotprod'] = transformer.apply(lambda r: compute_dotprod(r,'transformermean'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
-transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
+transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error','Vector_dotprod']]
 transformer['model'] = '{} Transformer'.format(Trained_cond)
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
 
@@ -75,10 +85,10 @@ for f in results:
 cnn = cnn.merge(image_info[['image', 'gazer','gazed_x', 'gazed_y']], on=['image','gazer'])
 cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chongmean_est_x'])**2 + (cnn['gazed_y']-cnn['chongmean_est_y'])**2 )
 cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chongmean'),axis=1)
+cnn['Vector_dotprod'] = cnn.apply(lambda r: compute_dotprod(r,'chongmean'),axis=1)
 cnn = cnn.groupby(['image','test_cond']).mean().reset_index()
-cnn = cnn[['image', 'test_cond','Euclidean_error','Angular_error']]
+cnn = cnn[['image', 'test_cond','Euclidean_error','Angular_error','Vector_dotprod']]
 cnn['model'] = 'CNN'
-
 cnn.to_excel('data/GroundTruth_gazedperson/CNN_summary.xlsx'.format(Trained_cond), index=None)
 
 
@@ -101,8 +111,9 @@ for f in results:
 humans['Euclidean_error'] = np.sqrt(
     (humans['gazed_x'] - humans['human_est_x']) ** 2 + (humans['gazed_y'] - humans['human_est_y']) ** 2)
 humans['Angular_error'] = humans.apply(lambda r: compute_angle(r,'human'),axis=1)
+humans['Vector_dotprod'] = humans.apply(lambda r: compute_dotprod(r,'human'),axis=1)
 humans = humans.groupby(['image','test_cond']).mean().reset_index()
-humans = humans[['image', 'test_cond','Euclidean_error','Angular_error']]
+humans = humans[['image', 'test_cond','Euclidean_error','Angular_error','Vector_dotprod']]
 humans['model'] = 'Humans'
 
 humans.to_excel('data/GroundTruth_gazedperson/Humans_summary.xlsx'.format(Trained_cond), index=None)
