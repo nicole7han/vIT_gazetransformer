@@ -220,16 +220,74 @@ for f in files:
     df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
     results = results.append(df, ignore_index=True)
 
-results = results[['cond','image','gazer','Angle2Hori','model']]
-results = results.groupby(['cond','image','model']).mean().reset_index().drop('gazer',axis=1)
-plot_data = results[results['cond']=='intact']
+results = results[['cond','image','gazer','subj','Angle2Hori','model']]
 
 # 1. human-human correlation
-humans_humans = plot_data[plot_data['model']=='Humans']
-humans_humans['corr_rel'] = 'Humans-Humans'
-
+humans = results[(results['cond']=='intact') & (results['model']=='Humans')]
+humans = humans.groupby(['cond','image','model','subj']).mean().reset_index().drop('gazer',axis=1)
+subjects = list(np.unique(humans['subj']))
+# subj1, subj2, corr = [], [], []
+# for s1 in subjects:
+#     print(s1)
+#     rest_subjects = subjects.copy()
+#     rest_subjects.remove(s1)
+#     for s2 in rest_subjects:
+#         tempdata = humans[(humans['subj']==s1) | (humans['subj']==s2)]
+#         tempdata = tempdata[['image','subj','Angle2Hori']]
+#         tempdata= tempdata.pivot(index=["image"], columns=["subj"]).dropna().reset_index()
+#         tempdata.columns = tempdata.columns.droplevel(1)
+#         tempdata.columns = ['image', 'Angle2Hori_subj1', 'Angle2Hori_subj2']
+#         subj1.append(s1)
+#         subj2.append(s2)
+#         r, p = stats.pearsonr(tempdata["Angle2Hori_subj1"], tempdata["Angle2Hori_subj2"])
+#         corr.append(r)
+#
+# human_corr = pd.DataFrame({'subj1':subj1, 'subj2':subj2, 'vec_angle_corr':corr})
+# human_corr['corr_rel'] = 'Humans-Humans'
+# human_corr.to_excel('data/GroundTruth_gazedperson/Human_intact_vec_angle_corr.xlsx',index=None)
+humans_humans = pd.read_excel('data/GroundTruth_gazedperson/Human_intact_vec_angle_corr.xlsx')
 
 # 2. human-model correlation
-intact = results[(results['test_cond']=='intact') & (results['model']!='Humans')]
+allmodels = results[(results['cond']=='intact') & (results['model']!='Humans')].drop('subj',axis=1)
+allmodels = allmodels.groupby(['cond','image','model']).mean().reset_index().drop('gazer',axis=1)
+
 models = ['CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']
 humans_models = pd.DataFrame()
+for model in models:
+    model_data = allmodels[(allmodels['model']==model)].drop('cond',axis=1)
+    subj1, corr = [], []
+    for s in subjects: #(individual subject & CNN)
+        s_data = humans[humans['subj']==s][['image','Angle2Hori','model']]
+        subj1.append(s)
+        humans_model = pd.concat([s_data, model_data])
+        plot_data_piv = humans_model.pivot(index=["image"], columns=["model"]).dropna().reset_index()
+        plot_data_piv.columns = plot_data_piv.columns.droplevel(1)
+        plot_data_piv.columns = ['image','Angle2Hori_model', 'Angle2Hori_Humans']
+        r, p = stats.pearsonr(plot_data_piv["Angle2Hori_model"], plot_data_piv["Angle2Hori_Humans"])
+        corr.append(r)
+
+    humans_model = pd.DataFrame({'subj1':subj1, 'subj2':[model]*len(subj1),'vec_angle_corr': corr})
+    humans_model['corr_rel'] = 'Humans-{}'.format(model)
+    humans_models = humans_models.append(humans_model, ignore_index=True)
+
+all_corr = pd.concat([humans_humans, humans_models])
+plot_data = all_corr[['vec_angle_corr','corr_rel']]
+plot_data = plot_data.melt(id_vars=['corr_rel'])
+
+
+
+
+
+sns_setup_small(sns, (8,6))
+ax = sns.barplot(data=plot_data, x='value', y='corr_rel',color=setpallet[2])
+ax.set(xlabel='Correlation',ylabel='',title='Vector Angle Correlation')
+ax.spines['top'].set_color('white')
+ax.spines['right'].set_color('white')
+# ax.legend(frameon=False)
+# add_stat_annotation(ax, data=plot_data, x='corr_rel', y='value', hue='variable',
+#                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
+#                     loc='outside', verbose=2)
+# ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
+# plt.xticks(rotation=90, fontsize=20)
+ax.figure.savefig("figures/intact_gt_gazedperson_vec_ang_corr.png", dpi=300, bbox_inches='tight')
+plt.close()
