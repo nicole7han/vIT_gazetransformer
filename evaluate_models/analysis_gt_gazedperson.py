@@ -72,7 +72,7 @@ plt.close()
 
 
 
-''' Human-Human, Human-CNN, Human-Transformer Correlation on Euclidean and Angular Error '''
+''' Human-Human, Human-CNN, Human-Transformer Error Correlation on Euclidean and Angular Error '''
 # calculate human-human error wrt gazed person
 # image_info = pd.read_excel('data/GroundTruth_gazedperson/image_info.xlsx')
 # human_path = '/Users/nicolehan/Documents/Research/GazeExperiment/Mechanical turk/Analysis_absent'
@@ -208,4 +208,15 @@ ax.figure.savefig("figures/intact_gt_gazedperson_allcorr_sig.png", dpi=300, bbox
 plt.close()
 
 
+
+
+
+
+''' Human-Human, Human-CNN, Human-Transformer Vector Angle Correlation '''
+files = glob.glob('data/GroundTruth_gazedperson/*vectors.xlsx')
+results = pd.DataFrame()
+for f in files:
+    df = pd.read_excel(f)
+    df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
+    results = results.append(df, ignore_index=True)
 
