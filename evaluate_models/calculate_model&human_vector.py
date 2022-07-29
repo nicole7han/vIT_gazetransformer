@@ -31,6 +31,7 @@ def compute_angle2hori(row, model):
     unit_vector_2 = vector_2 / np.linalg.norm(vector_2)
     dot_product = np.dot(unit_vector_1, unit_vector_2)
     angle = np.arccos(dot_product) * 180 / np.pi  # angle in degrees
+    angle = min(180 - angle, angle)
     return angle
 
 
