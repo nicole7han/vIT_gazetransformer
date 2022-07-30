@@ -1,5 +1,13 @@
 from random import choices
 import numpy as np
+
+def cleanimagename(row):
+    if 'nh' in row['image']:
+        return row['image'].replace('_nh','')
+    elif 'nb' in row['image']:
+        return row['image'].replace('_nb','')
+    else:
+        return row['image']
 def bootstrap(dataframe1, dataframe2, variable, boot_num, stats, within=None):
     vals1 = []
     vals2 = []

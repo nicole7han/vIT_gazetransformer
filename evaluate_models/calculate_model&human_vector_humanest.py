@@ -37,7 +37,8 @@ basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
 Trained_cond = 'HeadBody'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
-image_info_humenmean = pd.read_excel('data/GroundTruth_humanest/image_info_humanmean.xlsx')
+image_info = pd.read_excel('data/GroundTruth_gazedperson/image_info.xlsx') # gazed location information (with gazer)
+image_info_humanmean = pd.read_excel('data/GroundTruth_humanest/image_info_humanmean.xlsx') #gazed location information (no gazer)
 
 '''transformer results'''
 transformer = pd.DataFrame()
@@ -51,12 +52,15 @@ for epoch in [300,100,120]: #100,120
         df['test_cond'] = Test_cond
         transformer = pd.concat([transformer,df])
 transformer = transformer.drop(['gazed_x', 'gazed_y', 'chong_est_x','chong_est_y'],axis=1)
-transformer2 = transformer.merge(image_info_humanmean, on=['image'])
+transformer['image'] = transformer.apply(cleanimagename, axis=1)
+transformer = transformer.merge(image_info_humanmean.drop([ 'gaze_start_x','gaze_start_y'], axis=1),
+                                on=['test_cond','image'])
 # image_info.to_excel('data/GroundTruth_gazedperson/image_info.xlsx', index=None)
 transformer['Angle2Hori'] = transformer.apply(lambda r: compute_angle2hori(r, 'transformer'), axis=1)
 transformer = transformer[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','transformer_est_x', 'transformer_est_y', 'gazed_x','gazed_y',]]
 transformer['model'] = '{} Transformer'.format(Trained_cond)
 transformer.to_excel('data/GroundTruth_humanest/{}_Transformer_vectors.xlsx'.format(Trained_cond), index=None)
+
 
 
 '''human results'''
@@ -75,9 +79,9 @@ for f in results:
     df['test_cond'] = Test_cond
     humans = pd.concat([humans,df])
 
-humans = humans.merge(image_info, on=['image'])
+humans = humans.merge(image_info, on=['test_cond','image','gazer'])
 humans['Angle2Hori'] = humans.apply(lambda r: compute_angle2hori(r, 'human'), axis=1)
-humans = humans[['test_cond', 'image', 'gazer', 'subj', 'Angle2Hori', 'gaze_start_x','gaze_start_y','human_est_x', 'human_est_y','gazed_x','gazed_y',]]
+humans = humans[['test_cond', 'image', 'gazer', 'subj', 'Angle2Hori','human_est_x', 'human_est_y','gazed_x','gazed_y',]]
 humans['model'] = 'Humans'
 
 humans.to_excel('data/GroundTruth_humanest/Humans_vectors.xlsx'.format(Trained_cond), index=None)
