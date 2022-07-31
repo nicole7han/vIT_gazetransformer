@@ -299,7 +299,6 @@ for var in ['vec_angle_corr']:
                                   'ci1l':ci1[0], 'ci1u':ci1[1], 'ci2l':ci2[0], 'ci2u':ci2[1],
                                   'p': p}, ignore_index=True)
 
-
 p_adjs = mt(pvals['p'], alpha=0.05, method='fdr_bh')[1]
 pvals['p_adj'] = p_adjs
 # pvals.to_excel('data/boot_results.xlsx',index=None)
@@ -315,7 +314,7 @@ for _, row in sig_pvals.iterrows():
 
 sns_setup_small(sns, (8,6))
 ax = sns.barplot(data=plot_data, x='corr_rel', y= 'value',color=setpallet[2])
-ax.set(xlabel='Correlation',ylabel='',title='Vector Angle Correlation')
+ax.set(xlabel='',ylabel='Correlation',title='')
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 add_stat_annotation(ax, data=plot_data, x='corr_rel', y='value', hue='variable',
