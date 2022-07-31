@@ -38,6 +38,7 @@ basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 Trained_cond = 'HeadBody'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 image_info = pd.read_excel('data/GroundTruth_gazedperson/image_info.xlsx') # gazed location information (with gazer)
+image_info = image_info.drop(['gazed_x','gazed_y'],axis=1)
 image_info_humanmean = pd.read_excel('data/GroundTruth_humanest/image_info_humanmean.xlsx') #gazed location information (no gazer)
 
 '''transformer results'''
@@ -79,9 +80,12 @@ for f in results:
     df['test_cond'] = Test_cond
     humans = pd.concat([humans,df])
 
-humans = humans.merge(image_info, on=['test_cond','image','gazer'])
+humans = humans.merge(image_info, on=['image']) # get start x, start y positions
+image_info_individuals = image_info_humanmean[image_info_humanmean['subj']!='mean'].drop_duplicates() # for humans, compare to the rest
+humans = humans.merge(image_info_individuals[['test_cond','image','gazed_x','gazed_y','subj']], on=['test_cond','image','subj'])
 humans['Angle2Hori'] = humans.apply(lambda r: compute_angle2hori(r, 'human'), axis=1)
-humans = humans[['test_cond', 'image', 'gazer', 'subj', 'Angle2Hori','human_est_x', 'human_est_y','gazed_x','gazed_y',]]
+# humans = humans.groupby(['test_cond', 'image','subj']).mean().reset_index().drop(['gaze_start_x','gaze_start_y'],axis=1)
+humans = humans[['test_cond', 'image', 'gazer','subj', 'Angle2Hori','human_est_x', 'human_est_y','gazed_x','gazed_y',]]
 humans['model'] = 'Humans'
 
 humans.to_excel('data/GroundTruth_humanest/Humans_vectors.xlsx'.format(Trained_cond), index=None)
@@ -99,8 +103,9 @@ for f in results:
     elif 'nh' in f: Test_cond = 'headless bodies'
     df['test_cond'] = Test_cond
     cnn = pd.concat([cnn,df])
-cnn = cnn.drop([ 'gaze_start_x', 'gaze_start_y'], axis=1)
-cnn = cnn.merge(image_info, on=['image','gazer'])
+
+cnn = cnn.merge(image_info_humanmean.drop(['gaze_start_x','gaze_start_y'], axis=1),
+                                on=['test_cond','image'])
 cnn['Angle2Hori'] = cnn.apply(lambda r: compute_angle2hori(r, 'chong'), axis=1)
 cnn = cnn[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','chong_est_x', 'chong_est_y','gazed_x','gazed_y',]]
 cnn['model'] = 'CNN'
