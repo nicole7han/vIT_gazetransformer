@@ -9,6 +9,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 from script.matcher import *
+from evaluate_models.utils import *
 setpallet = sns.color_palette("Set2")
 
 def compute_angle(row, model):
