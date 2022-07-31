@@ -1,5 +1,5 @@
 import pandas as pd
-import glob, os
+import glob, os, math
 from script.model import *
 import statsmodels.api as sm
 from itertools import combinations
@@ -17,6 +17,11 @@ setpallet = sns.color_palette("Set2")
 custom_colors = sns.color_palette("Set1", 10)
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
+
+
+
+
+''' PART I Human, CNN, 3 Transformer performance (gazed person as groundtruth) '''
 summaries = glob.glob('data/GroundTruth_gazedperson/*summary*')
 results = pd.DataFrame()
 for f in summaries:
@@ -27,8 +32,6 @@ results['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headle
 results['model'] = results['model'].astype('category')
 results['model'].cat.reorder_categories(['Humans', 'CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
 
-
-''' PART I Human, CNN, 3 Transformer performance (gazed person as groundtruth) '''
 plot_data = results[results['test_cond']=='intact']
 plot_data = plot_data[[ 'Euclidean_error', 'Angular_error','model']]
 
@@ -323,3 +326,88 @@ add_stat_annotation(ax, data=plot_data, x='corr_rel', y='value', hue='variable',
 plt.xticks(rotation=90, fontsize=20)
 ax.figure.savefig("figures/intact_gt_gazedperson_vec_ang_corr.png", dpi=300, bbox_inches='tight')
 plt.close()
+
+
+
+
+
+
+''' PART IV Visualize Estimation Vectors '''
+img_path = '/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/transformer_all_img_intact'
+
+data_path = 'data/GroundTruth_gazedperson'
+files = glob.glob('{}/*vectors*'.format(data_path)) # get all vector information
+results = pd.DataFrame()
+for f in files:
+    df = pd.read_excel(f)
+    df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
+    results = results.append(df, ignore_index=True)
+results = results[results['cond']=='intact'].drop('cond',axis=1)
+results = results.groupby(['image','model','gazer']).mean().reset_index()
+
+# # plot individual images
+# image_names = os.listdir(img_path)
+# for img in image_names:
+# # img = image_names[0]
+#     img_data = results[(results['image'] == img)]
+#     gazers = np.unique(img_data['gazer'])
+#     for gazer in gazers:
+#         plot_data = img_data[(img_data['gazer']==gazer)]
+#         if len(plot_data) == 5:
+#             image = np.array(Image.open('{}/{}'.format(img_path,img)))
+#             plot_vectors(image, plot_data, gazer=gazer)
+#             plt.savefig("Figures/vectors/{}_gazer{}.jpg".format(img,gazer), bbox_inches='tight')
+#             plt.close()
+
+# plot all images registered to human mean vector
+image_names = os.listdir(img_path)
+plot_data = results[['image','model','gazer','gaze_start_x','gaze_start_y','est_x','est_y']]
+model_vectors = plot_data[plot_data['model']!='Humans']
+human_vectors = plot_data[plot_data['model']=='Humans']
+human_vectors = human_vectors[['image','gazer','est_x','est_y']]
+human_vectors.columns = ['image','gazer','gazed_x','gazed_y']
+plot_data = model_vectors.merge(human_vectors, on=['image','gazer'])
+
+# compute angular error (with signs, flip everything to the right direction)
+# 1. negative means clockwise rotation, positive means clockwise rotation
+# because y axis is flipped in our dataset, needs a negative sign to flip the angle such that positive clockwise, negative counterclockwise
+plot_data['humanvec_ang2hor'] = -plot_data.apply(compute_ang2hori, axis=1)
+# 2. rotate estxy relative to gazer, in the same direction as human vector relative to the horizontal direction
+plot_data['estxy_rotate'] = plot_data.apply(lambda r: rotate(r, 'est'),axis=1)  # calculate estimation xy with the same rotation
+plot_data[['est_x1', 'est_y1']] = pd.DataFrame(plot_data['estxy_rotate'].tolist(), index=plot_data.index)
+# 3. get final estimation xy location relative to horizontal (human vector)
+plot_data['est_y1_2_gazer'] = plot_data['est_y1'] - plot_data['gaze_start_y']  # positive: below horizontal, negative: above horizontal
+# 4. compute estimation vector relative to human vector direction
+
+angle_errors_signed = []
+for _, r in plot_data.iterrows():
+    gaze_start_x, gaze_start_y, gazed_x, gazed_y = r['gaze_start_x'], r['gaze_start_y'],r['gazed_x'], r['gazed_y']
+    v1 = np.array([gazed_x - gaze_start_x, gazed_y - gaze_start_y])
+    unit_vector_1 = v1 / np.linalg.norm(v1)
+
+    if r['est_y1_2_gazer'] > 0:
+        sign = -1  # the relative gazer vector is below horizontal (human vector)
+    else:
+        sign = 1  # the relative gazer vector is above horizontal (human vector)
+
+    v2 = np.array([r['est_x'] - gaze_start_x, r['est_y'] - gaze_start_y])
+    unit_vector_2 = v2 / np.linalg.norm(v2)
+    dot_product = np.dot(unit_vector_1, unit_vector_2)
+    angle = np.arccos(dot_product) * 180 / np.pi
+
+    angle_errors_signed.append(sign * round(angle, 2))
+
+plot_data['signed_angle2humanvec'] = angle_errors_signed
+plot_data['ang_rad'] = plot_data['signed_angle2humanvec']*np.pi/180
+
+# plot estimation vector
+model_orders = ['CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']
+colors = sns.color_palette("Set2")
+colors = colors[:4] + [colors[6]]
+
+for i, model in enumerate(model_orders):
+    tempdata = plot_data[plot_data['model']==model]
+    fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection='polar'))
+    circular_hist(ax, tempdata['ang_rad'], color=colors[i])
+    ax.figure.savefig("figures/polar_{}_vector2human.png".format(model), dpi=300, bbox_inches='tight')
+    plt.close()
