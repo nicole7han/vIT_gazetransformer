@@ -31,7 +31,7 @@ def bootstrap(dataframe1, dataframe2, variable, boot_num, stats, within=None):
     else: # two dataframe
         data2 = dataframe2[variable]
         for i in range(boot_num):
-            if i % 100 == 0:
+            if i % 1000 == 0:
                 print(i)
             if within!=None:  # randomly sample subjects to compare within-subject difference
                 dataframe1 = dataframe1[[variable, within]]
