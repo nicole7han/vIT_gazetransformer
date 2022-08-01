@@ -14,6 +14,7 @@ from functions.data_ana_vis import *
 from script.matcher import *
 from evaluate_models.utils import *
 setpallet = sns.color_palette("Set2")
+bluepallet = sns.color_palette("Blues_r")
 custom_colors = sns.color_palette("Set1", 10)
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
@@ -32,12 +33,14 @@ results['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headle
 results['model'] = results['model'].astype('category')
 results['model'].cat.reorder_categories(['Humans', 'CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
 
-plot_data = results[results['test_cond']=='intact']
-plot_data = plot_data[[ 'Euclidean_error', 'Angular_error','model']]
 
-error = 'Angular_error'
-aov_data = plot_data[[error, 'model']].melt(id_vars='model')
-aov = pg.anova(dv='value', between=['model'], data=aov_data,
+# plot_data = results[results['test_cond']=='intact']
+plot_data = results.copy()
+plot_data = plot_data[['test_cond', 'Euclidean_error', 'Angular_error','model']]
+
+error = 'Euclidean_error'
+aov_data = plot_data[[error, 'test_cond', 'model']].melt(id_vars=['test_cond','model'])
+aov = pg.anova(dv='value', between=['test_cond','model'], data=aov_data,
              detailed=True)
 print(aov)
 postdoc =aov_data.pairwise_ttests(dv='value',
@@ -51,32 +54,35 @@ for _, row in sig_results.iterrows():
     box_pairs.append((row['A'],row['B']))
     ps.append(max(0.001, row['p-corr']))
 
-# sns_setup_small(sns, (8,6))
-# ax = sns.barplot(data = plot_data, x = 'model', y = error ,color=setpallet[0])
-# ax.set(xlabel='', ylabel='Euclidean Error')
-# ax.spines['top'].set_color('white')
-# ax.spines['right'].set_color('white')
+
+sns_setup_small(sns, (8,6))
+error = 'Euclidean_error'
+ax = sns.barplot(data = plot_data, x = 'model', y = error , hue='test_cond', palette=bluepallet)
+ax.set(xlabel='', ylabel='Euclidean Error')
+ax.spines['top'].set_color('white')
+ax.spines['right'].set_color('white')
 # add_stat_annotation(ax, data=plot_data, x='model', y=error,
 #                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
 #                     loc='outside', verbose=2)
-# ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
-# plt.xticks(rotation=90)
-# ax.figure.savefig("figures/intact_gt_gazedperson_{}2.png".format(error), dpi=300, bbox_inches='tight')
-# plt.close()
+ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
+plt.xticks(rotation=90)
+ax.figure.savefig("figures/intact_gt_gazedperson_{}_allcond.png".format(error), dpi=300, bbox_inches='tight')
+plt.close()
 
 
 
 sns_setup_small(sns, (8,6))
 error = 'Angular_error'
-ax = sns.barplot(data = plot_data, x = 'model', y = error, color=setpallet[1])
+ax = sns.barplot(data = plot_data, x = 'model', y = error, hue='test_cond',palette=bluepallet)
 ax.set(xlabel='', ylabel='Angular Error (˚)')
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
-add_stat_annotation(ax, data=plot_data, x='model', y=error,
-                    box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
-                    loc='outside', verbose=2)
+# add_stat_annotation(ax, data=plot_data, x='model', y=error,
+#                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
+#                     loc='outside', verbose=2)
+ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
 plt.xticks(rotation=90)
-ax.figure.savefig("figures/intact_gt_gazedperson_{}2.png".format(error), dpi=300, bbox_inches='tight')
+ax.figure.savefig("figures/intact_gt_gazedperson_{}_allcond.png".format(error), dpi=300, bbox_inches='tight')
 plt.close()
 
 

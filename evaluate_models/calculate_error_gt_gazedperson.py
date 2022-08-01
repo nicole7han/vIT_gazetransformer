@@ -9,6 +9,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 from script.matcher import *
+from evaluate_models.utils import *
 setpallet = sns.color_palette("Set2")
 
 def compute_angle(row, model):
@@ -40,10 +41,11 @@ outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [300,100,120]: #100,120
+for epoch in [300,100,340]:
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
+        df['image'] = df.apply(cleanimagename, axis=1)
         if 'TEST_intact' in f: Test_cond = 'intact'
         elif 'TEST_nb' in f: Test_cond = 'floating heads'
         elif 'TEST_nh' in f: Test_cond = 'headless bodies'
@@ -56,8 +58,8 @@ for epoch in [300,100,120]: #100,120
         df['test_cond'] = Test_cond
         transformer = pd.concat([transformer,df])
 
+
 image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x','gazed_y']].drop_duplicates()
-image_info['image'] = image_info.apply(cleanimagename, axis=1)
 image_info = image_info.drop_duplicates()
 # image_info.to_excel('data/GroundTruth_gazedperson/image_info.xlsx', index=None)
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformermean_est_x'])**2 + (transformer['gazed_y']-transformer['transformermean_est_y'])**2 )
