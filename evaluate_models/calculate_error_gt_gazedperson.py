@@ -167,6 +167,23 @@ humans.to_excel('data/GroundTruth_gazedperson/Humans_summary.xlsx'.format(Traine
 # plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
 # plot_data.to_excel('data/GroundTruth_gazedperson/{}_summary.xlsx'.format(Trained_cond), index=None)
 
+# permutation error
+perm = pd.DataFrame()
+for _ in range(N_perm):
+    human_perm = humans.copy()
+    human_perm['estxy'] = human_perm['human_est_x'].astype(str) + ',' +\
+                                 human_perm['human_est_y'].astype(str)
+    human_perm['estxy_perm'] = random.sample(list(human_perm['estxy']), len(human_perm))
+    human_perm[['human_est_x','human_est_y']] = \
+        human_perm['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    human_perm['Euclidean_error'] = np.sqrt((human_perm['gazed_x'] - human_perm['human_est_x']) ** 2 + (
+                human_perm['gazed_y'] - human_perm['human_est_y']) ** 2)
+    human_perm = human_perm.groupby(['image', 'test_cond']).mean().reset_index()
+    human_perm['Angular_error'] = human_perm.apply(lambda r: compute_angle(r, 'human'), axis=1)
+
+    temp = human_perm.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+    perm = perm.append(temp, ignore_index=True)
+perm.to_excel('data/GroundTruth_gazedperson/{}_humans_Perm.xlsx'.format(Trained_cond), index=None)
 
 
 
