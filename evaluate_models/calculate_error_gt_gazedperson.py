@@ -1,5 +1,5 @@
 import pandas as pd
-import glob
+import glob, random
 from script.model import *
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
@@ -10,6 +10,7 @@ from evaluate_models.utils_fine_tuning import *
 from functions.data_ana_vis import *
 from script.matcher import *
 from evaluate_models.utils import *
+
 setpallet = sns.color_palette("Set2")
 
 def compute_angle(row, model):
@@ -34,10 +35,9 @@ def compute_angle2hori(row, model):
 
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
-
-
 Trained_cond = 'HeadBody'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
+N_perm = 10000 # number of permutations
 
 '''transformer results'''
 transformer = pd.DataFrame()
@@ -69,6 +69,27 @@ transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error
 transformer['model'] = '{} Transformer'.format(Trained_cond)
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
 
+# permutation error
+perm = pd.DataFrame()
+for _ in range(N_perm):
+    transformer_perm = transformer.copy()
+    transformer_perm['estxy'] = transformer_perm['transformermean_est_x'].astype(str) + ',' +\
+                                 transformer_perm['transformermean_est_y'].astype(str)
+    transformer_perm['estxy_perm'] = random.sample(list(transformer_perm['estxy']), len(transformer_perm))
+    transformer_perm[['transformermean_est_x','transformermean_est_y']] = \
+        transformer_perm['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    transformer_perm['Euclidean_error'] = np.sqrt((transformer_perm['gazed_x'] - transformer_perm['transformermean_est_x']) ** 2 + (
+                transformer_perm['gazed_y'] - transformer_perm['transformermean_est_y']) ** 2)
+    transformer_perm = transformer_perm.groupby(['image', 'test_cond']).mean().reset_index()
+    transformer_perm['Angular_error'] = transformer_perm.apply(lambda r: compute_angle(r, 'transformermean'), axis=1)
+
+    temp = transformer_perm.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+    perm = perm.append(temp, ignore_index=True)
+perm.to_excel('data/GroundTruth_gazedperson/{}_Transformer_Perm.xlsx'.format(Trained_cond), index=None)
+
+
+
+
 
 '''CNN results'''
 results = glob.glob('{}/chong*.csv'.format(basepath))
@@ -92,8 +113,28 @@ cnn['Euclidean_error'] = np.sqrt( (cnn['gazed_x']-cnn['chongmean_est_x'])**2 + (
 cnn['Angular_error'] = cnn.apply(lambda r: compute_angle(r,'chongmean'),axis=1)
 cnn = cnn.groupby(['image','test_cond']).mean().reset_index()
 cnn = cnn[['image', 'test_cond','Euclidean_error','Angular_error']]
-cnn['model'] = 'CNN'
+cnn['model'] = 'Head CNN'
 cnn.to_excel('data/GroundTruth_gazedperson/CNN_summary.xlsx'.format(Trained_cond), index=None)
+
+
+# permutation error
+perm = pd.DataFrame()
+for _ in range(N_perm):
+    cnn_perm = cnn.copy()
+    cnn_perm['estxy'] = cnn_perm['chongmean_est_x'].astype(str) + ',' +\
+                                 cnn_perm['chongmean_est_y'].astype(str)
+    cnn_perm['estxy_perm'] = random.sample(list(cnn_perm['estxy']), len(cnn_perm))
+    cnn_perm[['chongmean_est_x','chongmean_est_y']] = \
+        cnn_perm['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    cnn_perm['Euclidean_error'] = np.sqrt((cnn_perm['gazed_x'] - cnn_perm['chongmean_est_x']) ** 2 + (
+                cnn_perm['gazed_y'] - cnn_perm['chongmean_est_y']) ** 2)
+    cnn_perm = cnn_perm.groupby(['image', 'test_cond']).mean().reset_index()
+    cnn_perm['Angular_error'] = cnn_perm.apply(lambda r: compute_angle(r, 'chongmean'), axis=1)
+
+    temp = cnn_perm.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+    perm = perm.append(temp, ignore_index=True)
+perm.to_excel('data/GroundTruth_gazedperson/{}_CNN_Perm.xlsx'.format(Trained_cond), index=None)
+
 
 
 '''human results'''
