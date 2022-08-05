@@ -56,6 +56,26 @@ transformer['model'] = '{} Transformer'.format(Trained_cond)
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
 
 
+N_perm=10000
+# permutation error
+perm = pd.DataFrame()
+for _ in range(N_perm):
+    transformer_perm = transformer.copy()
+    transformer_perm['estxy'] = transformer_perm['transformermean_est_x'].astype(str) + ',' +\
+                                 transformer_perm['transformermean_est_y'].astype(str)
+    transformer_perm['estxy_perm'] = random.sample(list(transformer_perm['estxy']), len(transformer_perm))
+    transformer_perm[['transformermean_est_x','transformermean_est_y']] = \
+        transformer_perm['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    transformer_perm['Euclidean_error'] = np.sqrt((transformer_perm['gazed_x'] - transformer_perm['transformermean_est_x']) ** 2 + (
+                transformer_perm['gazed_y'] - transformer_perm['transformermean_est_y']) ** 2)
+    transformer_perm = transformer_perm.groupby(['image', 'test_cond']).mean().reset_index()
+    transformer_perm['Angular_error'] = transformer_perm.apply(lambda r: compute_angle(r, 'transformermean'), axis=1)
+
+    temp = transformer_perm.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+    perm = perm.append(temp, ignore_index=True)
+perm.to_excel('data/GroundTruth_gazedperson/{}_Transformer_Perm.xlsx'.format(Trained_cond), index=None)
+
+
 
 
 
