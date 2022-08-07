@@ -23,6 +23,19 @@ basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
 
 ''' PART I Human, CNN, 3 Transformer performance (gazed person as groundtruth) '''
+baselines = glob.glob('data/GroundTruth_gazedperson/*Perm*') # permutation baselines
+baseline = pd.DataFrame()
+for f in baselines:
+    data = pd.read_excel(f)
+    data['model'] = os.path.split(f)[1].split('_Perm')[0]
+    baseline = baseline.append(data)
+baseline['test_cond'] = baseline['test_cond'].astype('category')
+baseline['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
+baseline['model'] = baseline['model'].astype('category')
+baseline['model'].cat.reorder_categories(['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
+baseline_mean = baseline.groupby(['test_cond','model']).mean().reset_index()
+baseline_sd = baseline.groupby(['test_cond','model']).std().reset_index()
+
 summaries = glob.glob('data/GroundTruth_gazedperson/*summary*')
 results = pd.DataFrame()
 for f in summaries:

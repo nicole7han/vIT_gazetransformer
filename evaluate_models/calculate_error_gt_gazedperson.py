@@ -85,6 +85,7 @@ for _ in range(N_perm):
 
     temp = transformer_perm.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
     perm = perm.append(temp, ignore_index=True)
+perm['model'] = '{} Transformer'.format()
 perm.to_excel('data/GroundTruth_gazedperson/{}_Transformer_Perm.xlsx'.format(Trained_cond), index=None)
 
 
@@ -133,7 +134,8 @@ for _ in range(N_perm):
 
     temp = cnn_perm.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
     perm = perm.append(temp, ignore_index=True)
-perm.to_excel('data/GroundTruth_gazedperson/{}_CNN_Perm.xlsx'.format(Trained_cond), index=None)
+perm['model'] = 'Head CNN'
+perm.to_excel('data/GroundTruth_gazedperson/CNN_Perm.xlsx', index=None)
 
 
 
@@ -183,7 +185,8 @@ for _ in range(N_perm):
 
     temp = human_perm.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
     perm = perm.append(temp, ignore_index=True)
-perm.to_excel('data/GroundTruth_gazedperson/{}_humans_Perm.xlsx'.format(Trained_cond), index=None)
+perm['model'] = 'Humans'
+perm.to_excel('data/GroundTruth_gazedperson/Humans_Perm.xlsx'.format(Trained_cond), index=None)
 
 
 
