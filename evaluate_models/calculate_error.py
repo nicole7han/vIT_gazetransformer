@@ -73,6 +73,7 @@ for _ in range(N_perm):
 
     temp = transformer_perm.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
     perm = perm.append(temp, ignore_index=True)
+perm['model'] = '{}_Transformer'.format(Trained_cond)
 perm.to_excel('data/GroundTruth_gazedperson/{}_Transformer_Perm.xlsx'.format(Trained_cond), index=None)
 
 
