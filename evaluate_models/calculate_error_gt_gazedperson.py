@@ -89,6 +89,42 @@ perm['model'] = '{} Transformer'.format()
 perm.to_excel('data/GroundTruth_gazedperson/{}_Transformer_Perm.xlsx'.format(Trained_cond), index=None)
 
 
+# permutation error left and right
+perm = pd.DataFrame()
+for _ in range(N_perm):
+    transformer_perm = transformer.copy()
+    transformer_perm['gazed_wrt_gazer'] = transformer_perm.apply(lambda r: 1 if r['gazed_x']>r['gaze_start_x'] else -1, axis=1)
+    # permutate within right and left subgroups
+    left = transformer_perm[transformer_perm['gazed_wrt_gazer']==-1]
+    right = transformer_perm[transformer_perm['gazed_wrt_gazer']==1]
+
+    left['estxy'] = left['transformermean_est_x'].astype(str) + ',' +\
+                                 left['transformermean_est_y'].astype(str)
+    left['estxy_perm'] = random.sample(list(left['estxy']), len(left))
+    left[['transformermean_est_x','transformermean_est_y']] = \
+        left['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    left['Euclidean_error'] = np.sqrt((left['gazed_x'] - left['transformermean_est_x']) ** 2 + (
+                left['gazed_y'] - left['transformermean_est_y']) ** 2)
+    left = left.groupby(['image', 'test_cond']).mean().reset_index()
+    left['Angular_error'] = left.apply(lambda r: compute_angle(r, 'transformermean'), axis=1)
+    left = left.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+
+    right['estxy'] = right['transformermean_est_x'].astype(str) + ',' +\
+                                 right['transformermean_est_y'].astype(str)
+    right['estxy_perm'] = random.sample(list(right['estxy']), len(right))
+    right[['transformermean_est_x','transformermean_est_y']] = \
+        right['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    right['Euclidean_error'] = np.sqrt((right['gazed_x'] - right['transformermean_est_x']) ** 2 + (
+                right['gazed_y'] - right['transformermean_est_y']) ** 2)
+    right = right.groupby(['image', 'test_cond']).mean().reset_index()
+    right['Angular_error'] = right.apply(lambda r: compute_angle(r, 'transformermean'), axis=1)
+    right = right.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+
+    perm = perm.append(pd.concat([left, right]), ignore_index=True)
+perm['model'] = '{} Transformer'.format(Trained_cond)
+perm.to_excel('data/GroundTruth_gazedperson/{}_Transformer_leftright_Perm.xlsx'.format(Trained_cond), index=None)
+
+
 
 
 
@@ -136,6 +172,42 @@ for _ in range(N_perm):
     perm = perm.append(temp, ignore_index=True)
 perm['model'] = 'Head CNN'
 perm.to_excel('data/GroundTruth_gazedperson/CNN_Perm.xlsx', index=None)
+
+
+# permutation error left and right
+perm = pd.DataFrame()
+for _ in range(N_perm):
+    cnn_perm = cnn.copy()
+    cnn_perm['gazed_wrt_gazer'] = cnn_perm.apply(lambda r: 1 if r['gazed_x'] > r['gaze_start_x'] else -1, axis=1)
+    # permutate within right and left subgroups
+    left = cnn_perm[cnn_perm['gazed_wrt_gazer']==-1]
+    right = cnn_perm[cnn_perm['gazed_wrt_gazer']==1]
+
+    left['estxy'] = left['chongmean_est_x'].astype(str) + ',' +\
+                                 left['chongmean_est_y'].astype(str)
+    left['estxy_perm'] = random.sample(list(left['estxy']), len(left))
+    left[['chongmean_est_x','chongmean_est_y']] = \
+        left['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    left['Euclidean_error'] = np.sqrt((left['gazed_x'] - left['chongmean_est_x']) ** 2 + (
+                left['gazed_y'] - left['chongmean_est_y']) ** 2)
+    left = left.groupby(['image', 'test_cond']).mean().reset_index()
+    left['Angular_error'] = left.apply(lambda r: compute_angle(r, 'chongmean'), axis=1)
+    left = left.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+
+    right['estxy'] = right['chongmean_est_x'].astype(str) + ',' +\
+                                 right['chongmean_est_y'].astype(str)
+    right['estxy_perm'] = random.sample(list(right['estxy']), len(right))
+    right[['chongmean_est_x','chongmean_est_y']] = \
+        right['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    right['Euclidean_error'] = np.sqrt((right['gazed_x'] - right['chongmean_est_x']) ** 2 + (
+                right['gazed_y'] - right['chongmean_est_y']) ** 2)
+    right = right.groupby(['image', 'test_cond']).mean().reset_index()
+    right['Angular_error'] = right.apply(lambda r: compute_angle(r, 'chongmean'), axis=1)
+    right = right.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+
+    perm = perm.append(pd.concat([left, right]), ignore_index=True)
+perm['model'] = 'Head CNN'
+perm.to_excel('data/GroundTruth_gazedperson/Head_CNN_leftright_Perm.xlsx', index=None)
 
 
 
@@ -187,6 +259,44 @@ for _ in range(N_perm):
     perm = perm.append(temp, ignore_index=True)
 perm['model'] = 'Humans'
 perm.to_excel('data/GroundTruth_gazedperson/Humans_Perm.xlsx'.format(Trained_cond), index=None)
+
+# permutation error left and right
+perm = pd.DataFrame()
+for _ in range(N_perm):
+    human_perm = humans.copy()
+    human_perm['gazed_wrt_gazer'] = human_perm.apply(lambda r: 1 if r['gazed_x'] > r['gaze_start_x'] else -1, axis=1)
+    # permutate within right and left subgroups
+    left = human_perm[human_perm['gazed_wrt_gazer']==-1]
+    right = human_perm[human_perm['gazed_wrt_gazer']==1]
+
+    left['estxy'] = left['human_est_x'].astype(str) + ',' +\
+                                 left['human_est_y'].astype(str)
+    left['estxy_perm'] = random.sample(list(left['estxy']), len(left))
+    left[['human_est_x','human_est_y']] = \
+        left['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    left['Euclidean_error'] = np.sqrt((left['gazed_x'] - left['human_est_x']) ** 2 + (
+                left['gazed_y'] - left['human_est_y']) ** 2)
+    left = left.groupby(['image', 'test_cond']).mean().reset_index()
+    left['Angular_error'] = left.apply(lambda r: compute_angle(r, 'human'), axis=1)
+
+    left = left.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+
+
+    right['estxy'] = right['human_est_x'].astype(str) + ',' +\
+                                 right['human_est_y'].astype(str)
+    right['estxy_perm'] = random.sample(list(right['estxy']), len(right))
+    right[['human_est_x','human_est_y']] = \
+        right['estxy_perm'].str.split(',',expand=True).astype('float') # update estimation with permiutations
+    right['Euclidean_error'] = np.sqrt((right['gazed_x'] - right['human_est_x']) ** 2 + (
+                right['gazed_y'] - right['human_est_y']) ** 2)
+    right = right.groupby(['image', 'test_cond']).mean().reset_index()
+    right['Angular_error'] = right.apply(lambda r: compute_angle(r, 'human'), axis=1)
+
+    right = right.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
+
+    perm = perm.append(pd.concat([left, right]), ignore_index=True)
+perm['model'] = 'Humans'
+perm.to_excel('data/GroundTruth_gazedperson/Humans_leftright_Perm.xlsx', index=None)
 
 
 
