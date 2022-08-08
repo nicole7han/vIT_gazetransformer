@@ -87,9 +87,7 @@ humans['Angle2Hori'] = humans.apply(lambda r: compute_angle2hori(r, 'human'), ax
 # humans = humans.groupby(['test_cond', 'image','subj']).mean().reset_index().drop(['gaze_start_x','gaze_start_y'],axis=1)
 humans = humans[['test_cond', 'image', 'gazer','subj', 'Angle2Hori','human_est_x', 'human_est_y','gazed_x','gazed_y',]]
 humans['model'] = 'Humans'
-
 humans.to_excel('data/GroundTruth_humanest/Humans_vectors.xlsx'.format(Trained_cond), index=None)
-
 
 
 
@@ -108,11 +106,7 @@ cnn = cnn.merge(image_info_humanmean.drop(['gaze_start_x','gaze_start_y'], axis=
                                 on=['test_cond','image'])
 cnn['Angle2Hori'] = cnn.apply(lambda r: compute_angle2hori(r, 'chong'), axis=1)
 cnn = cnn[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','chong_est_x', 'chong_est_y','gazed_x','gazed_y',]]
-cnn['model'] = 'CNN'
+cnn['model'] = 'Head CNN'
 cnn.to_excel('data/GroundTruth_humanest/CNN_vectors.xlsx'.format(Trained_cond), index=None)
 
 
-# plot_data = pd.concat([transformer, cnn, humans])
-# plot_data['test_cond'] = plot_data['test_cond'].astype('category')
-# plot_data['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-# plot_data.to_excel('data/GroundTruth_gazedperson/{}_summary.xlsx'.format(Trained_cond), index=None)

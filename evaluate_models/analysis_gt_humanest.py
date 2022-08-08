@@ -229,11 +229,12 @@ for f in files:
     df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
     results = results.append(df, ignore_index=True)
 results = results[['cond','image','gazer','subj','Angle2Hori','model']]
+test_cond='floating heads'
 
 # 1. human-human correlation
-humans = results[(results['cond']=='intact') & (results['model']=='Humans')]
+humans = results[(results['cond']==test_cond) & (results['model']=='Humans')]
 humans = humans.groupby(['cond','image','model','subj']).mean().reset_index().drop('gazer',axis=1)
-subjects = list(np.unique(humans['subj']))
+# subjects = list(np.unique(humans['subj']))
 # subj1, subj2, corr = [], [], []
 # for s1 in subjects:
 #     print(s1)
@@ -252,14 +253,14 @@ subjects = list(np.unique(humans['subj']))
 #
 # human_corr = pd.DataFrame({'subj1':subj1, 'subj2':subj2, 'vec_angle_corr':corr})
 # human_corr['corr_rel'] = 'Humans-Humans'
-# human_corr.to_excel('data/GroundTruth_humanest/Human_intact_vec_angle_corr.xlsx',index=None)
-humans_humans = pd.read_excel('data/GroundTruth_humanest/Human_intact_vec_angle_corr.xlsx')
+# human_corr.to_excel('data/GroundTruth_humanest/Human_{}_vec_angle_corr.xlsx'.format(test_cond),index=None)
+humans_humans = pd.read_excel('data/GroundTruth_humanest/Human_{}_vec_angle_corr.xlsx'.format(test_cond))
 
 # 2. human-model correlation
-allmodels = results[(results['cond']=='intact') & (results['model']!='Humans')].drop('subj',axis=1)
+allmodels = results[(results['cond']==test_cond) & (results['model']!='Humans')].drop('subj',axis=1)
 allmodels = allmodels.groupby(['cond','image','model']).mean().reset_index().drop('gazer',axis=1)
-
-models = ['CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']
+subjects = list(np.unique(humans_humans['subj1']))
+models = ['Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']
 humans_models = pd.DataFrame()
 for model in models:
     model_data = allmodels[(allmodels['model']==model)].drop('cond',axis=1)
@@ -278,12 +279,10 @@ for model in models:
     humans_model['corr_rel'] = 'Humans-{}'.format(model)
     humans_models = humans_models.append(humans_model, ignore_index=True)
 
-
 # plot
 all_corr = pd.concat([humans_humans, humans_models])
 plot_data = all_corr[['vec_angle_corr','corr_rel']]
 plot_data = plot_data.melt(id_vars=['corr_rel'])
-
 
 # bootstrap
 boot_data = all_corr
@@ -308,6 +307,7 @@ pvals['p_adj'] = p_adjs
 sig_pvals = pvals[pvals['p_adj']<0.05]
 if len(sig_pvals)>0:
     ps = list(sig_pvals['p_adj'])
+ps = [max(x,0.001) for x in ps]
 box_pairs = []
 for _, row in sig_pvals.iterrows():
     cond1, cond2 = row['cond1'], row['cond2']
@@ -316,7 +316,7 @@ for _, row in sig_pvals.iterrows():
 
 
 sns_setup_small(sns, (8,6))
-ax = sns.barplot(data=plot_data, x= 'corr_rel', y='value' ,color=setpallet[2])
+ax = sns.barplot(data=plot_data, x= 'corr_rel', y='value' ,color=setpallet[1])
 ax.set(xlabel='',ylabel='Correlation') #,title='Vector Angle Correlation'
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
@@ -325,5 +325,118 @@ add_stat_annotation(ax, data=plot_data, x='corr_rel', y='value',
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                     loc='outside', verbose=2)
 plt.xticks(rotation=90, fontsize=20)
-ax.figure.savefig("figures/intact_gt_humanest_vec_ang_corr.png", dpi=300, bbox_inches='tight')
+ax.figure.savefig("figures/{}_gt_humanest_vec_ang_corr.png".format(test_cond), dpi=300, bbox_inches='tight')
+plt.close()
+
+
+
+
+
+''' PART IV Human-Human, Human-CNN, Human-Transformer Estimation xy Correlation '''
+files = glob.glob('data/GroundTruth_humanest/*vectors.xlsx')
+results = pd.DataFrame()
+for f in files:
+    df = pd.read_excel(f)
+    df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
+    results = results.append(df, ignore_index=True)
+results = results[['cond','image','gazer','subj','est_x','est_y','model']]
+
+# 1. human-human correlation
+# 1. human-human correlation
+humans = results[(results['cond']=='intact') & (results['model']=='Humans')]
+humans = humans.groupby(['cond','image','model','subj']).mean().reset_index().drop('gazer',axis=1)
+subjects = list(np.unique(humans['subj']))
+subj1, subj2, corr = [], [], []
+for s1 in subjects:
+    print(s1)
+    rest_subjects = subjects.copy()
+    rest_subjects.remove(s1)
+    for s2 in rest_subjects:
+        tempdata = humans[(humans['subj']==s1) | (humans['subj']==s2)]
+        tempdata = tempdata[['image','subj','Angle2Hori']]
+        tempdata= tempdata.pivot(index=["image"], columns=["subj"]).dropna().reset_index()
+        tempdata.columns = tempdata.columns.droplevel(1)
+        tempdata.columns = ['image', 'Angle2Hori_subj1', 'Angle2Hori_subj2']
+        subj1.append(s1)
+        subj2.append(s2)
+        r, p = stats.pearsonr(tempdata["Angle2Hori_subj1"], tempdata["Angle2Hori_subj2"])
+        corr.append(r)
+
+human_corr = pd.DataFrame({'subj1':subj1, 'subj2':subj2, 'vec_angle_corr':corr})
+human_corr['corr_rel'] = 'Humans-Humans'
+human_corr.to_excel('data/GroundTruth_humanest/Human_{}_vec_angle_corr.xlsx'.format(test_cond),index=None)
+
+humans_humans = pd.read_excel('data/GroundTruth_humanest/Human_{}_vec_angle_corr.xlsx'.format(test_cond))
+
+# 2. human-model correlation
+test_cond = 'headless bodies'
+allmodels = results[(results['cond']==test_cond) & (results['model']!='Humans')].drop('subj',axis=1)
+allmodels = allmodels.groupby(['cond','image','model']).mean().reset_index().drop('gazer',axis=1)
+subjects = list(np.unique(humans_humans['subj1']))
+models = ['Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']
+humans_models = pd.DataFrame()
+for model in models:
+    model_data = allmodels[(allmodels['model']==model)].drop('cond',axis=1)
+    subj1, corr = [], []
+    for s in subjects: #(individual subject & CNN)
+        s_data = humans[humans['subj']==s][['image','Angle2Hori','model']]
+        subj1.append(s)
+        humans_model = pd.concat([s_data, model_data])
+        plot_data_piv = humans_model.pivot(index=["image"], columns=["model"]).dropna().reset_index()
+        plot_data_piv.columns = plot_data_piv.columns.droplevel(1)
+        plot_data_piv.columns = ['image','Angle2Hori_model', 'Angle2Hori_Humans']
+        r, p = stats.pearsonr(plot_data_piv["Angle2Hori_model"], plot_data_piv["Angle2Hori_Humans"])
+        corr.append(r)
+
+    humans_model = pd.DataFrame({'subj1':subj1, 'subj2':[model]*len(subj1),'vec_angle_corr': corr})
+    humans_model['corr_rel'] = 'Humans-{}'.format(model)
+    humans_models = humans_models.append(humans_model, ignore_index=True)
+
+# plot
+all_corr = pd.concat([humans_humans, humans_models])
+plot_data = all_corr[['vec_angle_corr','corr_rel']]
+plot_data = plot_data.melt(id_vars=['corr_rel'])
+
+# bootstrap
+boot_data = all_corr
+boot_data = boot_data.groupby(['corr_rel','subj1']).mean().reset_index()
+cond = list(np.unique(boot_data.corr_rel))
+conditions = set(list(combinations(cond, 2)))
+pvals = pd.DataFrame()
+for var in ['vec_angle_corr']:
+    for cond1, cond2 in conditions:
+        print(cond1)
+        print(cond2)
+        dataframe1 = boot_data[boot_data['corr_rel']==cond1]
+        dataframe2 = boot_data[boot_data['corr_rel'] == cond2]
+        ci1, ci2, p = bootstrap(dataframe1, dataframe2, var, 10000, 'mean')
+        pvals = pvals.append({'variable':var, 'cond1': cond1, 'cond2': cond2,
+                                  'ci1l':ci1[0], 'ci1u':ci1[1], 'ci2l':ci2[0], 'ci2u':ci2[1],
+                                  'p': p}, ignore_index=True)
+
+p_adjs = mt(pvals['p'], alpha=0.05, method='fdr_bh')[1]
+pvals['p_adj'] = p_adjs
+# pvals.to_excel('data/boot_results.xlsx',index=None)
+sig_pvals = pvals[pvals['p_adj']<0.05]
+if len(sig_pvals)>0:
+    ps = list(sig_pvals['p_adj'])
+ps = [max(x,0.001) for x in ps]
+box_pairs = []
+for _, row in sig_pvals.iterrows():
+    cond1, cond2 = row['cond1'], row['cond2']
+    var = row['variable']
+    box_pairs.append((cond1, cond2))
+
+
+sns_setup_small(sns, (8,6))
+ax = sns.barplot(data=plot_data, x= 'corr_rel', y='value' ,color=setpallet[1])
+ax.set(xlabel='',ylabel='Correlation') #,title='Vector Angle Correlation'
+ax.spines['top'].set_color('white')
+ax.spines['right'].set_color('white')
+ax.legend(frameon=False)
+add_stat_annotation(ax, data=plot_data, x='corr_rel', y='value',
+                    box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
+                    loc='outside', verbose=2)
+plt.xticks(rotation=90, fontsize=20)
+ax.figure.savefig("figures/{}_gt_humanest_xy_corr.png".format(test_cond), dpi=300, bbox_inches='tight')
 plt.close()
