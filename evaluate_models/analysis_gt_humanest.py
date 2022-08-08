@@ -32,12 +32,13 @@ results['model'].cat.reorder_categories(['Humans', 'CNN', 'HeadBody Transformer'
 
 
 
-''' PART I Human, CNN, 3 Transformer performance (human estimates as groundtruth) '''
-plot_data = results[results['test_cond']=='intact']
+''' PART I Human, CNN, 3 Transformer performance (wrt human estimates), which model is more consistent with humans '''
+test_cond = 'headless bodies'
+plot_data = results[results['test_cond']==test_cond]
 plot_data = plot_data[[ 'Euclidean_error_meanest', 'Angular_error_meanest',
        'Euclidean_error_lou', 'Angular_error_lou','model']]
 
-error = 'Angular_error_lou'
+error = 'Euclidean_error_meanest'
 aov_data = plot_data[[error, 'model']].melt(id_vars='model')
 aov = pg.anova(dv='value', between=['model'], data=aov_data,
              detailed=True)
@@ -54,18 +55,18 @@ for _, row in sig_results.iterrows():
     ps.append(max(0.001, row['p-corr']))
 
 
-# error = 'Euclidean_error_meanest'
-# sns_setup_small(sns, (8,6))
-# ax = sns.barplot(data = plot_data, x = 'model', y =  error,color=setpallet[0])
-# ax.set(xlabel='', ylabel='Euclidean Error')
-# ax.spines['top'].set_color('white')
-# ax.spines['right'].set_color('white')
-# add_stat_annotation(ax, data=plot_data, x = 'model', y =  error,
-#                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
-#                     loc='outside', verbose=2)
-# plt.xticks(rotation=90, fontsize=20)
-# ax.figure.savefig("figures/intact_gt_humanest_{}.png".format(error), dpi=300, bbox_inches='tight')
-# plt.close()
+error = 'Euclidean_error_meanest'
+sns_setup_small(sns, (8,6))
+ax = sns.barplot(data = plot_data, x = 'model', y =  error,color=setpallet[0])
+ax.set(xlabel='', ylabel='Euclidean Error')
+ax.spines['top'].set_color('white')
+ax.spines['right'].set_color('white')
+add_stat_annotation(ax, data=plot_data, x = 'model', y =  error,
+                    box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
+                    loc='outside', verbose=2)
+plt.xticks(rotation=90, fontsize=20)
+ax.figure.savefig("figures/{}_gt_humanest_{}.png".format(test_cond, error), dpi=300, bbox_inches='tight')
+plt.close()
 
 
 
@@ -79,23 +80,23 @@ for _, row in sig_results.iterrows():
 #                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
 #                     loc='outside', verbose=2)
 # plt.xticks(rotation=90, fontsize=20)
-# ax.figure.savefig("figures/intact_gt_humanest_{}.png".format(error), dpi=300, bbox_inches='tight')
+# ax.figure.savefig("figures/{}_gt_humanest_{}.png".format(test_cond,error), dpi=300, bbox_inches='tight')
 # plt.close()
 
 
 
-# error = 'Angular_error_meanest'
-# sns_setup_small(sns, (8,6))
-# ax = sns.barplot(data = plot_data, x = 'model', y = error,color=setpallet[1])
-# ax.set(xlabel='', ylabel='Angular Error (˚)')
-# ax.spines['top'].set_color('white')
-# ax.spines['right'].set_color('white')
-# add_stat_annotation(ax, data=plot_data, x = 'model', y = error,
-#                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
-#                     loc='outside', verbose=2)
-# plt.xticks(rotation=90, fontsize=20)
-# ax.figure.savefig("figures/intact_gt_humanest_{}.png".format(error), dpi=300, bbox_inches='tight')
-# plt.close()
+error = 'Angular_error_meanest'
+sns_setup_small(sns, (8,6))
+ax = sns.barplot(data = plot_data, x = 'model', y = error,color=setpallet[1])
+ax.set(xlabel='', ylabel='Angular Error (˚)')
+ax.spines['top'].set_color('white')
+ax.spines['right'].set_color('white')
+add_stat_annotation(ax, data=plot_data, x = 'model', y = error,
+                    box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
+                    loc='outside', verbose=2)
+plt.xticks(rotation=90, fontsize=20)
+ax.figure.savefig("figures/{}_gt_humanest_{}.png".format(test_cond, error), dpi=300, bbox_inches='tight')
+plt.close()
 
 
 
@@ -109,7 +110,7 @@ add_stat_annotation(ax, data=plot_data, x = 'model', y = error,
                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                     loc='outside', verbose=2)
 plt.xticks(rotation=90, fontsize=20)
-ax.figure.savefig("figures/intact_gt_humanest_{}.png".format(error), dpi=300, bbox_inches='tight')
+ax.figure.savefig("figures/{}_gt_humanest_{}.png".format(test_cond,error), dpi=300, bbox_inches='tight')
 plt.close()
 
 
