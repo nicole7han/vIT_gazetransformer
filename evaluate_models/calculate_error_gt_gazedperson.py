@@ -278,7 +278,6 @@ for _ in range(N_perm):
                 left['gazed_y'] - left['human_est_y']) ** 2)
     left = left.groupby(['image', 'test_cond']).mean().reset_index()
     left['Angular_error'] = left.apply(lambda r: compute_angle(r, 'human'), axis=1)
-
     left = left.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
 
 
@@ -291,7 +290,6 @@ for _ in range(N_perm):
                 right['gazed_y'] - right['human_est_y']) ** 2)
     right = right.groupby(['image', 'test_cond']).mean().reset_index()
     right['Angular_error'] = right.apply(lambda r: compute_angle(r, 'human'), axis=1)
-
     right = right.groupby('test_cond').mean().reset_index()[['test_cond', 'Euclidean_error', 'Angular_error']]
 
     perm = perm.append(pd.concat([left, right]), ignore_index=True)
