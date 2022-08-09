@@ -58,10 +58,10 @@ def main():
     print('learning rate = {}'.format(lr))
     beta1 = .9
     opt = optim.AdamW(model.parameters(), lr=lr, betas=(beta1, .999), weight_decay=0.0001)
-    # criterion = nn.MSELoss()
-    # criterion = nn.BCELoss(reduction='mean')
-    matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
-    weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
+    # matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
+    # weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
+    matcher = build_matcher(set_cost_class=1, set_cost_bbox=1, set_cost_giou=1)
+    weight_dict = {'loss_ce': 10, 'loss_bbox': 1, 'loss_giou': 1}
     losses = ['labels', 'boxes']
     num_classes = 1 # gazed vs. not gazed
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
