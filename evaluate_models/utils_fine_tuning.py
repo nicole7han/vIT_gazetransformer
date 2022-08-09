@@ -319,8 +319,8 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             except:
                 continue
 
-            # model trained on heads
-            bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
+            # model trained on heads+bodies
+            bbx_y, bbx_x, bbx_h, bbx_w = hb_y, hb_x, hb_h, hb_w
 
             # load head and body masks + crops
             masks = torch.zeros([224, 224])
