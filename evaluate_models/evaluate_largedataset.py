@@ -227,7 +227,7 @@ def evaluate_test(anno_path, test_img_path, test_bbx_path, chong_est, criterion,
 
                 # visualization the flips
                 if savefigure:
-                    os.makedirs(fig_path, exist_ok=True)
+                    os.makedirs(fig_path, exiplot_gaze_largedatast_ok=True)
                     outfig = plot_gaze_largedata(img, flips[i], [eye_x, eye_y], [target_x,target_y],\
                                         [trans_pred_x, trans_pred_y], [chong_pred_x, chong_pred_y] )
                     plt.text(.5*w, 1.2*h, 'transformer ang_error:{:.2f}, eucli_error:{:.2f}'.format(trans_ang_loss,trans_dis_loss), \
