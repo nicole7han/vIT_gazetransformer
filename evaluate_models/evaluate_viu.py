@@ -55,5 +55,5 @@ for epoch in [130, 160, 190]:
         output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
                             bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
 
-        output.to_excel('{}/transformer_TEST_{}_epoch{}_result_mismatch.xlsx'.format(outpath,cond,epoch), index=None)
+        output.to_excel('{}/transformer_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
         analyze_error(output, epoch, path=outpath, cond=cond)
