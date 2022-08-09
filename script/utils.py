@@ -549,8 +549,8 @@ class SetCriterion(nn.Module):
         self.weight_dict = weight_dict
         self.eos_coef = eos_coef
         self.losses = losses
-        empty_weight = torch.ones(self.num_classes + 1)*self.eos_coef # no object + gazed class + no object
-        empty_weight[1] = 1 # [0.01, 1, 0.01]
+        empty_weight = torch.ones(self.num_classes + 1)*self.eos_coef # gazed class + no object
+        empty_weight[0] = 1 # [1, 0.01]
         self.register_buffer('empty_weight', empty_weight)
 
     def loss_labels(self, outputs, targets, indices, num_boxes, log=False):
