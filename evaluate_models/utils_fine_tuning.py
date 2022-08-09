@@ -319,8 +319,12 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             except:
                 continue
 
-            # model trained on heads
-            bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
+            # model trained on bodies, always look at bodies region
+            bbx_y, bbx_x, bbx_h, bbx_w = b_y, b_x, b_h, b_w
+            # if cond != 'nb':
+            #     bbx_y, bbx_x, bbx_h, bbx_w = b_y, b_x, b_h, b_w
+            # else:
+            #     bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
 
             # load head and body masks + crops
             masks = torch.zeros([224, 224])
