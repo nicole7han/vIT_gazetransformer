@@ -549,8 +549,8 @@ class SetCriterion(nn.Module):
         self.weight_dict = weight_dict
         self.eos_coef = eos_coef
         self.losses = losses
-        empty_weight = torch.ones(self.num_classes + 1)*self.eos_coef # gazed class + no object
-        empty_weight[0] = 1 # [1, 0.01]
+        empty_weight = torch.ones(self.num_classes + 1)*self.eos_coef # + no object, gazed class 
+        empty_weight[1] = 1 # [0.01, 1]
         self.register_buffer('empty_weight', empty_weight)
 
     def loss_labels(self, outputs, targets, indices, num_boxes, log=False):
@@ -564,7 +564,7 @@ class SetCriterion(nn.Module):
         target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)]) #target labels
         target_classes = torch.full(src_logits.shape[:2], self.num_classes,
                                     dtype=torch.int64, device=src_logits.device)
-        target_classes[idx] = target_classes_o #update only the matched idx with label 1, else 2 (empty)
+        target_classes[idx] = target_classes_o #update only the matched idx with label 1, else 2
 
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
         losses = {'loss_ce': loss_ce}
