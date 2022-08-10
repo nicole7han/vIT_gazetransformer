@@ -41,7 +41,7 @@ N_perm = 10000 # number of permutations
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [300,100,340]:
+for epoch in [80]: #300,100,340
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
