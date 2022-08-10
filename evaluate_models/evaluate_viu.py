@@ -7,11 +7,11 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [40]:
+for epoch in [100]:
     #60, 108, 150
     checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-    # plt.plot(checkpoint['train_loss'])
-    # plt.plot(checkpoint['test_loss'])
+#    plt.plot(checkpoint['train_loss'])
+#    plt.plot(checkpoint['test_loss'])
     loaded_dict = checkpoint['model_state_dict']
     prefix = 'module.'
     n_clip = len(prefix)
@@ -29,7 +29,7 @@ for epoch in [40]:
     outpath = '{}/model_eval_viu_outputs/Trained_Head'.format(basepath)
     os.makedirs(outpath, exist_ok=True)
     anno_path = '{}/Video_Info.xlsx'.format(datapath)
-    for cond in ['intact']: #'intact','nb','nh'
+    for cond in ['intact','nb','nh']: #'intact','nb','nh'
         test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
         test_bbx_path = "{}/transformer_all_bbx".format(datapath)
         if cond == 'intact':
@@ -40,8 +40,10 @@ for epoch in [40]:
             gazer_bbox = 'b'
         fig_path='{}/transformer_TEST_{}_epoch{}'.format(outpath,cond,epoch)
 
-        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
-        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
+#        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
+#        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
+        matcher = build_matcher(set_cost_class=1, set_cost_bbox=1, set_cost_giou=2)
+        weight_dict = {'loss_ce': 10, 'loss_bbox': 1, 'loss_giou': 1}
         losses = ['labels', 'boxes']
         num_classes = 1
         criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
