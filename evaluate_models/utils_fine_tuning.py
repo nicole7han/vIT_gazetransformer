@@ -345,15 +345,14 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             gaze_pred_logits = np.array(gaze_pred['pred_logits'].detach())[0] # 100 x 2
             gaze_pred_prob = np.array(gaze_pred["pred_logits"].flatten(0, 1).softmax(-1).detach())
             gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())[0]  # 100 x 4
-            idx = gaze_pred_prob[:, 1].argmax()
-###            # loss
+            idx = gaze_pred_prob[:, 1].argmax() # get maximum logit prediction for gazed location
+
+#            # loss
 #            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
 #                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
 #                       for i in range(test_b_size)]
 #            indices = np.array(criterion.matcher(gaze_pred, targets))
 #            idx = indices[0][0]
-
-#            idx = gaze_pred_logits[:,1].argmax() # get maximum logit prediction for gazed location
 
 
             # result
