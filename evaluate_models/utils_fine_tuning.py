@@ -258,7 +258,7 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
     return img
 
 def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                    bbx_noise=False, gazer_bbox='hb', cond='intact', savefigure=True):
+                    bbx_noise=False, gazer_bbox='hb', cond='intact', savefigure=True, mode='map'):
     '''
     @param anno_path:    output = evaluate_2model(anno_path, test_img_path, test_bbx_path, None, model, fig_path, criterion, gazer_bbox=gazer_bbox) gazed location
     @param test_img_path: test image path
@@ -346,11 +346,11 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())  # bs x 100 x 4
 
 #            # loss
-#            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
+#             targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
 #                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
 #                       for i in range(test_b_size)]
-#            indices = np.array(criterion.matcher(gaze_pred, targets))
-#            idx2 = indices[0][0]
+#             indices = np.array(criterion.matcher(gaze_pred, targets))
+#             idx = indices[0][0]
 
             idx = gaze_pred_logits.argmax(1)[0][0]  # get maximum logit prediction for gazed location
 
@@ -362,22 +362,38 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             # visualization
             os.makedirs(fig_path, exist_ok=True)
             if savefigure:
-                plt.close()
-                fig = plt.figure()
-                plt.axis('off')
-                ax = plt.gca()
-                # left, bottom, width, height
-                rect = patches.Rectangle((int(bbx_x*w), int((bbx_y)*h)),
-                                         int(bbx_w*w), int(bbx_h*h), linewidth=2, edgecolor=(0, 1, 0), facecolor='none')
-                img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
-                # img = Image.fromarray(img).resize((224,224))
-                img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
-                plt.imshow(img)
-                ax.add_patch(rect)
-                # plt.show(block=False)
-                # plt.pause(0.1)
-                fig.savefig('{}/{}_person{}_result.jpg'.format(fig_path, images_name[0], p + 1))
-                plt.close()
+                if mode == 'arrow':
+                    plt.close()
+                    fig = plt.figure()
+                    plt.axis('off')
+                    ax = plt.gca()
+                    # left, bottom, width, height
+                    rect = patches.Rectangle((int(bbx_x*w), int((bbx_y)*h)),
+                                             int(bbx_w*w), int(bbx_h*h), linewidth=2, edgecolor=(0, 1, 0), facecolor='none')
+                    img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
+                    img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
+                    plt.imshow(img)
+                    ax.add_patch(rect)
+                    ax.set_axis_off()
+                    fig.savefig('{}/{}_person{}_arrow.jpg'.format(fig_path, images_name[0], p + 1))
+                    plt.close()
+                elif mode == 'map':
+                    heatmap = np.zeros([h, w])
+                    for i in range(len(gaze_pred_logits[0][:, 0])):
+                        logit = gaze_pred_logits[0][:, 0][i]
+                        p = np.exp(logit) / (1 + np.exp(logit))
+                        locx, locy = gaze_pred_bbx[0][i]
+                        locx, locy = int(locx * w), int(locy * h)
+                        heatmap[locy - int(.02 * w):locy + int(.02 * w), locx - int(.02 * h):locx + int(.02 * h)] = p
+                    heatmap = heatmap / (heatmap.max())
+                    heatmap = gaussian_filter(heatmap, 40)
+                    fig, ax = plt.subplots()
+                    img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
+                    ax.imshow(img)
+                    ax.imshow(heatmap, alpha=.4)
+                    ax.set_axis_off()
+                    fig.savefig('{}/{}_person{}_map.jpg'.format(fig_path, images_name[0], p + 1))
+                    plt.close()
 
             IMAGES.append(images_name[0])
             GAZE_START.append(eyexy)

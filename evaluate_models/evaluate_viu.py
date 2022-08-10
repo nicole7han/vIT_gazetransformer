@@ -7,11 +7,11 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [300,100,340]:
-    # epoch=340
+for epoch in [50]:
+    # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-    # plt.plot(checkpoint['train_loss'])
-    # plt.plot(checkpoint['test_loss'])
+    plt.plot(checkpoint['train_loss'])
+    plt.plot(checkpoint['test_loss'])
     loaded_dict = checkpoint['model_state_dict']
     prefix = 'module.'
     n_clip = len(prefix)
