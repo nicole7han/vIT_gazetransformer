@@ -7,7 +7,8 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [60, 108, 150]:
+for epoch in [40]:
+    #60, 108, 150
     checkpoint = torch.load('trainedmodels/model_head_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
     # plt.plot(checkpoint['train_loss'])
     # plt.plot(checkpoint['test_loss'])
@@ -28,7 +29,7 @@ for epoch in [60, 108, 150]:
     outpath = '{}/model_eval_viu_outputs/Trained_Head'.format(basepath)
     os.makedirs(outpath, exist_ok=True)
     anno_path = '{}/Video_Info.xlsx'.format(datapath)
-    for cond in ['nh']: #'intact','nb',
+    for cond in ['intact']: #'intact','nb','nh'
         test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
         test_bbx_path = "{}/transformer_all_bbx".format(datapath)
         if cond == 'intact':
@@ -54,5 +55,5 @@ for epoch in [60, 108, 150]:
         output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
                             bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
 
-        output.to_excel('{}/transformer_TEST_{}_epoch{}_result_mismatch.xlsx'.format(outpath,cond,epoch), index=None)
+        output.to_excel('{}/transformer_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
         analyze_error(output, epoch, path=outpath, cond=cond)
