@@ -8,7 +8,7 @@ from script.matcher import *
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
 for epoch in [130, 160, 190]:
-# epoch=190
+# epoch=130, 160, 190
     checkpoint = torch.load('trainedmodels/model_body_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
     # plt.plot(checkpoint['train_loss'])
     # plt.plot(checkpoint['test_loss'])
@@ -55,7 +55,7 @@ for epoch in [130, 160, 190]:
             chong_est = None
 
         output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                            bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond)
+                            bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond,mode='arrow')
 
         output.to_excel('{}/transformer_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
         analyze_error(output, epoch, path=outpath, cond=cond)
