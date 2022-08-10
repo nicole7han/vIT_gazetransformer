@@ -356,7 +356,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 
 
             # result
-            transxy = gaze_pred_bbx[idx]
+#            transxy = gaze_pred_bbx[idx]
             eyexy = np.array([h_x+0.5*h_w, h_y+0.5*h_h])
             targetxy = np.array(targetgaze['boxes'][0])
 
@@ -384,17 +384,23 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                         prob = gaze_pred_prob[i][1]
                         locx, locy = gaze_pred_bbx[i]
                         locx, locy = int(locx * w), int(locy * h)
-                        heatmap[locy - int(.02 * w):locy + int(.02 * w), locx - int(.02 * h):locx + int(.02 * h)] = prob
-                    heatmap = heatmap / (heatmap.max())
+                        heatmap[locy - int(.02 * w):locy + int(.02 * w), locx - int(.02 * h):locx + int(.02 * h)] = 1
+#                    heatmap = heatmap / (heatmap.max())
                     heatmap = gaussian_filter(heatmap, 40)
+                    gaze_pred_y, gaze_pred_x = np.where(heatmap == np.max(heatmap)) # row, col
+                    transxy = [gaze_pred_x[0]/w, gaze_pred_y[0]/h]
                     fig, ax = plt.subplots()
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
                     gaze_s_x, gaze_s_y, gaze_e_x, gaze_e_y = int(eyexy[0] * w), \
                                          int(eyexy[1] * h), \
                                          int(targetxy[0] * w), \
                                          int(targetxy[1] * h)
+                    # transformer prediction (blue)
+                    cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x[0], gaze_pred_y[0]), (0, 0, 255), 2)
+
                     # groundtruth gaze (green)
                     cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
+
                     ax.imshow(img)
                     ax.imshow(heatmap, alpha=.4)
                     ax.set_axis_off()

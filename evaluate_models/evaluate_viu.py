@@ -10,8 +10,8 @@ model = Gaze_Transformer()
 for epoch in [120]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-    plt.plot(checkpoint['train_loss'][6:])
-    plt.plot(checkpoint['test_loss'][6:])
+#    plt.plot(checkpoint['train_loss'][6:])
+#    plt.plot(checkpoint['test_loss'][6:])
     loaded_dict = checkpoint['model_state_dict']
     prefix = 'module.'
     n_clip = len(prefix)
@@ -55,7 +55,7 @@ for epoch in [120]:
             chong_est = None
 
         output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                            bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond, mode='arrow')
+                            bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond, mode='map')
 
         output.to_excel('{}/transformer_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
         analyze_error(output, epoch, path=outpath, cond=cond)
