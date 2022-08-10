@@ -347,15 +347,17 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 
             gaze_pred = model(images, box_crops, masks)
             gaze_pred_logits = np.array(gaze_pred['pred_logits'].detach())[0] # 100 x 2
+            gaze_pred_prob = np.array(gaze_pred["pred_logits"].flatten(0, 1).softmax(-1).detach())
             gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())[0]  # 100 x 4
+            idx = gaze_pred_prob[:, 1].argmax() # get maximum logit prediction for gazed location
+
 #            # loss
-#             targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
+#            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
 #                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
 #                       for i in range(test_b_size)]
-#             indices = np.array(criterion.matcher(gaze_pred, targets))
-#             idx2 = indices[0][0]
+#            indices = np.array(criterion.matcher(gaze_pred, targets))
+#            idx = indices[0][0]
 
-            idx = gaze_pred_logits[:,0].argmax() # get maximum logit prediction for gazed location
 
             # result
             transxy = gaze_pred_bbx[idx]
@@ -373,7 +375,6 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                     fig = plt.figure()
                     plt.axis('off')
                     ax = plt.gca()
-                    # left, bottom, width, height
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
                     img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
                     plt.imshow(img)
@@ -384,24 +385,22 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                 elif mode == 'map':
                     heatmap = np.zeros([h, w])
                     for i in range(len(gaze_pred_logits)):
-                        logit = gaze_pred_logits[:, 0][i]
-                        prob = np.exp(logit) / (1 + np.exp(logit))
+                        prob = gaze_pred_prob[i][1]
                         locx, locy = gaze_pred_bbx[i]
                         locx, locy = int(locx * w), int(locy * h)
                         heatmap[locy - int(.02 * w):locy + int(.02 * w), locx - int(.02 * h):locx + int(.02 * h)] = prob
                     heatmap = heatmap / (heatmap.max())
-                    # heatmap = gaussian_filter(heatmap, 40)
+                    heatmap = gaussian_filter(heatmap, 40)
                     fig, ax = plt.subplots()
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
-                    ax.imshow(img)
-                    ax.imshow(heatmap,alpha=.6)
-
                     gaze_s_x, gaze_s_y, gaze_e_x, gaze_e_y = int(eyexy[0] * w), \
-                                                             int(eyexy[1] * h), \
-                                                             int(targetxy[0] * w), \
-                                                             int(targetxy[1] * h)
+                                         int(eyexy[1] * h), \
+                                         int(targetxy[0] * w), \
+                                         int(targetxy[1] * h)
                     # groundtruth gaze (green)
                     cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
+                    ax.imshow(img)
+                    ax.imshow(heatmap, alpha=.4)
                     ax.set_axis_off()
                     fig.savefig('{}/{}_person{}_map.jpg'.format(fig_path, images_name[0], p + 1))
                     plt.close()
