@@ -342,34 +342,36 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             except: pass
 
             gaze_pred = model(images, box_crops, masks)
-            gaze_pred_logits = np.array(gaze_pred['pred_logits'].detach())
-            gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())  # bs x 100 x 4
-
-#            # loss
-#             targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
+            gaze_pred_logits = np.array(gaze_pred['pred_logits'].detach())[0] # 100 x 2
+            gaze_pred_prob = np.array(gaze_pred["pred_logits"].flatten(0, 1).softmax(-1).detach())
+            gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())[0]  # 100 x 4
+            idx = gaze_pred_prob[:, 1].argmax()
+##            # loss
+#            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
 #                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
 #                       for i in range(test_b_size)]
-#             indices = np.array(criterion.matcher(gaze_pred, targets))
-#             idx = indices[0][0]
+#            indices = np.array(criterion.matcher(gaze_pred, targets))
+#            idx = indices[0][0]
 
-            idx = gaze_pred_logits.argmax(1)[0][0]  # get maximum logit prediction for gazed location
+#            idx = gaze_pred_logits[:,1].argmax() # get maximum logit prediction for gazed location
+
 
             # result
-            transxy = gaze_pred_bbx[0][idx]
+            transxy = gaze_pred_bbx[idx]
             eyexy = np.array([h_x+0.5*h_w, h_y+0.5*h_h])
             targetxy = np.array(targetgaze['boxes'][0])
 
             # visualization
             os.makedirs(fig_path, exist_ok=True)
             if savefigure:
+                plt.close()
+                # left, bottom, width, height
+                rect = patches.Rectangle((int(bbx_x*w), int((bbx_y)*h)),
+                                         int(bbx_w*w), int(bbx_h*h), linewidth=2, edgecolor=(0, 1, 0), facecolor='none')
                 if mode == 'arrow':
-                    plt.close()
                     fig = plt.figure()
                     plt.axis('off')
                     ax = plt.gca()
-                    # left, bottom, width, height
-                    rect = patches.Rectangle((int(bbx_x*w), int((bbx_y)*h)),
-                                             int(bbx_w*w), int(bbx_h*h), linewidth=2, edgecolor=(0, 1, 0), facecolor='none')
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
                     img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
                     plt.imshow(img)
@@ -379,16 +381,21 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                     plt.close()
                 elif mode == 'map':
                     heatmap = np.zeros([h, w])
-                    for i in range(len(gaze_pred_logits[0][:, 0])):
-                        logit = gaze_pred_logits[0][:, 0][i]
-                        p = np.exp(logit) / (1 + np.exp(logit))
-                        locx, locy = gaze_pred_bbx[0][i]
+                    for i in range(len(gaze_pred_logits)):
+                        prob = gaze_pred_prob[i][1]
+                        locx, locy = gaze_pred_bbx[i]
                         locx, locy = int(locx * w), int(locy * h)
-                        heatmap[locy - int(.02 * w):locy + int(.02 * w), locx - int(.02 * h):locx + int(.02 * h)] = p
+                        heatmap[locy - int(.02 * w):locy + int(.02 * w), locx - int(.02 * h):locx + int(.02 * h)] = prob
                     heatmap = heatmap / (heatmap.max())
                     heatmap = gaussian_filter(heatmap, 40)
                     fig, ax = plt.subplots()
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
+                    gaze_s_x, gaze_s_y, gaze_e_x, gaze_e_y = int(eyexy[0] * w), \
+                                         int(eyexy[1] * h), \
+                                         int(targetxy[0] * w), \
+                                         int(targetxy[1] * h)
+                    # groundtruth gaze (green)
+                    cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
                     ax.imshow(img)
                     ax.imshow(heatmap, alpha=.4)
                     ax.set_axis_off()
