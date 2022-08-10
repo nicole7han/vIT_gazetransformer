@@ -360,7 +360,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 
 
             # result
-            transxy = gaze_pred_bbx[idx]
+            
             eyexy = np.array([h_x+0.5*h_w, h_y+0.5*h_h])
             targetxy = np.array(targetgaze['boxes'][0])
 
@@ -376,6 +376,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                     plt.axis('off')
                     ax = plt.gca()
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
+                    transxy = gaze_pred_bbx[idx]
                     img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
                     plt.imshow(img)
                     ax.add_patch(rect)
