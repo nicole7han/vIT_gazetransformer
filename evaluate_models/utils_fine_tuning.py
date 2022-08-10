@@ -346,7 +346,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             gaze_pred_prob = np.array(gaze_pred["pred_logits"].flatten(0, 1).softmax(-1).detach())
             gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())[0]  # 100 x 4
             idx = gaze_pred_prob[:, 1].argmax()
-##            # loss
+###            # loss
 #            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
 #                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
 #                       for i in range(test_b_size)]
