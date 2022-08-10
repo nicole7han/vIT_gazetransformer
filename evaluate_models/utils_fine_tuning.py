@@ -394,7 +394,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                     fig, ax = plt.subplots()
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
                     ax.imshow(img)
-                    ax.imshow(heatmap, 'grayscale', alpha=.6)
+                    ax.imshow(heatmap,alpha=.6)
 
                     gaze_s_x, gaze_s_y, gaze_e_x, gaze_e_y = int(eyexy[0] * w), \
                                                              int(eyexy[1] * h), \
