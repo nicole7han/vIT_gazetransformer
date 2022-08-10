@@ -7,7 +7,7 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [300,100,340]:
+for epoch in [30]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
     plt.plot(checkpoint['train_loss'])
@@ -40,10 +40,10 @@ for epoch in [300,100,340]:
             gazer_bbox = 'b'
         fig_path='{}/transformer_TEST_{}_epoch{}'.format(outpath,cond,epoch)
 
+#        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
+#        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
         matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
-        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
-#        matcher = build_matcher(set_cost_class=1, set_cost_bbox=1, set_cost_giou=1)
-#        weight_dict = {'loss_ce': 10, 'loss_bbox': 1, 'loss_giou': 1}
+        weight_dict = {'loss_ce': 1, 'loss_bbox': 10, 'loss_giou': 1}
         losses = ['labels', 'boxes']
         num_classes = 1
         criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
