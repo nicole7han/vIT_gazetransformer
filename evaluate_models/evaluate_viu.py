@@ -7,11 +7,11 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [170]:
+for epoch in [80]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-#    plt.plot(checkpoint['train_loss'][6:])
-#    plt.plot(checkpoint['test_loss'][6:])
+    plt.plot(checkpoint['train_loss'][6:])
+    plt.plot(checkpoint['test_loss'][6:])
     loaded_dict = checkpoint['model_state_dict']
     prefix = 'module.'
     n_clip = len(prefix)
@@ -29,7 +29,7 @@ for epoch in [170]:
     outpath = '{}/model_eval_viu_outputs/Trained_HeadBody'.format(basepath)
     os.makedirs(outpath, exist_ok=True)
     anno_path = '{}/Video_Info.xlsx'.format(datapath)
-    for cond in ['intact','nb','nh']: #,'nb','nh'
+    for cond in ['intact']: #'intact','nb','nh'
         test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
         test_bbx_path = "{}/transformer_all_bbx".format(datapath)
         if cond == 'intact':
@@ -43,7 +43,7 @@ for epoch in [170]:
 #        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
 #        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
         matcher = build_matcher(set_cost_class=1, set_cost_bbox=1, set_cost_giou=1)
-        weight_dict = {'loss_ce': 10, 'loss_bbox': 1, 'loss_giou': 1}
+        weight_dict = {'loss_ce': 1, 'loss_bbox': 1, 'loss_giou': 1}
         losses = ['labels', 'boxes']
         num_classes = 1
         criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
@@ -55,7 +55,7 @@ for epoch in [170]:
             chong_est = None
 
         output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                            bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond, mode='map')
+                            bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond, mode='arrow')
 
         output.to_excel('{}/transformer_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
         analyze_error(output, epoch, path=outpath, cond=cond)

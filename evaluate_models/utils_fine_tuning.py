@@ -356,7 +356,6 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 
 
             # result
-#            transxy = gaze_pred_bbx[idx]
             eyexy = np.array([h_x+0.5*h_w, h_y+0.5*h_h])
             targetxy = np.array(targetgaze['boxes'][0])
 
@@ -371,12 +370,13 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                     fig = plt.figure()
                     plt.axis('off')
                     ax = plt.gca()
+                    transxy = gaze_pred_bbx[idx]
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
                     img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
                     plt.imshow(img)
                     ax.add_patch(rect)
                     ax.set_axis_off()
-                    fig.savefig('{}/{}_person{}_arrow.jpg'.format(fig_path, images_name[0], p + 1))
+                    fig.savefig('{}/{}_person{}_maxarrow.jpg'.format(fig_path, images_name[0], p + 1))
                     plt.close()
                 elif mode == 'map':
                     heatmap = np.zeros([h, w])
