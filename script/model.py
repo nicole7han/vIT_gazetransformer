@@ -212,7 +212,8 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
 
         # decoder (UPDATING)
         self.decoder = self.vit.transformer.decoder# Finetune decoder
-        self.query_embed = self.vit.query_embed # Finetune query embed
+#        self.query_embed = self.vit.query_embed # Finetune query embed
+        self.query_embed = nn.Embedding(1, d_model)
         self.d_model=d_model
         self.nhead=nhead
         self.dropout=dropout
