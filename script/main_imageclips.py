@@ -58,7 +58,15 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 # cleanup_dataset(segmask_path, bbx_path, img_path)
 
 model = Gaze_Transformer()
+checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch300.pt', map_location='cpu')
+loaded_dict = checkpoint['model_state_dict']
+prefix = 'module.'
+n_clip = len(prefix)
+adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
+                if k.startswith(prefix)}
+model.load_state_dict(adapted_dict)
 model.to(device)
+
 
 b_size = 10
 train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
