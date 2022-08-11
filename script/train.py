@@ -97,7 +97,7 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
 
 
 def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path, ann_path, opt, criterion,
-          e_start, num_e, lbd, outpath, b_size):
+          e_start, num_e, outpath, b_size):
     LOSS = []
     LOSS_TEST = []
     for e in np.arange(e_start, e_start + num_e):
