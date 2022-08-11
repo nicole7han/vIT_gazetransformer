@@ -381,26 +381,26 @@ class GazeDataloader(Dataset):
             # print('{} no data'.format(img_name))
             return
 
-        # # resize
-        # h, w = 100, 100
-        # img = img.resize([h,w])
-        # inputs = np.array(img)
-        # # create a white background, randomly position img, update eye position, gaze location
-        # # update img_anno based on random position of image relative to the background
-        # img_bg = 255 * np.ones([224, 224, 3]).astype('uint8')
-        # loc_min, loc_max = int(h/2), int(224-h/2)
-        # rand_x, rand_y = torch.randint(loc_min, loc_max, [1,1])[0].item(), \
-        #                  torch.randint(loc_min, loc_max, [1,1])[0].item()
-        # img_bg[rand_y-loc_min:rand_y+loc_min, rand_x-loc_min:rand_x+loc_min] = inputs
-        # img_bg = Image.fromarray(img_bg)
-        # img_anno['eye_x'], img_anno['eye_y'], img_anno['gaze_x'], img_anno['gaze_y'] = \
-        #     (img_anno['eye_x']*w + rand_x-loc_min)/224, \
-        #     (img_anno['eye_y']*h + rand_y-loc_min)/224, \
-        #     (img_anno['gaze_x']*w + rand_x-loc_min)/224, \
-        #     (img_anno['gaze_y']*h + rand_y-loc_min)/224
-        # img_bg = self.transform(img_bg)
+        # create both positive and negative examples
+        labels = torch.tensor([1]).unsqueeze(0)
+        boxes = torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']]).unsqueeze(0)
+        while len(labels) < 20: # points close to gaze xy are also labeled as 1
+            tempx, tempy = img_anno['gaze_x']+random.uniform(-0.1, 0.1), \
+                            img_anno['gaze_y']+random.uniform(-0.1, 0.1)
+            if tempx>0 and tempx<1 and tempy >0 and tempy <1:
+                labels = torch.cat([labels, torch.tensor([1]).unsqueeze(0)], dim=0)
+                boxes  = torch.cat([boxes, torch.tensor([tempx,tempy]).unsqueeze(0)], dim=0)
+        
+        while len(labels) < 100: # points further to gaze xy are also labeled as 1
+            tempx, tempy = img_anno['gaze_x']+random.uniform(-0.5, 0.5), \
+                            img_anno['gaze_y']+random.uniform(-0.5, 0.5)
+            if tempx>0 and tempx<1 and tempy >0 and tempy <1:
+                labels = torch.cat([labels, torch.tensor([0]).unsqueeze(0)], dim=0)
+                boxes  = torch.cat([boxes, torch.tensor([tempx,tempy]).unsqueeze(0)], dim=0)
+        
+        
+        
         img = self.transform(img)
-
         mask = Image.fromarray(mask)
         mask = torch.tensor(np.array(mask.resize([224,224]))).unsqueeze(0)
         # mask_bg = torch.zeros([1, 224, 224])
@@ -408,7 +408,7 @@ class GazeDataloader(Dataset):
         rand_x, rand_y = 0, 0
         return name, img, flip, bbx_crop, mask, \
                torch.tensor([img_anno['eye_x'],img_anno['eye_y']]),\
-               {'labels':torch.tensor([1]) ,'boxes':torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']])},\
+               {'labels':labels ,'boxes':boxes},\
                torch.tensor([rand_x/224, rand_y/224])
 
 

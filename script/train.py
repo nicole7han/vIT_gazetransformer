@@ -43,6 +43,8 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
         targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
                     'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
                    for i in range(b_size)]
+        targets = [{'labels': targetgaze['labels'][i].to(device),
+                    'boxes': targetgaze['boxes'][i].to(device)} for i in range(b_size)]
         # class loss + xy loss
 
         criterion.train()
