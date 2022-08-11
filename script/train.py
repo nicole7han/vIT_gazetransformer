@@ -77,9 +77,8 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
                 eye.to(device)
             test_b_size = images.shape[0]
             gaze_pred = model(images, h_crops, masks)
-            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
-                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
-                       for i in range(test_b_size)]
+            targets = [{'labels': targetgaze['labels'][i].to(device),
+                    'boxes': targetgaze['boxes'][i].to(device)} for i in range(test_b_size)]
             criterion.eval()
             loss_dict = criterion(gaze_pred, targets)
             weight_dict = criterion.weight_dict
