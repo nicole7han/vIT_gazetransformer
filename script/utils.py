@@ -384,19 +384,19 @@ class GazeDataloader(Dataset):
         # create both positive and negative examples
         labels = torch.tensor([1]).unsqueeze(0)
         boxes = torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']]).unsqueeze(0)
-        while len(labels) < 20: # points close to gaze xy are also labeled as 1
-            tempx, tempy = img_anno['gaze_x']+random.uniform(-0.1, 0.1), \
-                            img_anno['gaze_y']+random.uniform(-0.1, 0.1)
-            if tempx>0 and tempx<1 and tempy >0 and tempy <1:
-                labels = torch.cat([labels, torch.tensor([1]).unsqueeze(0)], dim=0)
-                boxes  = torch.cat([boxes, torch.tensor([tempx,tempy]).unsqueeze(0)], dim=0)
-        
-        while len(labels) < 100: # points further to gaze xy are also labeled as 1
-            tempx, tempy = img_anno['gaze_x']+random.uniform(-0.5, 0.5), \
-                            img_anno['gaze_y']+random.uniform(-0.5, 0.5)
-            if tempx>0 and tempx<1 and tempy >0 and tempy <1:
-                labels = torch.cat([labels, torch.tensor([0]).unsqueeze(0)], dim=0)
-                boxes  = torch.cat([boxes, torch.tensor([tempx,tempy]).unsqueeze(0)], dim=0)
+#        while len(labels) < 20: # points close to gaze xy are also labeled as 1
+#            tempx, tempy = img_anno['gaze_x']+random.uniform(-0.1, 0.1), \
+#                            img_anno['gaze_y']+random.uniform(-0.1, 0.1)
+#            if tempx>0 and tempx<1 and tempy >0 and tempy <1:
+#                labels = torch.cat([labels, torch.tensor([1]).unsqueeze(0)], dim=0)
+#                boxes  = torch.cat([boxes, torch.tensor([tempx,tempy]).unsqueeze(0)], dim=0)
+#        
+#        while len(labels) < 100: # points further to gaze xy are also labeled as 1
+#            tempx, tempy = img_anno['gaze_x']+random.uniform(-0.5, 0.5), \
+#                            img_anno['gaze_y']+random.uniform(-0.5, 0.5)
+#            if tempx>0 and tempx<1 and tempy >0 and tempy <1:
+#                labels = torch.cat([labels, torch.tensor([0]).unsqueeze(0)], dim=0)
+#                boxes  = torch.cat([boxes, torch.tensor([tempx,tempy]).unsqueeze(0)], dim=0)
         
         
         
