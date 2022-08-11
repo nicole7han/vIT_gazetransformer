@@ -16,7 +16,7 @@ except:
     pass
 
 def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path,
-                    ann_path, opt, criterion, e_start, num_e, e, lbd, outpath, b_size):
+                    ann_path, opt, criterion, e_start, num_e, e, outpath, b_size):
     start_time = time.time()
     model.train()
 
@@ -103,7 +103,7 @@ def train(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx
     for e in np.arange(e_start, e_start + num_e):
 
         train_stats = train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path, test_bbx_path,
-                                      ann_path, opt, criterion, e_start, num_e, e, lbd, outpath, b_size)
+                                      ann_path, opt, criterion, e_start, num_e, e, outpath, b_size)
         LOSS.append(train_stats['train loss'])
         LOSS_TEST.append(train_stats['test loss'])
 
