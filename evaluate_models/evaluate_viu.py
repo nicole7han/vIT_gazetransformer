@@ -7,11 +7,11 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [80]:
+for epoch in [30]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-    plt.plot(checkpoint['train_loss'][6:])
-    plt.plot(checkpoint['test_loss'][6:])
+#    plt.plot(checkpoint['train_loss'][6:])
+#    plt.plot(checkpoint['test_loss'][6:])
     loaded_dict = checkpoint['model_state_dict']
     prefix = 'module.'
     n_clip = len(prefix)
@@ -42,7 +42,7 @@ for epoch in [80]:
 
 #        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
 #        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
-        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
+        matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
         weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 1}
         losses = ['labels', 'boxes']
         num_classes = 1

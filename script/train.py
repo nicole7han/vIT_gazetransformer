@@ -39,6 +39,7 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
             eye.to(device)
         b_size = images.shape[0]
         gaze_pred = model(images, h_crops, masks)
+        # gaze_pred['pred_logits'][0].softmax(-1)
         # target as a list of length b_s, each is a dictionary of labels and boxes centeroid + height + width
 #        targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
 #                    'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \

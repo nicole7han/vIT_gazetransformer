@@ -400,7 +400,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 
                     # groundtruth gaze (green)
                     cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_e_x, gaze_e_y), (0, 255, 0), 2)
-
+                    ax.add_patch(rect)
                     ax.imshow(img)
                     ax.imshow(heatmap, alpha=.4)
                     ax.set_axis_off()
