@@ -7,7 +7,7 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [80]:
+for epoch in [100]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 #    plt.plot(checkpoint['train_loss'][6:])
@@ -42,8 +42,8 @@ for epoch in [80]:
 
 #        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
 #        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
-        matcher = build_matcher(set_cost_class=1, set_cost_bbox=1, set_cost_giou=1)
-        weight_dict = {'loss_ce': 1, 'loss_bbox': 1, 'loss_giou': 1}
+        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
+        weight_dict = {'loss_ce': 5, 'loss_bbox': 1, 'loss_giou': 1}
         losses = ['labels', 'boxes']
         num_classes = 1
         criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
@@ -55,7 +55,7 @@ for epoch in [80]:
             chong_est = None
 
         output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
-                            bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond, mode='map')
+                            bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond, mode='arrow')
 
         output.to_excel('{}/transformer_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)
         analyze_error(output, epoch, path=outpath, cond=cond)
