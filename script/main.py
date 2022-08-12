@@ -76,7 +76,7 @@ def main():
 #    matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
 #    weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
     matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
-    weight_dict = {'loss_ce': args.loss_cew, 'loss_bbox': args.loss_bboxw, 'loss_giou': 1}
+    weight_dict = {'loss_ce': args.loss_cew, 'loss_bbox': args.loss_bboxw,, 'loss_giou': 1}
     losses = ['labels', 'boxes']
     num_classes = 1 # gazed vs. not gazed
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
