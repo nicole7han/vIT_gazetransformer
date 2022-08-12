@@ -7,7 +7,7 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [30]:
+for epoch in [100]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 #    plt.plot(checkpoint['train_loss'][6:])
@@ -29,7 +29,7 @@ for epoch in [30]:
     outpath = '{}/model_eval_viu_outputs/Trained_HeadBody'.format(basepath)
     os.makedirs(outpath, exist_ok=True)
     anno_path = '{}/Video_Info.xlsx'.format(datapath)
-    for cond in ['intact','nb','nh']: #'intact','nb','nh'
+    for cond in ['intact']: #'intact','nb','nh'
         test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
         test_bbx_path = "{}/transformer_all_bbx".format(datapath)
         if cond == 'intact':
@@ -43,7 +43,7 @@ for epoch in [30]:
 #        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
 #        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
         matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
-        weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 1}
+        weight_dict = {'loss_ce': 1, 'loss_bbox': 1, 'loss_giou': 1}
         losses = ['labels', 'boxes']
         num_classes = 1
         criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
