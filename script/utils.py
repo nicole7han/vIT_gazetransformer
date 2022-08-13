@@ -601,11 +601,16 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx] #get best matching boxes
         target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-        target_label = targets['boxes'][idx]
-        print('target_label: {}'.format(target_label))
         
-        loss_bbox = target_label * F.l1_loss(src_boxes, target_boxes)
-
+        # only calculate bbox loss for label1 (gazed location, because other locations are random)
+        target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)]) #target labels
+        label1_idx = torch.where(target_classes_o==1)
+        src_boxes = src_boxes[label1_idx]
+        target_boxes = target_boxes[label1_idx]
+#        print('target_label: {}'.format(target_classes_o))
+        
+        # for label 1: compute l1_loss, for label 0: do not compute l1_loss
+        loss_bbox = F.l1_loss(src_boxes, target_boxes)
         losses = {}
         losses['loss_bbox'] = loss_bbox.sum() / num_boxes # l1 loss
 
