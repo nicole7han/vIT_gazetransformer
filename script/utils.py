@@ -396,7 +396,7 @@ class GazeDataloader(Dataset):
                 labels = torch.cat([labels, torch.tensor([1])], dim=0)
                 boxes  = torch.cat([boxes, torch.tensor([[tempx,tempy]])], dim=0)
         
-        while len(labels) < 20: # points further to gaze xy are also labeled as 1
+        while len(labels) < 40: # points further to gaze xy are also labeled as 1
             tempx, tempy = img_anno['gaze_x']+random.uniform(-0.5, 0.5), \
                             img_anno['gaze_y']+random.uniform(-0.5, 0.5)
             if tempx>0 and tempx<1 and tempy >0 and tempy <1:
