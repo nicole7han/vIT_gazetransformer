@@ -601,8 +601,10 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx] #get best matching boxes
         target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-
-        loss_bbox = F.l1_loss(src_boxes, target_boxes)
+        target_label = targets['boxes'][idx]
+        print('target_label: {}'.format(target_label))
+        
+        loss_bbox = target_label * F.l1_loss(src_boxes, target_boxes)
 
         losses = {}
         losses['loss_bbox'] = loss_bbox.sum() / num_boxes # l1 loss

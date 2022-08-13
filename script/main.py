@@ -34,8 +34,8 @@ def main():
                         help='learning rate, (default:1e-4)')
     parser.add_argument('--loss_cew', type=float, default=1,
                         help='weight for ce loss, (default:1)')
-    parser.add_argument('--loss_bboxw', type=float, default=10,
-                        help='weight for xy L1 loss, (default:10)')
+    parser.add_argument('--loss_bboxw', type=float, default=5,
+                        help='weight for xy L1 loss, (default:5)')
     parser.add_argument('--outpath', type=str, default='script_chong_detr/trainedmodels',
                         help='output path')
     parser.add_argument('--train_img_path', type=str, default='train',
@@ -77,6 +77,7 @@ def main():
 #    weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
     matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
     weight_dict = {'loss_ce': args.loss_cew, 'loss_bbox': args.loss_bboxw, 'loss_giou': 1}
+    print('loss_ce: {}, loss_bbox: {}'.format(args.loss_cew, args.loss_bboxw))
     losses = ['labels', 'boxes']
     num_classes = 1 # gazed vs. not gazed
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
