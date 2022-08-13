@@ -58,7 +58,7 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 # cleanup_dataset(segmask_path, bbx_path, img_path)
 
 model = Gaze_Transformer()
-epoch = 100
+epoch = 120
 checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'][6:])
 plt.plot(checkpoint['test_loss'][6:])
@@ -71,14 +71,14 @@ model.load_state_dict(adapted_dict)
 model.to(device)
 
 from script.matcher import *
-matcher = build_matcher(set_cost_class=1, set_cost_bbox=1, set_cost_giou=1)
-weight_dict = {'loss_ce': 1, 'loss_bbox': 1, 'loss_giou': 1}
+matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
+weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
 losses = ['labels', 'boxes']
 num_classes = 1 # gazed vs. not gazed
 criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
                          eos_coef=0.01, losses=losses)
 
-b_size = 10
+b_size = 1
 train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
 train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
 train_dataiter = iter(train_dataloader)
