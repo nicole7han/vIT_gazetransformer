@@ -7,7 +7,7 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [40]:
+for epoch in [140]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/model_headbody/model_epoch{}.pt'.format(epoch), map_location='cpu')
     plt.plot(checkpoint['train_loss'])
@@ -29,7 +29,7 @@ for epoch in [40]:
     outpath = '{}/model_eval_viu_outputs/Trained_HeadBody'.format(basepath)
     os.makedirs(outpath, exist_ok=True)
     anno_path = '{}/Video_Info.xlsx'.format(datapath)
-    for cond in ['intact','nb','nh']: #,'nb','nh'
+    for cond in ['intact']: #,'nb','nh'
         test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
         test_bbx_path = "{}/transformer_all_bbx".format(datapath)
         if cond == 'intact':
