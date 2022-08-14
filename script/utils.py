@@ -608,11 +608,11 @@ class SetCriterion(nn.Module):
         src_boxes = src_boxes[label1_idx]
         target_boxes = target_boxes[label1_idx]
 #        print('target_label: {}'.format(target_classes_o))
-        
+#        print(src_boxes)
         # for label 1: compute l1_loss, for label 0: do not compute l1_loss
         loss_bbox = F.l1_loss(src_boxes, target_boxes)
         losses = {}
-        losses['loss_bbox'] = loss_bbox.sum() / num_boxes # l1 loss
+        losses['loss_bbox'] = loss_bbox.sum() #/ num_boxes # l1 loss
 
         # loss_giou = 1 - torch.diag(generalized_box_iou(
         #     box_cxcywh_to_xyxy(src_boxes),
