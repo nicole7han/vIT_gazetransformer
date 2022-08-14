@@ -380,7 +380,17 @@ class GazeDataloader(Dataset):
             # print(name)
             # print('{} no data'.format(img_name))
             return
-
+        
+        labels = torch.tensor([1])
+        boxes = torch.tensor([[img_anno['gaze_x'],img_anno['gaze_y']]])
+        
+        while len(labels) < 10: # points further to gaze xy are also labeled as 1
+            tempx, tempy = img_anno['gaze_x']+random.uniform(-0.5, 0.5), \
+                            img_anno['gaze_y']+random.uniform(-0.5, 0.5)
+            if tempx>0 and tempx<1 and tempy >0 and tempy <1:
+                labels = torch.cat([labels, torch.tensor([0])], dim=0)
+                boxes  = torch.cat([boxes, torch.tensor([[tempx,tempy]])], dim=0)
+        
         # # resize
         # h, w = 100, 100
         # img = img.resize([h,w])
@@ -408,7 +418,7 @@ class GazeDataloader(Dataset):
         rand_x, rand_y = 0, 0
         return name, img, flip, bbx_crop, mask, \
                torch.tensor([img_anno['eye_x'],img_anno['eye_y']]),\
-               {'labels':torch.tensor([1]) ,'boxes':torch.tensor([img_anno['gaze_x'],img_anno['gaze_y']])},\
+                {'labels':labels ,'boxes':boxes},\
                torch.tensor([rand_x/224, rand_y/224])
 
 
@@ -598,8 +608,15 @@ class SetCriterion(nn.Module):
         src_boxes = outputs['pred_boxes'][idx] #get best matching boxes
         target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
 
+#        # only calculate bbox loss for label1 (gazed location, because other locations are random)
+#        target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)]) #target labels
+#        label1_idx = torch.where(target_classes_o==1)
+#        src_boxes = src_boxes[label1_idx]
+#        target_boxes = target_boxes[label1_idx]
+#        print('target_label: {}'.format(target_classes_o))
+#        print(src_boxes)
+        # for label 1: compute l1_loss, for label 0: do not compute l1_loss
         loss_bbox = F.l1_loss(src_boxes, target_boxes)
-
         losses = {}
         losses['loss_bbox'] = loss_bbox.sum() / num_boxes # l1 loss
 
