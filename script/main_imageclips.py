@@ -59,7 +59,7 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 
 model = Gaze_Transformer()
 model.to(device)
-epoch=130
+epoch=140
 checkpoint = torch.load('trainedmodels/model_headbody/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 plt.plot(checkpoint['test_loss'])
@@ -70,10 +70,10 @@ adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
                 if k.startswith(prefix)}
 model.load_state_dict(adapted_dict)
 model.to(device)
+from script.matcher import *
 
 
-
-b_size = 10
+b_size = 1
 train_data = GazeDataloader(ann_path, train_img_path, train_bbx_path)
 train_dataloader = DataLoader(train_data, batch_size= b_size, shuffle=True)
 train_dataiter = iter(train_dataloader)
