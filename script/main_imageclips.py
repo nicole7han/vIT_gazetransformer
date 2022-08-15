@@ -63,12 +63,12 @@ epoch=40
 checkpoint = torch.load('trainedmodels/model_headbody10query/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 plt.plot(checkpoint['test_loss'])
-#loaded_dict = checkpoint['model_state_dict']
-#prefix = 'module.'
-#n_clip = len(prefix)
-#adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
-#                if k.startswith(prefix)}
-#model.load_state_dict(adapted_dict)
+loaded_dict = checkpoint['model_state_dict']
+prefix = 'module.'
+n_clip = len(prefix)
+adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
+                if k.startswith(prefix)}
+model.load_state_dict(adapted_dict)
 model.to(device)
 from script.matcher import *
 matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)

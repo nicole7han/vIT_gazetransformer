@@ -26,10 +26,10 @@ for epoch in [40]:
 
     # evaluate both models' estimation on viu dataset
     datapath = "{}/gaze_video_data".format(basepath)
-    outpath = '{}/model_eval_viu_outputs/Trained_HeadBody'.format(basepath)
+    outpath = '{}/model_eval_viu_outputs/Trained_HeadBody10query'.format(basepath)
     os.makedirs(outpath, exist_ok=True)
     anno_path = '{}/Video_Info.xlsx'.format(datapath)
-    for cond in ['intact']: #,'nb','nh'
+    for cond in ['intact','nb','nh']: #,'nb','nh'
         test_img_path = "{}/transformer_all_img_{}".format(datapath,cond)
         test_bbx_path = "{}/transformer_all_bbx".format(datapath)
         if cond == 'intact':
@@ -43,7 +43,7 @@ for epoch in [40]:
 #        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
 #        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
         matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
-        weight_dict = {'loss_ce': 1, 'loss_bbox': 10, 'loss_giou': 1}
+        weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 1}
         losses = ['labels', 'boxes']
         num_classes = 1
         criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
