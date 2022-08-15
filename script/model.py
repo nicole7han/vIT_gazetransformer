@@ -283,7 +283,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
 
         print('pos shape {}'.format(pos.shape))
         print('memory shape {}'.format(memory.shape))
-        print('query_embed shape {}'.format(query_embed.shape))
+        print('query_embed shape {}'.format(self.query_embed.shape))
         # pass to transformer
         hs = self.transformer(pos + 0.1 * memory, self.query_embed.unsqueeze(1)).transpose(0, 1)
         # hs: [bs x #query x 256]
