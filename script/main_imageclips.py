@@ -71,7 +71,7 @@ model.load_state_dict(adapted_dict)
 model.to(device)
 
 from script.matcher import *
-matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
+matcher = build_matcher(set_cost_class=1, set_cost_bbox=1, set_cost_giou=1)
 weight_dict = {'loss_ce': 1, 'loss_bbox': 10, 'loss_giou': 1}
 losses = ['labels', 'boxes']
 num_classes = 1 # gazed vs. not gazed
