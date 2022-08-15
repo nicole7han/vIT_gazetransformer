@@ -60,7 +60,7 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 model = Gaze_Transformer()
 model.to(device)
 epoch=40
-checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
+checkpoint = torch.load('trainedmodels/model_headbody10query/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'])
 plt.plot(checkpoint['test_loss'])
 #loaded_dict = checkpoint['model_state_dict']
