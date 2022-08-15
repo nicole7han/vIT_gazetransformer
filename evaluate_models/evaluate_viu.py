@@ -9,7 +9,7 @@ basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
 for epoch in [50]:
     # epoch=300,100,340
-    checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
+    checkpoint = torch.load('trainedmodels/model_headbody_chong_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
 #    plt.plot(checkpoint['train_loss'][6:])
 #    plt.plot(checkpoint['test_loss'][6:])
     loaded_dict = checkpoint['model_state_dict']
