@@ -59,10 +59,10 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 
 model = Gaze_Transformer()
 model.to(device)
-epoch=40
+epoch=70
 checkpoint = torch.load('trainedmodels/model_headbody10query/model_epoch{}.pt'.format(epoch), map_location='cpu')
-plt.plot(checkpoint['train_loss'])
-plt.plot(checkpoint['test_loss'])
+plt.plot(checkpoint['train_loss'][6:])
+plt.plot(checkpoint['test_loss'][6:])
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
@@ -72,7 +72,7 @@ model.load_state_dict(adapted_dict)
 model.to(device)
 from script.matcher import *
 matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
-weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 1}
+weight_dict = {'loss_ce': 1, 'loss_bbox': 10, 'loss_giou': 1}
 losses = ['labels', 'boxes']
 num_classes = 1 # gazed vs. not gazed
 criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
