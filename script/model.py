@@ -275,17 +275,16 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
 
         ''' transformer '''
         # positional embedding
-        H, W = encoding.shape[-2:]
+        bs, _, H, W = encoding.shape
         pos = torch.cat([
             self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
             self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
         ], dim=-1).flatten(0, 1).unsqueeze(1)
 
-        print('pos shape {}'.format(pos.shape))
-        print('memory shape {}'.format(memory.shape))
-        print('query_embed shape {}'.format(self.query_embed.shape))
+        query_embed = self.query_embed.unsqueeze(1).repeat(1, bs, 1)
+        
         # pass to transformer
-        hs = self.transformer(pos + 0.1 * memory, self.query_embed.unsqueeze(1)).transpose(0, 1)
+        hs = self.transformer(pos + 0.1 * memory, query_embed).transpose(0, 1)
         # hs: [bs x #query x 256]
 
         outputs_class = self.class_embed(hs)
