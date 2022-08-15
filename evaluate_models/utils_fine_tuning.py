@@ -351,7 +351,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 #                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
 #                       for i in range(test_b_size)]
 #            indices = np.array(criterion.matcher(gaze_pred, targets))
-#            idx = indices[0][0]
+#            idx2 = indices[0][0]
 
 #            idx = gaze_pred_logits[:,1].argmax() # get maximum logit prediction for gazed location
 
