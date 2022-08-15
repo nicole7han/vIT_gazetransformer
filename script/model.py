@@ -176,10 +176,11 @@ class MLP(nn.Module):
             x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
         return x
 
+
 class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer of transformer -> predict gaze
     """Main Model"""
     def __init__(self, d_model=256, dim_feedforward=2048, nhead=8, dropout=0.1,
-                 num_decoder_layers=3, num_classes=1):
+                 num_encoder_layers=6, num_decoder_layers=6, num_classes=1):
         super(Gaze_Transformer, self).__init__()
 
         # pretrained CHONG attention model
@@ -197,31 +198,25 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.bn = nn.BatchNorm2d(256)
         self.relu = nn.ReLU(inplace=True)
 
-        # pretrained DETR
-        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
-        for param in self.vit.backbone.parameters(): # freeze resnet backbone
-            param.requires_grad = False
-        # for param in self.vit.transformer.encoder.layers[:3].parameters(): # freeze first 3 layers of encoders
-        #     param.requires_grad = False
-        self.backbone = self.vit.backbone
-
-
-        # encoder (UPDATING)
-        modules = list(self.vit.transformer.encoder.layers) # Finetune encdoer
-        self.encoder = nn.Sequential(*modules)
-
-        # decoder (UPDATING)
-        self.decoder = self.vit.transformer.decoder# Finetune decoder
-        self.query_embed = self.vit.query_embed # Finetune query embed
+        # transformer (Training)
         self.d_model=d_model
         self.nhead=nhead
         self.dropout=dropout
+        self.transformer = nn.Transformer(
+            d_model, nhead, num_encoder_layers, num_decoder_layers)
 
-        # gaze output bbox (UPDATING)
+        # gaze output bbox (Training)
         self.class_embed = nn.Linear(d_model, num_classes+1)
         self.gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, 2, bias=True))
+        
+        # query embedding (Training)
+        self.query_embed = nn.Parameter(torch.rand(1, d_model)) # query embed
+        
+        # spatial positional encodings (Training)
+        self.row_embed = nn.Parameter(torch.rand(50, d_model // 2))
+        self.col_embed = nn.Parameter(torch.rand(50, d_model // 2))
 
     def init_weights(m):
         if isinstance(m, nn.Linear):
@@ -276,49 +271,26 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         encoding = self.bn(encoding)
         encoding = self.relu(encoding) # torch.Size([bs, 256, 7, 7])
         memory = encoding.flatten(2).permute(2,0,1) # torch.Size([49, bs, 256])
+        
 
-        '''image vit feature from DETR'''
-        # activation = {}
-        # # hook1 = get_activation('self_attn')
-        # hook1 = self.get_activation('out_proj')
-        #
-        # self.vit.transformer.encoder.layers[-4].self_attn.register_forward_hook(hook1) #get feature from the 3rd encoder layer
-        # output = self.vit(images)
-        # img_vit_out = activation['out_proj'][0] # (output[0]:activation,output[1]:weights), 49(7x7 patches) x 1 x 256 (hidden dimension)
-        # output = self.vit(torch.cat([masks,masks,masks],1))
-        # mask_vit_out = activation['out_proj'][0] # 49 x bs x 256
-        #
-        # img_vit_out = self.encoder(img_vit_out) # pass it through the last 3 encoders
-        # mask_vit_out = self.encoder(mask_vit_out)  # pass it through the last 3 encoders
-        #
-        # memory = img_vit_out + mask_vit_out # final encoder output
+        ''' transformer '''
+        # positional embedding
+        H, W = encoding.shape[-2:]
+        pos = torch.cat([
+            self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
+            self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
+        ], dim=-1).flatten(0, 1).unsqueeze(1)
 
-        ''' encoder output + query embedding -> decoder '''
-        memory = self.encoder(memory) # torch.Size([49, bs, 256])
+        print('pos shape {}'.format(pos.shape))
+        print('memory shape {}'.format(memory.shape))
+        print('query_embed shape {}'.format(query_embed.shape))
+        # pass to transformer
+        hs = self.transformer(pos + 0.1 * memory, self.query_embed.unsqueeze(1)).transpose(0, 1)
+        # hs: [bs x #query x 256]
 
-        _, bs, _ = memory.shape # 49 x bs x 256
-        query_embed = self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1) #  1 x bs x 256
-        tgt = torch.zeros_like(query_embed).to(device) # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])
-        vit_mask = torch.zeros([bs,7,7], dtype=torch.bool) # no padding, all False
-
-        # get pos_mebed
-        samples = NestedTensor(images, vit_mask).to(device)
-        if isinstance(samples, (list, torch.Tensor)):
-            samples = nested_tensor_from_tensor_list(samples)
-        _, pos = self.backbone(samples)
-        pos_embed = pos[-1] # bs x 256 x 7 x 7
-        pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
-
-        # pass to decoder
-        mask = torch.zeros([bs,7*7],dtype=torch.bool).to(device)
-        hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
-                          pos=pos_embed, query_pos=query_embed)   # 1 x num_queries x b_s x hidden_dim, torch.Size([#decoders, 100, bs, 256])
-        hs = hs.transpose(1,2) # [#decoders x bs x 100 x 256]
-
-        # output gaze bbox
         outputs_class = self.class_embed(hs)
         outputs_coord = self.gaze_bbox(hs).sigmoid()
-        out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
+        out = {'pred_logits': outputs_class, 'pred_boxes': outputs_coord}
 
         return out
 
