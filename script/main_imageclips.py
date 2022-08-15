@@ -58,10 +58,10 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 # cleanup_dataset(segmask_path, bbx_path, img_path)
 
 model = Gaze_Transformer()
-epoch = 50
+epoch = 40
 checkpoint = torch.load('trainedmodels/model_chong_detr/model_epoch{}.pt'.format(epoch), map_location='cpu')
-#plt.plot(checkpoint['train_loss'][3:])
-#plt.plot(checkpoint['test_loss'][3:])
+plt.plot(checkpoint['train_loss'][3:])
+plt.plot(checkpoint['test_loss'][3:])
 loaded_dict = checkpoint['model_state_dict']
 prefix = 'module.'
 n_clip = len(prefix)
