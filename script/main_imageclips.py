@@ -59,7 +59,7 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 
 model = Gaze_Transformer()
 model.to(device)
-epoch=60
+epoch=130
 checkpoint = torch.load('trainedmodels/model_headbody10query/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'][6:])
 plt.plot(checkpoint['test_loss'][6:])
