@@ -56,7 +56,8 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
         # DIMENSION OF TARGETS CHECK
         loss_dict = criterion(gaze_pred, targets)
         weight_dict = criterion.weight_dict
-        loss = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+#        loss = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+        loss = weight_dict['loss_bbox'] * loss_dict['loss_bbox']
         loss.backward()
         opt.step()
         train_loss_iter.append(loss.detach().item())
