@@ -26,7 +26,7 @@ for f in summaries:
 results['test_cond'] = results['test_cond'].astype('category')
 results['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
 results['model'] = results['model'].astype('category')
-results['model'].cat.reorder_categories(['Humans', 'CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
+results['model'].cat.reorder_categories(['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
 
 
 
@@ -38,7 +38,7 @@ plot_data = results[results['test_cond']==test_cond]
 plot_data = plot_data[[ 'Euclidean_error_meanest', 'Angular_error_meanest',
        'Euclidean_error_lou', 'Angular_error_lou','model']]
 
-error = 'Euclidean_error_meanest'
+error = 'Angular_error_meanest'
 aov_data = plot_data[[error, 'model']].melt(id_vars='model')
 aov = pg.anova(dv='value', between=['model'], data=aov_data,
              detailed=True)
@@ -229,7 +229,7 @@ for f in files:
     df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
     results = results.append(df, ignore_index=True)
 results = results[['cond','image','gazer','subj','Angle2Hori','model']]
-test_cond='headless bodies'
+test_cond='intact'
 
 # 1. human-human correlation
 humans = results[(results['cond']==test_cond) & (results['model']=='Humans')]
@@ -340,7 +340,7 @@ for f in files:
     df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
     results = results.append(df, ignore_index=True)
 results = results[['cond','image','gazer','subj','est_x','est_y','model']]
-test_cond = 'headless bodies'
+test_cond = 'intact'
 
 # 1. human-human correlation
 humans = results[(results['cond']==test_cond) & (results['model']=='Humans')]

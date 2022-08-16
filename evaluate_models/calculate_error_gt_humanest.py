@@ -24,7 +24,7 @@ def compute_angle(row, model):
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
-Trained_cond = 'HeadBody'
+Trained_cond = 'HeadBody_NegSamples'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 image_info = pd.read_excel('data/GroundTruth_humanest/image_info_humanmean.xlsx')
@@ -32,7 +32,7 @@ image_info = pd.read_excel('data/GroundTruth_humanest/image_info_humanmean.xlsx'
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [300,100,120]: #100,120
+for epoch in [20]: #300,100,120
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
@@ -60,7 +60,7 @@ for epoch in [300,100,120]: #100,120
         df = df.groupby(['test_cond','image']).mean().reset_index().drop(['gazed_x', 'gazed_y', 'gaze_start_x', 'gaze_start_y'], axis=1)
 
         transformer = pd.concat([transformer,df])
-transformer['model'] = '{} Transformer'.format(Trained_cond)
+transformer['model'] = 'HeadBody Transformer'.format(Trained_cond)
 transformer = transformer.drop(['chong_est_x','chong_est_y'],axis=1)
 transformer.to_excel('data/GroundTruth_humanest/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
 

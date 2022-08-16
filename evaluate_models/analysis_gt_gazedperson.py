@@ -50,7 +50,7 @@ results['model'].cat.reorder_categories(['Humans', 'Head CNN', 'HeadBody Transfo
 plot_data = results.copy()
 plot_data = plot_data[['test_cond', 'Euclidean_error', 'Angular_error','model']]
 
-error = 'Angular_error'
+error = 'Euclidean_error'
 aov_data = plot_data[[error, 'test_cond', 'model']].melt(id_vars=['test_cond','model'])
 aov = pg.anova(dv='value', between=['test_cond','model'], data=aov_data,
              detailed=True)
@@ -67,39 +67,39 @@ for _, row in sig_results.iterrows():
     box_pairs.append(((row['model'],row['A']),(row['model'],row['B'])))
     ps.append(max(0.001, row['p-corr']))
 
-#
-# # plot euclidean error
-# sns_setup_small(sns, (8,6))
-# error = 'Euclidean_error'
-# ax = sns.barplot(data = plot_data, x = 'model', y = error , hue='test_cond', palette=bluepallet)
-# ax.set(xlabel='', ylabel='Euclidean Error', ylim=[0,0.4])
-# ax.spines['top'].set_color('white')
-# ax.spines['right'].set_color('white')
-# add_stat_annotation(ax, data=plot_data, x='model', y=error, hue='test_cond',
-#                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
-#                     loc='outside', verbose=2)
-# ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
-# plt.xticks(rotation=90)
-# xcen = 0.1
-# for model in ['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']:
-#     m = baseline[baseline['model']==model]
-#     q1 = baseline_quantile[(baseline_quantile['model']==model) & (baseline_quantile['level_2']==.025)]
-#     q2 = baseline_quantile[(baseline_quantile['model'] == model) & (baseline_quantile['level_2'] == .975)]
-#     for i, cond in enumerate(['intact','floating heads','headless bodies']):
-#         x, a, b  = m[m['test_cond']==cond].Euclidean_error.item(), \
-#                    q1[q1['test_cond'] == cond].Euclidean_error.item(), \
-#                    q2[q2['test_cond'] == cond].Euclidean_error.item(),
-#         plt.axhspan(ymin=a, ymax=b,
-#                     xmin=xcen + (0.16 / 3) * (i - 1) - 0.02,
-#                     xmax=xcen + (0.16 / 3) * (i - 1) + 0.02,
-#                     facecolor='0.5', alpha=0.2)
-#         plt.axhline(y=x,
-#                     xmin=xcen + (0.16 / 3) * (i - 1) - 0.02,
-#                     xmax=xcen + (0.16 / 3) * (i - 1) + 0.02,
-#                     color='0.8')
-#     xcen +=.2
-# ax.figure.savefig("figures/gt_gazedperson_{}_allcond.png".format(error), dpi=300, bbox_inches='tight')
-# plt.close()
+
+ # plot euclidean error
+ sns_setup_small(sns, (8,6))
+ error = 'Euclidean_error'
+ ax = sns.barplot(data = plot_data, x = 'model', y = error , hue='test_cond', palette=bluepallet)
+ ax.set(xlabel='', ylabel='Euclidean Error', ylim=[0,0.4])
+ ax.spines['top'].set_color('white')
+ ax.spines['right'].set_color('white')
+ add_stat_annotation(ax, data=plot_data, x='model', y=error, hue='test_cond',
+                     box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
+                     loc='outside', verbose=2)
+ ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
+ plt.xticks(rotation=90)
+ xcen = 0.1
+ for model in ['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']:
+     m = baseline[baseline['model']==model]
+     q1 = baseline_quantile[(baseline_quantile['model']==model) & (baseline_quantile['level_2']==.025)]
+     q2 = baseline_quantile[(baseline_quantile['model'] == model) & (baseline_quantile['level_2'] == .975)]
+     for i, cond in enumerate(['intact','floating heads','headless bodies']):
+         x, a, b  = m[m['test_cond']==cond].Euclidean_error.item(), \
+                    q1[q1['test_cond'] == cond].Euclidean_error.item(), \
+                    q2[q2['test_cond'] == cond].Euclidean_error.item(),
+         plt.axhspan(ymin=a, ymax=b,
+                     xmin=xcen + (0.16 / 3) * (i - 1) - 0.02,
+                     xmax=xcen + (0.16 / 3) * (i - 1) + 0.02,
+                     facecolor='0.5', alpha=0.2)
+         plt.axhline(y=x,
+                     xmin=xcen + (0.16 / 3) * (i - 1) - 0.02,
+                     xmax=xcen + (0.16 / 3) * (i - 1) + 0.02,
+                     color='0.8')
+     xcen +=.2
+ ax.figure.savefig("figures/gt_gazedperson_{}_allcond.png".format(error), dpi=300, bbox_inches='tight')
+ plt.close()
 
 
 # plot angular error

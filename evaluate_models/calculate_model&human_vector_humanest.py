@@ -35,7 +35,7 @@ def compute_angle2hori(row, model):
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
 
-Trained_cond = 'HeadBody'
+Trained_cond = 'HeadBody_NegSamples'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 image_info = pd.read_excel('data/GroundTruth_gazedperson/image_info.xlsx') # gazed location information (with gazer)
 image_info = image_info.drop(['gazed_x','gazed_y'],axis=1)
@@ -43,7 +43,7 @@ image_info_humanmean = pd.read_excel('data/GroundTruth_humanest/image_info_human
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [300,100,120]: #100,120
+for epoch in [20]: #300,100,120
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
@@ -59,7 +59,7 @@ transformer = transformer.merge(image_info_humanmean.drop([ 'gaze_start_x','gaze
 # image_info.to_excel('data/GroundTruth_gazedperson/image_info.xlsx', index=None)
 transformer['Angle2Hori'] = transformer.apply(lambda r: compute_angle2hori(r, 'transformer'), axis=1)
 transformer = transformer[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','transformer_est_x', 'transformer_est_y', 'gazed_x','gazed_y',]]
-transformer['model'] = '{} Transformer'.format(Trained_cond)
+transformer['model'] = 'HeadBody Transformer'
 transformer.to_excel('data/GroundTruth_humanest/{}_Transformer_vectors.xlsx'.format(Trained_cond), index=None)
 
 

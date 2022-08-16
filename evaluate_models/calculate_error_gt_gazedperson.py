@@ -35,13 +35,13 @@ def compute_angle2hori(row, model):
 
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
-Trained_cond = 'HeadBody'
+Trained_cond = 'HeadBody_NegSamples'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 N_perm = 10000 # number of permutations
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [80]: #300,100,340
+for epoch in [20]: #300,100,340
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
@@ -66,7 +66,7 @@ transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['t
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
 transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
-transformer['model'] = '{} Transformer'.format(Trained_cond)
+transformer['model'] = 'HeadBody Transformer'
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
 
 # permutation error
