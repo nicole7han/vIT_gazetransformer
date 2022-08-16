@@ -204,7 +204,13 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.dropout=dropout
         self.transformer = nn.Transformer(
             d_model, nhead, num_encoder_layers, num_decoder_layers)
-
+        
+        state_dict = torch.hub.load_state_dict_from_url(
+                url='https://dl.fbaipublicfiles.com/detr/detr_demo-da2a99e9.pth',
+                map_location='cpu', check_hash=True)
+        transformer_dict = {k.replace('transformer.',''): v for k, v in state_dict.items() if 'transformer' in k}
+        self.transformer.load_state_dict(transformer_dict)
+        
         # gaze output bbox (Training)
         self.class_embed = nn.Linear(d_model, num_classes+1)
         self.gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
@@ -214,9 +220,13 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         # query embedding (Training)
         self.query_embed = nn.Parameter(torch.rand(1, d_model)) # query embed
         
-        # spatial positional encodings (Training)
-        self.row_embed = nn.Parameter(torch.rand(50, d_model // 2))
-        self.col_embed = nn.Parameter(torch.rand(50, d_model // 2))
+        # spatial positional encodings (Freeze)
+#        self.row_embed = nn.Parameter(torch.rand(50, d_model // 2))
+#        self.col_embed = nn.Parameter(torch.rand(50, d_model // 2))
+        self.row_embed = state_dict['row_embed']
+        self.col_embed = state_dict['col_embed']
+        self.row_embed.requires_grad = False
+        self.col_embed.requires_grad = False
 
     def init_weights(m):
         if isinstance(m, nn.Linear):
