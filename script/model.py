@@ -204,13 +204,13 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.dropout=dropout
         self.transformer = nn.Transformer(
             d_model, nhead, num_encoder_layers, num_decoder_layers)
-        old_dict = self.transformer.state_dict()
-                
-        state_dict = torch.load('detr_small.pt', map_location=torch.device('cpu'))
-        transformer_dict = {k.replace('transformer.',''): v for k, v in state_dict.items() if 'transformer' in k}
-        old_dict.update(transformer_dict)
-        self.transformer.load_state_dict(old_dict)
-        print('load transformer')
+#        old_dict = self.transformer.state_dict()
+#                
+#        state_dict = torch.load('detr_small.pt', map_location=torch.device('cpu'))
+#        transformer_dict = {k.replace('transformer.',''): v for k, v in state_dict.items() if 'transformer' in k}
+#        old_dict.update(transformer_dict)
+#        self.transformer.load_state_dict(old_dict)
+#        print('load transformer')
         
         # gaze output bbox (Training)
         self.class_embed = nn.Linear(d_model, num_classes+1)

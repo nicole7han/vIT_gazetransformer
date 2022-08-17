@@ -68,7 +68,7 @@ def main():
             {"params": model.targetatten.layer4_face.parameters(), "lr": 5e-5},
             {"params": model.targetatten.layer5_face.parameters(), "lr": 5e-5},
     
-            {"params": model.transformer.parameters(), "lr": 5e-5},
+#            {"params": model.transformer.parameters(), "lr": 5e-5},
         ],
         lr=lr,
         betas=(beta1, .999),
