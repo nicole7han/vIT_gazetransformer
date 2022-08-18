@@ -58,7 +58,7 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 # cleanup_dataset(segmask_path, bbx_path, img_path)
 
 model = Gaze_Transformer()
-epoch = '50(3e3d)'
+epoch = '30'
 checkpoint = torch.load('trainedmodels/model_headbody_chong_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
 plt.plot(checkpoint['train_loss'][3:])
 plt.plot(checkpoint['test_loss'][3:])
