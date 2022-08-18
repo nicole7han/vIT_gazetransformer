@@ -180,7 +180,7 @@ class MLP(nn.Module):
 class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer of transformer -> predict gaze
     """Main Model"""
     def __init__(self, d_model=256, dim_feedforward=2048, nhead=8, dropout=0.1,
-                 num_encoder_layers=6, num_decoder_layers=6, num_classes=1):
+                 num_encoder_layers=3, num_decoder_layers=3, num_classes=1):
         super(Gaze_Transformer, self).__init__()
 
         # pretrained CHONG attention model
@@ -206,7 +206,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
             d_model, nhead, num_encoder_layers, num_decoder_layers)
 #        old_dict = self.transformer.state_dict()
 #                
-        state_dict = torch.load('detr_small.pt', map_location=torch.device('cpu'))
+#        state_dict = torch.load('detr_small.pt', map_location=torch.device('cpu'))
 #        transformer_dict = {k.replace('transformer.',''): v for k, v in state_dict.items() if 'transformer' in k}
 #        old_dict.update(transformer_dict)
 #        self.transformer.load_state_dict(old_dict)
@@ -222,12 +222,12 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.query_embed = nn.Parameter(torch.rand(1, d_model)) # query embed
         
         # spatial positional encodings (Freeze)
-#        self.row_embed = nn.Parameter(torch.rand(50, d_model // 2))
-#        self.col_embed = nn.Parameter(torch.rand(50, d_model // 2))
-        self.row_embed = state_dict['row_embed']
-        self.col_embed = state_dict['col_embed']
-        self.row_embed.requires_grad = False
-        self.col_embed.requires_grad = False
+        self.row_embed = nn.Parameter(torch.rand(50, d_model // 2))
+        self.col_embed = nn.Parameter(torch.rand(50, d_model // 2))
+#        self.row_embed = state_dict['row_embed']
+#        self.col_embed = state_dict['col_embed']
+#        self.row_embed.requires_grad = False
+#        self.col_embed.requires_grad = False
 
     def init_weights(m):
         if isinstance(m, nn.Linear):
@@ -292,9 +292,9 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
             self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
         ], dim=-1).flatten(0, 1).unsqueeze(1)
 
-        print('pos shape {}'.format(pos.shape))
-        print('memory shape {}'.format(memory.shape))
-        print('query_embed shape {}'.format(self.query_embed.shape))
+#        print('pos shape {}'.format(pos.shape))
+#        print('memory shape {}'.format(memory.shape))
+#        print('query_embed shape {}'.format(self.query_embed.shape))
         # pass to transformer
 
         query_embed = self.query_embed.unsqueeze(1).repeat(1, bs, 1)
