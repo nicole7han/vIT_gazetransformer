@@ -206,7 +206,7 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
             d_model, nhead, num_encoder_layers, num_decoder_layers)
 #        old_dict = self.transformer.state_dict()
 #                
-#        state_dict = torch.load('detr_small.pt', map_location=torch.device('cpu'))
+        state_dict = torch.load('detr_small.pt', map_location=torch.device('cpu'))
 #        transformer_dict = {k.replace('transformer.',''): v for k, v in state_dict.items() if 'transformer' in k}
 #        old_dict.update(transformer_dict)
 #        self.transformer.load_state_dict(old_dict)
@@ -222,12 +222,12 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.query_embed = nn.Parameter(torch.rand(1, d_model)) # query embed
         
         # spatial positional encodings (Freeze)
-        self.row_embed = nn.Parameter(torch.rand(50, d_model // 2))
-        self.col_embed = nn.Parameter(torch.rand(50, d_model // 2))
-#        self.row_embed = state_dict['row_embed']
-#        self.col_embed = state_dict['col_embed']
-#        self.row_embed.requires_grad = False
-#        self.col_embed.requires_grad = False
+#        self.row_embed = nn.Parameter(torch.rand(50, d_model // 2))
+#        self.col_embed = nn.Parameter(torch.rand(50, d_model // 2))
+        self.row_embed = state_dict['row_embed']
+        self.col_embed = state_dict['col_embed']
+        self.row_embed.requires_grad = False
+        self.col_embed.requires_grad = False
 
     def init_weights(m):
         if isinstance(m, nn.Linear):
