@@ -58,7 +58,7 @@ image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformermean_est_x'])**2 + (transformer['gazed_y']-transformer['transformermean_est_y'])**2 )
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
-transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error','Vector_dotprod']]
+transformer = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
 transformer['model'] = '{} Transformer'.format(Trained_cond)
 
 transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
