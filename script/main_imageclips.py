@@ -58,16 +58,16 @@ test_bbx_path = "{}/data/test_bbox".format(basepath)
 # cleanup_dataset(segmask_path, bbx_path, img_path)
 
 model = Gaze_Transformer()
-#epoch = '30'
-#checkpoint = torch.load('trainedmodels/model_headbody_chong_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
-#plt.plot(checkpoint['train_loss'][3:])
-#plt.plot(checkpoint['test_loss'][3:])
-#loaded_dict = checkpoint['model_state_dict']
-#prefix = 'module.'
-#n_clip = len(prefix)
-#adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
-#                if k.startswith(prefix)}
-#model.load_state_dict(adapted_dict)
+epoch = '20(1,10)'
+checkpoint = torch.load('trainedmodels/model_head_chong_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
+plt.plot(checkpoint['train_loss'][3:])
+plt.plot(checkpoint['test_loss'][3:])
+loaded_dict = checkpoint['model_state_dict']
+prefix = 'module.'
+n_clip = len(prefix)
+adapted_dict = {k[n_clip:]: v for k, v in loaded_dict.items()
+                if k.startswith(prefix)}
+model.load_state_dict(adapted_dict)
 model.to(device)
 
 from script.matcher import *
