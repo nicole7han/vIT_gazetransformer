@@ -7,9 +7,9 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in ['30']:
+for epoch in ['110']:
     # epoch=300,100,340
-    checkpoint = torch.load('trainedmodels/model_headbody_chong_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
+    checkpoint = torch.load('trainedmodels/model_head_chong_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
 #    plt.plot(checkpoint['train_loss'][6:])
 #    plt.plot(checkpoint['test_loss'][6:])
     loaded_dict = checkpoint['model_state_dict']
@@ -19,7 +19,6 @@ for epoch in ['30']:
                     if k.startswith(prefix)}
     model.load_state_dict(adapted_dict)
     model.to(device)
-
 
     # output = evaluate_model_gaze(anno_path, test_img_path, test_bbx_path, model, fig_path)
     # output.to_excel('gaze_video_data/model_epoch{}_result.xlsx'.format(epoch))
