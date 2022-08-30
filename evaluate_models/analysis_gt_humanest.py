@@ -38,7 +38,7 @@ plot_data = results[results['test_cond']==test_cond]
 plot_data = plot_data[[ 'Euclidean_error_meanest', 'Angular_error_meanest',
        'Euclidean_error_lou', 'Angular_error_lou','model']]
 
-error = 'Angular_error_meanest'
+error = 'Euclidean_error_meanest'
 aov_data = plot_data[[error, 'model']].melt(id_vars='model')
 aov = pg.anova(dv='value', between=['model'], data=aov_data,
              detailed=True)
@@ -118,50 +118,54 @@ plt.close()
 
 ''' PART II Human-Human, Human-CNN, Human-Transformer Correlation on Euclidean and Angular Error '''
 # calculate human-human error wrt mean gaze estimation or leave-one-out estimation
-
+test_cond = 'floating heads'
 humans = pd.read_excel('data/GroundTruth_humanest/Humans_summary.xlsx')
-humans = humans[humans['test_cond']=='intact']
+humans = humans[humans['test_cond']==test_cond]
 subjects = list(np.unique(humans['subj']))
-# subj1, subj2, euc_meanest_error, ang_meanest_error, euc_lou_error, ang_lou_error = [], [], [], [], [], []
-# for s1 in subjects:
-#     print(s1)
-#     rest_subjects = subjects.copy()
-#     rest_subjects.remove(s1)
-#     for s2 in rest_subjects:
-#         # subjs = random.sample(list(subjects), 2)
-#         tempdata = humans[(humans['subj']==s1) | (humans['subj']==s2)]
-#         tempdata = tempdata[['image','subj','Euclidean_error_meanest','Angular_error_meanest',
-#                              'Euclidean_error_lou','Angular_error_lou']]
-#         tempdata= tempdata.pivot(index=["image"], columns=["subj"]).dropna().reset_index()
-#         tempdata.columns = tempdata.columns.droplevel(1)
-#         tempdata.columns = ['image', 'Euclidean_meanest_subj1', 'Euclidean_meanest_subj2',
-#                                     'Angular_meanest_subj1', 'Angular_meanest_subj2',
-#                                     'Euclidean_lou_subj1', 'Euclidean_lou_subj2',
-#                                     'Angular_lou_subj1', 'Angular_lou_subj2'
-#                             ]
-#         subj1.append(s1)
-#         subj2.append(s2)
-#         r, p = stats.pearsonr(tempdata["Euclidean_meanest_subj1"], tempdata["Euclidean_meanest_subj2"])
-#         euc_meanest_error.append(r)
-#         r, p = stats.pearsonr(tempdata["Angular_meanest_subj1"], tempdata["Angular_meanest_subj2"])
-#         ang_meanest_error.append(r)
-#         r, p = stats.pearsonr(tempdata["Euclidean_lou_subj1"], tempdata["Euclidean_lou_subj2"])
-#         euc_lou_error.append(r)
-#         r, p = stats.pearsonr(tempdata["Angular_lou_subj1"], tempdata["Angular_lou_subj2"])
-#         ang_lou_error.append(r)
-#
-# humans_humans = pd.DataFrame({'subj1':subj1, 'subj2':subj2,
-#                            'Euclidean Error Mean':euc_meanest_error, 'Angular Error Mean':ang_meanest_error,
-#                            'Euclidean Error LOU':euc_lou_error, 'Angular Error LOU':ang_lou_error})
-# humans_humans.to_excel('data/GroundTruth_humanest/Human_intact_error_corr.xlsx',index=None)
+subj1, subj2, euc_meanest_error, ang_meanest_error, euc_lou_error, ang_lou_error = [], [], [], [], [], []
+for s1 in subjects:
+    print(s1)
+    rest_subjects = subjects.copy()
+    rest_subjects.remove(s1)
+    for s2 in rest_subjects:
+        # subjs = random.sample(list(subjects), 2)
+        tempdata = humans[(humans['subj']==s1) | (humans['subj']==s2)]
+        tempdata = tempdata[['image','subj','Euclidean_error_meanest','Angular_error_meanest',
+                             'Euclidean_error_lou','Angular_error_lou']]
+        try:
+            tempdata= tempdata.pivot(index=["image"], columns=["subj"]).dropna().reset_index()
+            tempdata.columns = tempdata.columns.droplevel(1)
+            tempdata.columns = ['image', 'Euclidean_meanest_subj1', 'Euclidean_meanest_subj2',
+                                        'Angular_meanest_subj1', 'Angular_meanest_subj2',
+                                        'Euclidean_lou_subj1', 'Euclidean_lou_subj2',
+                                        'Angular_lou_subj1', 'Angular_lou_subj2'
+                                ]
+            subj1.append(s1)
+            subj2.append(s2)
+            r, p = stats.pearsonr(tempdata["Euclidean_meanest_subj1"], tempdata["Euclidean_meanest_subj2"])
+            euc_meanest_error.append(r)
+            r, p = stats.pearsonr(tempdata["Angular_meanest_subj1"], tempdata["Angular_meanest_subj2"])
+            ang_meanest_error.append(r)
+            r, p = stats.pearsonr(tempdata["Euclidean_lou_subj1"], tempdata["Euclidean_lou_subj2"])
+            euc_lou_error.append(r)
+            r, p = stats.pearsonr(tempdata["Angular_lou_subj1"], tempdata["Angular_lou_subj2"])
+            ang_lou_error.append(r)
+        except:
+            print('subj1 {} subj2 {}'.format(s1, s2))
+            continue
+
+humans_humans = pd.DataFrame({'subj1':subj1, 'subj2':subj2,
+                           'Euclidean Error Mean':euc_meanest_error, 'Angular Error Mean':ang_meanest_error,
+                           'Euclidean Error LOU':euc_lou_error, 'Angular Error LOU':ang_lou_error})
+humans_humans.to_excel('data/GroundTruth_humanest/Human_{}_error_corr.xlsx'.format(test_cond),index=None)
 
 # 1. human-human correlation
-humans_humans = pd.read_excel('data/GroundTruth_humanest/Human_intact_error_corr.xlsx')
+humans_humans = pd.read_excel('data/GroundTruth_humanest/Human_{}_error_corr.xlsx'.format(test_cond))
 humans_humans['corr_rel'] = 'Humans-Humans'
 
 
 # 2. human-model correlation
-intact = results[(results['test_cond']=='intact') & (results['model']!='Humans')]
+intact = results[(results['test_cond']==test_cond) & (results['model']!='Humans')]
 models = ['CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']
 humans_models = pd.DataFrame()
 for model in models:
@@ -215,7 +219,7 @@ ax.set(xlabel='Correlation',ylabel='')
 ax.spines['top'].set_color('white')
 ax.spines['right'].set_color('white')
 ax.legend(frameon=False)
-ax.figure.savefig("figures/intact_gt_humanest_{}_allcorr.png".format(gttype), dpi=300, bbox_inches='tight')
+ax.figure.savefig("figures/{}_gt_humanest_{}_allcorr.png".format(test_cond, gttype), dpi=300, bbox_inches='tight')
 plt.close()
 
 
@@ -229,7 +233,7 @@ for f in files:
     df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
     results = results.append(df, ignore_index=True)
 results = results[['cond','image','gazer','subj','Angle2Hori','model']]
-test_cond='intact'
+test_cond='headless bodies'
 
 # 1. human-human correlation
 humans = results[(results['cond']==test_cond) & (results['model']=='Humans')]
@@ -340,7 +344,7 @@ for f in files:
     df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
     results = results.append(df, ignore_index=True)
 results = results[['cond','image','gazer','subj','est_x','est_y','model']]
-test_cond = 'intact'
+test_cond = 'headless bodies'
 
 # 1. human-human correlation
 humans = results[(results['cond']==test_cond) & (results['model']=='Humans')]
