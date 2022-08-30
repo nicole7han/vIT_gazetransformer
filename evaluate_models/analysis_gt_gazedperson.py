@@ -55,7 +55,7 @@ aov_data = plot_data[[error, 'test_cond', 'model']].melt(id_vars=['test_cond','m
 aov = pg.anova(dv='value', between=['test_cond','model'], data=aov_data,
              detailed=True)
 print(aov)
-postdoc =aov_data.pairwise_ttests(dv='value',
+postdoc = aov_data.pairwise_ttests(dv='value',
                                    between=['model','test_cond'],
                                    padjust='fdr_bh',
                                    parametric=True).round(3)
@@ -67,8 +67,15 @@ for _, row in sig_results.iterrows():
     box_pairs.append(((row['model'],row['A']),(row['model'],row['B'])))
     ps.append(max(0.001, row['p-corr']))
 
+# test angular error (paird images) significance between condition: intact, Headbody transformer vs. Head transformer
+from bioinfokit.analys import stat
+res = stat()
+res.tukey_hsd(df=aov_data, res_var='value', xfac_var=['model','test_cond'], anova_model='value~C(model)+C(test_cond)+C(model):C(test_cond)')
+res.tukey_summary
 
- # plot euclidean error
+
+
+    # plot euclidean error
  sns_setup_small(sns, (8,6))
  error = 'Euclidean_error'
  ax = sns.barplot(data = plot_data, x = 'model', y = error , hue='test_cond', palette=bluepallet)
@@ -134,8 +141,6 @@ for model in ['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 
     xcen +=.2
 ax.figure.savefig("figures/gt_gazedperson_{}_allcond.png".format(error), dpi=300, bbox_inches='tight')
 plt.close()
-
-
 
 
 
