@@ -467,3 +467,28 @@ for i, model in enumerate(model_orders):
     circular_hist(ax, tempdata['ang_rad'], color=colors[i])
     ax.figure.savefig("figures/polar_{}_vector2human.png".format(model), dpi=300, bbox_inches='tight')
     plt.close()
+
+
+
+
+''' Part V. Visualize Model Raw Estimation (see the variance in model estimations) '''
+data_path = 'data/GroundTruth_gazedperson_vit'
+files = glob.glob('{}/*vectors*'.format(data_path)) # get all vector information
+results = pd.DataFrame()
+for f in files:
+    df = pd.read_excel(f)
+    df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
+    results = results.append(df, ignore_index=True)
+
+for model in ['HeadBody_ViT Transformer']:
+    plot_data = results[results['model'] == model]
+    if model == 'Humans':
+        plot_data = plot_data.groupby(['cond', 'image', 'subj']).mean().reset_index()  # take average across gazers for each subject
+        plot_data = plot_data.groupby(['cond', 'image']).mean().reset_index() # take average across subjects
+    else:
+        plot_data = plot_data.groupby(['cond','image']).mean().reset_index() # take average across gazers
+    plot_data = plot_data[['cond','image','est_x','est_y','gazed_x','gazed_y']]
+    ax = sns.kdeplot(data=plot_data, x="est_x", y="est_y", fill=True, alpha=.5, cmap="Reds")
+    ax.set(xlim=[0,1],ylim=[0.2,.8])
+    ax.figure.savefig("figures/{}_raw_estimation.png".format(model), dpi=300, bbox_inches='tight')
+    plt.close()

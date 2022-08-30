@@ -35,12 +35,12 @@ def compute_angle2hori(row, model):
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
 
-Trained_cond = 'HeadBody'
+Trained_cond = 'HeadBody_ViT'
 outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [300,100,120]: #100,120
+for epoch in ['50(3e3d)']: #300,100,120
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
@@ -55,7 +55,7 @@ image_info = transformer[['image','gazer','gaze_start_x','gaze_start_y','gazed_x
 transformer['Angle2Hori'] = transformer.apply(lambda r: compute_angle2hori(r, 'transformer'), axis=1)
 transformer = transformer[['test_cond', 'image', 'gazer', 'Angle2Hori', 'gaze_start_x','gaze_start_y','transformer_est_x', 'transformer_est_y', 'gazed_x','gazed_y',]]
 transformer['model'] = '{} Transformer'.format(Trained_cond)
-transformer.to_excel('data/GroundTruth_gazedperson/{}_Transformer_vectors.xlsx'.format(Trained_cond), index=None)
+transformer.to_excel('data/GroundTruth_gazedperson_vit/{}_Transformer_vectors.xlsx'.format(Trained_cond), index=None)
 
 
 '''CNN results'''
