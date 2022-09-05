@@ -5,7 +5,6 @@ import torchvision.transforms as T
 from torch import nn, Tensor
 import torchvision.models as models
 import timm
-from transformers import ViTModel, ViTConfig
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from PIL import Image
@@ -37,63 +36,6 @@ def _get_activation_fn(activation):
         return F.glu
     raise RuntimeError(F"activation should be relu/gelu, not {activation}.")
 
-class TransformerEncoder(nn.Module):
-
-    def __init__(self, encoder_layer, num_layers, norm=None):
-        super().__init__()
-        self.layers = _get_clones(encoder_layer, num_layers)
-        self.num_layers = num_layers
-        self.norm = norm
-
-    def forward(self, src, pos):
-        output = src
-        for layer in self.layers:
-            output = layer(output, pos)
-
-        if self.norm is not None:
-            output = self.norm(output)
-
-        return output
-
-
-class TransformerEncoderLayer(nn.Module):
-
-    def __init__(self, d_model, nhead, dim_feedforward=512, dropout=0.1):
-        super().__init__()
-        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        # Implementation of Feedforward model
-        self.linear1 = nn.Linear(d_model, dim_feedforward)
-        self.dropout = nn.Dropout(dropout)
-        self.linear2 = nn.Linear(dim_feedforward, d_model)
-
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
-
-        self.dropout1 = nn.Dropout(dropout)
-        self.dropout2 = nn.Dropout(dropout)
-
-        self.activation = nn.ReLU(inplace=True)
-
-    def pos_embed(self, src, pos):
-        batch_pos = pos.unsqueeze(1).repeat(1, src.size(1), 1)
-        return src + batch_pos
-        
-
-    def forward(self, src, pos):
-                # src_mask: Optional[Tensor] = None,
-                # src_key_padding_mask: Optional[Tensor] = None):
-                # pos: Optional[Tensor] = None):
-
-        q = k = self.pos_embed(src, pos)
-        src2 = self.self_attn(q, k, value=src)[0]
-        src = src + self.dropout1(src2)
-        src = self.norm1(src)
-
-        src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
-        src = src + self.dropout2(src2)
-        src = self.norm2(src)
-        return src
-    
 
 class TransformerDecoder(nn.Module):
     def __init__(self, decoder_layer, num_layers, norm=None, return_intermediate=False):
@@ -234,50 +176,52 @@ class MLP(nn.Module):
             x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
         return x
 
-
 class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer of transformer -> predict gaze
     """Main Model"""
     def __init__(self, d_model=256, dim_feedforward=2048, nhead=8, dropout=0.1,
-                 num_encoder_layers=3, num_decoder_layers=3, num_classes=1):
+                 num_decoder_layers=3, num_classes=1):
         super(Gaze_Transformer, self).__init__()
 
-        
-#        encoder_layer = TransformerEncoderLayer(
-#                  d_model, 
-#                  nhead, 
-#                  dim_feedforward, 
-#                  dropout)
-#        
-#        decoder_layer = TransformerDecoderLayer(
-#                  d_model, 
-#                  nhead, 
-#                  dim_feedforward, 
-#                  dropout)
-#        
-#        self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers)
-#        self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers)
-#
-        configuration = ViTConfig()
-        configuration.hidden_size=256
-        configuration.num_attention_heads = 8
-        self.vit = ViTModel(configuration)
-        
-        
-        self.cls = nn.Parameter(torch.randn(1, 1, d_model))
-        self.query_embed = nn.Embedding(7*7+1, d_model)# Finetune query embed     
+        # pretrained CHONG attention model
+        self.targetatten = ModelSpatial()
+        model_dict = self.targetatten.state_dict()
+        pretrained_dict = torch.load('attention_target/model_gazefollow.pt', map_location=torch.device('cpu'))
+        pretrained_dict = pretrained_dict['model']
+        model_dict.update(pretrained_dict)
+        self.targetatten.load_state_dict(model_dict)
+        for name,param in self.targetatten.named_parameters():  # freeze all parameters except face crop region
+            if 'face' not in name:
+                param.requires_grad = False
 
-        # gaze output bbox
-        self.gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
-                                       nn.Linear(d_model, d_model, bias=True),
-                                       nn.Linear(d_model, 2, bias=True))
-
-        self.d_model=d_model
-        self.nhead=nhead
-        self.dropout=dropout
         self.conv = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0, bias=False) #(UPDATING)
         self.bn = nn.BatchNorm2d(256)
         self.relu = nn.ReLU(inplace=True)
 
+        # pretrained DETR
+        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
+        for param in self.vit.backbone.parameters(): # freeze resnet backbone
+            param.requires_grad = False
+        # for param in self.vit.transformer.encoder.layers[:3].parameters(): # freeze first 3 layers of encoders
+        #     param.requires_grad = False
+        self.backbone = self.vit.backbone
+
+
+        # encoder (UPDATING)
+        modules = list(self.vit.transformer.encoder.layers) # Finetune encdoer
+        self.encoder = nn.Sequential(*modules)
+
+        # decoder (UPDATING)
+        self.decoder = self.vit.transformer.decoder# Finetune decoder
+        self.query_embed = self.vit.query_embed # Finetune query embed
+        self.d_model=d_model
+        self.nhead=nhead
+        self.dropout=dropout
+
+        # gaze output bbox (UPDATING)
+        self.class_embed = nn.Linear(d_model, num_classes+1)
+        self.gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
+                                       nn.Linear(d_model, d_model, bias=True),
+                                       nn.Linear(d_model, 2, bias=True))
 
     def init_weights(m):
         if isinstance(m, nn.Linear):
@@ -285,16 +229,6 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
             m.bias.data.fill_(0.01)
 
     def forward(self, images, gazer, masks):
-        
-        position = torch.from_numpy(np.arange(0, 50)).to(device) 
-        pos_feature = self.query_embed(position) # 50 x 256
-        
-        ''' scene feature '''
-        img_feat = self.encoder(images, pos_feature)
-        
-        
-        
-        
         ''' cropped gazer feature '''
         gazer = self.targetatten.conv1_face(gazer)
         gazer = self.targetatten.bn1_face(gazer)
