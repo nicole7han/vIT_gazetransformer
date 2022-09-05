@@ -77,13 +77,14 @@ def main():
     # torch.nn.init.xavier_uniform_(model.targetatten.layer1_face.weight)
 #    matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=2)
 #    weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 2}
-    matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
-    weight_dict = {'loss_ce': args.loss_cew, 'loss_bbox': args.loss_bboxw, 'loss_giou': 1}
-    print('loss_ce weight: {}, loss_bbox weight: {}'.format(args.loss_cew, args.loss_bboxw))
-    losses = ['labels', 'boxes']
-    num_classes = 1 # gazed vs. not gazed
-    criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
-                             eos_coef=0.01, losses=losses)
+#    matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
+#    weight_dict = {'loss_ce': args.loss_cew, 'loss_bbox': args.loss_bboxw, 'loss_giou': 1}
+#    print('loss_ce weight: {}, loss_bbox weight: {}'.format(args.loss_cew, args.loss_bboxw))
+#    losses = ['labels', 'boxes']
+#    num_classes = 1 # gazed vs. not gazed
+#    criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
+#                             eos_coef=0.01, losses=losses)
+    criterion = nn.L1Loss()
 
     if args.resume:
         checkpoint = torch.load('{}/model_epoch{}.pt'.format(args.outpath, args.e_start), map_location='cpu')

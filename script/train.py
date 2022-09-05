@@ -39,19 +39,9 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
             eye.to(device)
         b_size = images.shape[0]
         gaze_pred = model(images, h_crops, masks)
-        # target as a list of length b_s, each is a dictionary of labels and boxes centeroid + height + width
-        targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
-                    'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
-                   for i in range(b_size)]
-        # class loss + xy loss
 
-        criterion.train()
-        # move_to(targets, device)
-        # print(gaze_pred['pred_boxes'][0].device)
-        # print(targets[0]['labels'].device)
-        loss_dict = criterion(gaze_pred, targets)
-        weight_dict = criterion.weight_dict
-        loss = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+        # loss
+        loss = criterion(gaze_pred['pred_boxes'], targetgaze['boxes'])
         loss.backward()
         opt.step()
         train_loss_iter.append(loss.detach().item())
@@ -73,14 +63,9 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
                 eye.to(device)
             test_b_size = images.shape[0]
             gaze_pred = model(images, h_crops, masks)
-            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
-                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
-                       for i in range(test_b_size)]
-            criterion.eval()
-            loss_dict = criterion(gaze_pred, targets)
-            weight_dict = criterion.weight_dict
-            test_loss = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
 
+            # loss
+            test_loss = criterion(gaze_pred['pred_boxes'], targetgaze['boxes'])
             test_loss_iter.append(test_loss.detach().item())
 
         print("testing loss: {:.10f}".format(np.mean(np.array(test_loss_iter))))

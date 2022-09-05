@@ -35,6 +35,64 @@ def _get_activation_fn(activation):
     if activation == "glu":
         return F.glu
     raise RuntimeError(F"activation should be relu/gelu, not {activation}.")
+    
+    
+class TransformerEncoder(nn.Module):
+
+    def __init__(self, encoder_layer, num_layers, norm=None):
+        super().__init__()
+        self.layers = _get_clones(encoder_layer, num_layers)
+        self.num_layers = num_layers
+        self.norm = norm
+
+    def forward(self, src, pos):
+        output = src
+        for layer in self.layers:
+            output = layer(output, pos)
+
+        if self.norm is not None:
+            output = self.norm(output)
+
+        return output
+
+
+class TransformerEncoderLayer(nn.Module):
+
+    def __init__(self, d_model, nhead, dim_feedforward=512, dropout=0.1):
+        super().__init__()
+        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        # Implementation of Feedforward model
+        self.linear1 = nn.Linear(d_model, dim_feedforward)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model)
+
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+
+        self.activation = nn.ReLU(inplace=True)
+
+    def pos_embed(self, src, pos):
+        batch_pos = pos.unsqueeze(1).repeat(1, src.size(1), 1)
+        return src + batch_pos
+        
+
+    def forward(self, src, pos):
+                # src_mask: Optional[Tensor] = None,
+                # src_key_padding_mask: Optional[Tensor] = None):
+                # pos: Optional[Tensor] = None):
+
+        q = k = self.pos_embed(src, pos)
+        src2 = self.self_attn(q, k, value=src)[0]
+        src = src + self.dropout1(src2)
+        src = self.norm1(src)
+
+        src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
+        src = src + self.dropout2(src2)
+        src = self.norm2(src)
+        return src
 
 
 class TransformerDecoder(nn.Module):
@@ -176,10 +234,11 @@ class MLP(nn.Module):
             x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
         return x
 
+
 class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer of transformer -> predict gaze
     """Main Model"""
     def __init__(self, d_model=256, dim_feedforward=2048, nhead=8, dropout=0.1,
-                 num_decoder_layers=3, num_classes=1):
+                 num_encoder_layers=3, num_decoder_layers=3, num_classes=1):
         super(Gaze_Transformer, self).__init__()
 
         # pretrained CHONG attention model
@@ -197,31 +256,32 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         self.bn = nn.BatchNorm2d(256)
         self.relu = nn.ReLU(inplace=True)
 
-        # pretrained DETR
-        self.vit = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
-        for param in self.vit.backbone.parameters(): # freeze resnet backbone
-            param.requires_grad = False
-        # for param in self.vit.transformer.encoder.layers[:3].parameters(): # freeze first 3 layers of encoders
-        #     param.requires_grad = False
-        self.backbone = self.vit.backbone
-
-
-        # encoder (UPDATING)
-        modules = list(self.vit.transformer.encoder.layers) # Finetune encdoer
-        self.encoder = nn.Sequential(*modules)
-
-        # decoder (UPDATING)
-        self.decoder = self.vit.transformer.decoder# Finetune decoder
-        self.query_embed = self.vit.query_embed # Finetune query embed
+        # transformer (Training)
         self.d_model=d_model
         self.nhead=nhead
         self.dropout=dropout
+#        self.transformer = nn.Transformer(
+#            d_model, nhead, num_encoder_layers, num_decoder_layers)
+        encoder_layer = TransformerEncoderLayer(
+                  d_model, 
+                  nhead, 
+                  dim_feedforward, 
+                  dropout)
+        encoder_norm = nn.LayerNorm(d_model) 
+        self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
 
-        # gaze output bbox (UPDATING)
-        self.class_embed = nn.Linear(d_model, num_classes+1)
+        
+        # gaze output bbox (Training)
+        self.cls_token = nn.Parameter(torch.randn(1, 1, d_model))
         self.gaze_bbox = nn.Sequential(nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, d_model, bias=True),
                                        nn.Linear(d_model, 2, bias=True))
+        
+#        # query embedding (Training)
+#        self.query_embed = nn.Parameter(torch.rand(1, d_model)) # query embed
+        
+        # spatial positional encodings (Training)
+        self.pos = nn.Embedding(49+1, d_model)
 
     def init_weights(m):
         if isinstance(m, nn.Linear):
@@ -276,50 +336,24 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         encoding = self.bn(encoding)
         encoding = self.relu(encoding) # torch.Size([bs, 256, 7, 7])
         memory = encoding.flatten(2).permute(2,0,1) # torch.Size([49, bs, 256])
+        
 
-        '''image vit feature from DETR'''
-        # activation = {}
-        # # hook1 = get_activation('self_attn')
-        # hook1 = self.get_activation('out_proj')
-        #
-        # self.vit.transformer.encoder.layers[-4].self_attn.register_forward_hook(hook1) #get feature from the 3rd encoder layer
-        # output = self.vit(images)
-        # img_vit_out = activation['out_proj'][0] # (output[0]:activation,output[1]:weights), 49(7x7 patches) x 1 x 256 (hidden dimension)
-        # output = self.vit(torch.cat([masks,masks,masks],1))
-        # mask_vit_out = activation['out_proj'][0] # 49 x bs x 256
-        #
-        # img_vit_out = self.encoder(img_vit_out) # pass it through the last 3 encoders
-        # mask_vit_out = self.encoder(mask_vit_out)  # pass it through the last 3 encoders
-        #
-        # memory = img_vit_out + mask_vit_out # final encoder output
+        ''' transformer '''
+        bs, _, H, W = encoding.shape
+        
+        # class feature concatenated with feature
+        cls = self.cls_token.repeat( (1, bs, 1)) #torch.Size([1, 1, 256])
+        memory = torch.cat([cls, memory], 0) #torch.Size([50, 1, 256])
+        # position embedding
+        position = torch.from_numpy(np.arange(0, 50)).to(device)
+        pos_feature = self.pos(position) #torch.Size([50, 32])
+        
+        # pass to transformer
+        hs =  self.encoder(memory, pos_feature).permute(1, 2, 0)  # 1 x 256 x 50
+        hs = hs[:,:,0] # get first vector class feature
 
-        ''' encoder output + query embedding -> decoder '''
-        memory = self.encoder(memory) # torch.Size([49, bs, 256])
-
-        _, bs, _ = memory.shape # 49 x bs x 256
-        query_embed = self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1) #  1 x bs x 256
-        tgt = torch.zeros_like(query_embed).to(device) # num_queries x b_s x hidden_dim, torch.Size([1, bs, 256])
-        vit_mask = torch.zeros([bs,7,7], dtype=torch.bool) # no padding, all False
-
-        # get pos_mebed
-        samples = NestedTensor(images, vit_mask).to(device)
-        if isinstance(samples, (list, torch.Tensor)):
-            samples = nested_tensor_from_tensor_list(samples)
-        _, pos = self.backbone(samples)
-        pos_embed = pos[-1] # bs x 256 x 7 x 7
-        pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
-
-        # pass to decoder
-        mask = torch.zeros([bs,7*7],dtype=torch.bool).to(device)
-        hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
-                          pos=pos_embed, query_pos=query_embed)   # 1 x num_queries x b_s x hidden_dim, torch.Size([#decoders, 100, bs, 256])
-        hs = hs.transpose(1,2) # [#decoders x bs x 100 x 256]
-
-        # output gaze bbox
-        outputs_class = self.class_embed(hs)
         outputs_coord = self.gaze_bbox(hs).sigmoid()
-        out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
-
+        out = { 'pred_boxes': outputs_coord}
         return out
 
 
