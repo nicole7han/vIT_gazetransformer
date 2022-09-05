@@ -224,9 +224,10 @@ class GazeDataloader_gazevideo(Dataset):
         return img_name, img, {'labels':torch.tensor([1]) ,'boxes':torch.tensor([g_x,g_y])}
 
 
-def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
+def plot_gaze_viudata(img, eyexy, targetxy, transxy, color=(0, 0, 255), chongxy=None):
     # take original image and coordinations
     # flip the image and coordination if flip==True
+    # r, g, b
     try:
         h, w, _ = img.shape
     except:
@@ -246,7 +247,7 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, chongxy=None):
                                              int(targetxy[0] * w), \
                                              int(targetxy[1] * h)
     # transformer prediction (blue)
-    cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), (0, 0, 255), 2)
+    cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (gaze_pred_x, gaze_pred_y), color , 2)
 
     # chong prediction (orange)
     try: cv2.arrowedLine(img, (gaze_s_x, gaze_s_y), (chong_pred_x, chong_pred_y), (255, 255, 0), 2)
@@ -346,7 +347,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
             gaze_pred_prob = np.array(gaze_pred["pred_logits"].flatten(0, 1).softmax(-1).detach())
             gaze_pred_bbx = np.array(gaze_pred['pred_boxes'].detach())[0]  # 100 x 4
             idx = gaze_pred_prob[:, 1].argmax() # get maximum logit prediction for gazed location
-#
+            
 ###            # loss
 #            targets = [{'labels': targetgaze['labels'][i][0].unsqueeze(0).to(device),
 #                        'boxes': targetgaze['boxes'][i].unsqueeze(0).to(device)} \
@@ -357,6 +358,7 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
 
             # result
             transxy = gaze_pred_bbx[idx]
+            transxy_cen = gaze_pred_bbx.mean(0)
             eyexy = np.array([h_x+0.5*h_w, h_y+0.5*h_h])
             targetxy = np.array(targetgaze['boxes'][0])
 
@@ -373,7 +375,8 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
                     ax = plt.gca()
                     transxy = gaze_pred_bbx[idx]
                     img = plt.imread('{}/{}'.format(test_img_path, images_name[0]))
-                    img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
+#                    img = plot_gaze_viudata(img, eyexy, targetxy, transxy)
+                    img = plot_gaze_viudata(img, eyexy, targetxy, transxy_cen, color=(255,0,0))
                     plt.imshow(img)
                     ax.add_patch(rect)
                     ax.set_axis_off()
