@@ -41,7 +41,7 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
         gaze_pred = model(images, h_crops, masks)
 
         # loss
-        loss = criterion(gaze_pred['pred_boxes'], targetgaze['boxes'])
+        loss = criterion(gaze_pred['pred_boxes'], targetgaze['boxes'].to(device))
         loss.backward()
         opt.step()
         train_loss_iter.append(loss.detach().item())
@@ -65,7 +65,7 @@ def train_one_epoch(device, model, train_img_path, train_bbx_path, test_img_path
             gaze_pred = model(images, h_crops, masks)
 
             # loss
-            test_loss = criterion(gaze_pred['pred_boxes'], targetgaze['boxes'])
+            test_loss = criterion(gaze_pred['pred_boxes'], targetgaze['boxes'].to(device))
             test_loss_iter.append(test_loss.detach().item())
 
         print("testing loss: {:.10f}".format(np.mean(np.array(test_loss_iter))))

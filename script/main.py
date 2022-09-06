@@ -10,7 +10,7 @@ import torch.multiprocessing
 # torch.multiprocessing.set_sharing_strategy('file_system')
 from model import *
 from train import *
-from matcher import *
+#from matcher import *
 
 
 sys.path.append('/home/xhan01/.cache/torch/hub/facebookresearch_detr_main')
