@@ -36,11 +36,11 @@ basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
 
 Trained_cond = 'HeadBody'
-outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
+outpath = '{}/model_eval_viu_outputs/{}_VIT'.format(basepath,Trained_cond)
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [300,100,120]: #100,120
+for epoch in [30]: #100,120
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)

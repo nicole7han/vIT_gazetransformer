@@ -36,7 +36,7 @@ def compute_angle2hori(row, model):
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 Trained_cond = 'HeadBody'
-outpath = '{}/model_eval_viu_outputs/Trained_{}'.format(basepath,Trained_cond)
+outpath = '{}/model_eval_viu_outputs/{}_VIT'.format(basepath,Trained_cond)
 N_perm = 10000 # number of permutations
 
 '''transformer results'''
