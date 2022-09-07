@@ -476,6 +476,7 @@ for i, model in enumerate(model_orders):
 
 
 ''' Part V. Visualize Model Raw Estimation (see the variance in model estimations) '''
+import matplotlib.patches as  mpatches
 data_path = 'data/GroundTruth_gazedperson'
 files = glob.glob('{}/*vectors*'.format(data_path)) # get all vector information
 results = pd.DataFrame()
@@ -492,7 +493,16 @@ for model in ['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 
     else:
         plot_data = plot_data.groupby(['cond','image']).mean().reset_index() # take average across gazers
     plot_data = plot_data[['cond','image','est_x','est_y','gazed_x','gazed_y']]
-    ax = sns.kdeplot(data=plot_data, x="est_x", y="est_y", fill=True, alpha=.5, cmap="Reds")
+    
+    # gazed person xy density map
+    gazed_info = plot_data[['gazed_x','gazed_y']].drop_duplicates()
+    ax = sns.kdeplot(data=plot_data, x=gazed_info["gazed_x"], y=gazed_info["gazed_y"], fill=True, alpha=.8, cmap="Blues", label='gazed person')
+    # estimation xy density map
+    ax = sns.kdeplot(data=plot_data, x="est_x", y="est_y", fill=True, alpha=.5, cmap="Reds", label='estimation')
+    handles = [mpatches.Patch(facecolor=plt.cm.Reds(100), label="estimation"),
+           mpatches.Patch(facecolor=plt.cm.Blues(100), label="gazed peron")]
+    plt.legend(handles=handles, frameon=False)
     ax.set(xlim=[0,1],ylim=[0.2,.8])
-    ax.figure.savefig("figures/{}_raw_estimation.png".format(model), dpi=300, bbox_inches='tight')
+    ax.figure.savefig("figures/{}_raw_estimation2.png".format(model), dpi=300, bbox_inches='tight')
     plt.close()
+    
