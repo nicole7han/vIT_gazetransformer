@@ -7,9 +7,9 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [70]:
+for epoch in [50]:
     # epoch=300,100,340
-    checkpoint = torch.load('trainedmodels/headbody_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
+    checkpoint = torch.load('trainedmodels/head_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
     plt.plot(checkpoint['train_loss'][6:])
     plt.plot(checkpoint['test_loss'][6:])
     loaded_dict = checkpoint['model_state_dict']
@@ -26,7 +26,7 @@ for epoch in [70]:
 
     # evaluate both models' estimation on viu dataset
     datapath = "{}/gaze_video_data".format(basepath)
-    outpath = '{}/model_eval_viu_outputs/HeadBody_VIT'.format(basepath)
+    outpath = '{}/model_eval_viu_outputs/Head_VIT'.format(basepath)
     os.makedirs(outpath, exist_ok=True)
     anno_path = '{}/Video_Info.xlsx'.format(datapath)
     for cond in ['intact','nb','nh']: #'intact','nb','nh'
