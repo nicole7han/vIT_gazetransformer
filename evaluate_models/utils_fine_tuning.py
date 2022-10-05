@@ -288,6 +288,8 @@ def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, f
     bbx = np.load('/Users/nicolehan/Documents/Research/gazetransformer/gaze_video_data/bbx_viu_images.npy', allow_pickle=True)
     bbx = bbx[()]
     for images_name, images, targetgaze in test_dataiter:
+        if "s006.a2.t2.re.op.gt2_0.jpg" in images_name:
+            break
 #        print(len(IMAGES))
         print(images_name)
         test_b_size = images.shape[0]

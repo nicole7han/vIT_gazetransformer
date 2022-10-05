@@ -19,6 +19,7 @@ for epoch in [20]:
                     if k.startswith(prefix)}
     model.load_state_dict(adapted_dict)
     model.to(device)
+    model.eval()
 
 
     # output = evaluate_model_gaze(anno_path, test_img_path, test_bbx_path, model, fig_path)
