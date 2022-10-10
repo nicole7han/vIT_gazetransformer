@@ -244,7 +244,10 @@ class Gaze_Transformer(nn.Module): #only get encoder attention -> a couple layer
         # pretrained CHONG attention model
         self.targetatten = ModelSpatial()
         model_dict = self.targetatten.state_dict()
-        pretrained_dict = torch.load('/Users/nicolehan/Documents/Research/vIT_gazetransformer/attention_target/model_gazefollow.pt', map_location=torch.device('cpu'))
+        try:
+            pretrained_dict = torch.load('/Users/nicolehan/Documents/Research/vIT_gazetransformer/attention_target/model_gazefollow.pt', map_location=torch.device('cpu'))
+        except:
+            pretrained_dict = torch.load('attention_target/model_gazefollow.pt', map_location=torch.device('cpu'))
         pretrained_dict = pretrained_dict['model']
         model_dict.update(pretrained_dict)
         self.targetatten.load_state_dict(model_dict)

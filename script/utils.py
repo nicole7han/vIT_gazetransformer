@@ -340,7 +340,7 @@ class GazeDataloader(Dataset):
             # print("./gazefollow/{}".format(key))
             inputs_bbx = seg_bbx["./gazefollow/{}".format(key)]
             [h_y, h_x, h_h, h_w, b_y, b_x, b_h, b_w] = inputs_bbx['head'] + inputs_bbx['body']
-            bbx_y, bbx_x, bbx_h, bbx_w = h_y, h_x, h_h, h_w
+            bbx_y, bbx_x, bbx_h, bbx_w = b_y, b_x, b_h, b_w
             # h_y += random.uniform(-.01, 0)
             # h_x += random.uniform(-.01, 0)
             # h_h += random.uniform(0, 0.01)
