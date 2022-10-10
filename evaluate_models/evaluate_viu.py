@@ -7,7 +7,7 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in [70]:
+for epoch in [20]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/headbody_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
     plt.plot(checkpoint['train_loss'][6:])
@@ -42,19 +42,19 @@ for epoch in [70]:
 
 #        matcher = build_matcher(set_cost_class=1, set_cost_bbox=5, set_cost_giou=1)
 #        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
-        matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
-        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
-        losses = ['labels', 'boxes']
-        num_classes = 1
-        criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
-                                 eos_coef=0.01, losses=losses)
-        # chong model test and trained on just head
+#        matcher = build_matcher(set_cost_class=5, set_cost_bbox=1, set_cost_giou=1)
+#        weight_dict = {'loss_ce': 1, 'loss_bbox': 20, 'loss_giou': 1}
+#        losses = ['labels', 'boxes']
+#        num_classes = 1
+#        criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
+#                                 eos_coef=0.01, losses=losses)
+#        # chong model test and trained on just head
         if cond == 'intact':
             chong_est = pd.read_csv('{}/chong_estimation_intact.csv'.format(basepath))
         else:
             chong_est = None
 
-        output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
+        output = evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path,
                             bbx_noise=False, gazer_bbox=gazer_bbox, cond=cond, mode='arrow')
 
         output.to_excel('{}/transformer_TEST_{}_epoch{}_result.xlsx'.format(outpath,cond,epoch), index=None)

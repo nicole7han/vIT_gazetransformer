@@ -258,7 +258,7 @@ def plot_gaze_viudata(img, eyexy, targetxy, transxy, color=(0, 0, 255), chongxy=
 
     return img
 
-def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path, criterion,
+def evaluate_2model(anno_path, test_img_path, test_bbx_path, chong_est, model, fig_path,
                     bbx_noise=False, gazer_bbox='hb', cond='intact', savefigure=True, mode='map'):
     '''
     @param anno_path:    output = evaluate_2model(anno_path, test_img_path, test_bbx_path, None, model, fig_path, criterion, gazer_bbox=gazer_bbox) gazed location
