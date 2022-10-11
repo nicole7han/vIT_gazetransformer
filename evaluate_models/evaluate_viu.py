@@ -10,8 +10,8 @@ model = Gaze_Transformer()
 for epoch in [10]:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/body_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
-#    plt.plot(checkpoint['train_loss'][6:])
-#    plt.plot(checkpoint['test_loss'][6:])
+    plt.plot(checkpoint['train_loss'])
+    plt.plot(checkpoint['test_loss'])
     loaded_dict = checkpoint['model_state_dict']
     prefix = 'module.'
     n_clip = len(prefix)
