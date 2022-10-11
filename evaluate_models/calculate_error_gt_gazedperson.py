@@ -41,7 +41,7 @@ N_perm = 10000 # number of permutations
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [20]: #300,100,340
+for epoch in [10]: #300,100,340
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
@@ -65,9 +65,9 @@ image_info = image_info.drop_duplicates()
 transformer['Euclidean_error'] = np.sqrt( (transformer['gazed_x']-transformer['transformermean_est_x'])**2 + (transformer['gazed_y']-transformer['transformermean_est_y'])**2 )
 transformer['Angular_error'] = transformer.apply(lambda r: compute_angle(r,'transformermean'),axis=1)
 transformer = transformer.groupby(['image','test_cond']).mean().reset_index()
-#transformer_out = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
-#transformer_out['model'] = '{} Transformer'.format(Trained_cond)
-#transformer_out.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
+transformer_out = transformer[['image', 'test_cond','Euclidean_error','Angular_error']]
+transformer_out['model'] = '{} Transformer'.format(Trained_cond)
+transformer_out.to_excel('data/GroundTruth_gazedperson/{}_Transformer_summary.xlsx'.format(Trained_cond), index=None)
 
 # permutation error
 perm = pd.DataFrame()

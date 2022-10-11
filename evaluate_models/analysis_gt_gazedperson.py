@@ -30,10 +30,11 @@ for f in baselines:
     baseline = baseline.append(data)
 baseline['test_cond'] = baseline['test_cond'].astype('category')
 baseline['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-baseline['model'] = baseline.apply(lambda r: r['model'].split(' ')[1] if 'Head' in r['model'] else r['model'], axis=1)
+baseline['model'] = baseline.apply(lambda r: r['model'].split(' ')[1] if 'Head CNN' in r['model'] else r['model'], axis=1)
+baseline['model'] = baseline.apply(lambda r: r['model'].replace(' ','\n') if 'Transformer' in r['model'] else r['model'], axis=1)
 baseline['model'] = baseline['model'].astype('category')
 #baseline['model'].cat.reorder_categories(['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
-baseline['model'].cat.reorder_categories(['Humans', 'CNN', 'Transformer'], inplace=True)
+baseline['model'].cat.reorder_categories(['Humans', 'CNN', 'HeadBody\nTransformer', 'Head\nTransformer', 'Body\nTransformer'], inplace=True)
 baseline_quantile = baseline.groupby(['test_cond','model']).quantile([.025,0.975]).reset_index()
 baseline = baseline.groupby(['test_cond','model']).mean().reset_index()
 
@@ -44,12 +45,13 @@ for f in summaries:
     results = results.append(data)
 results['test_cond'] = results['test_cond'].astype('category')
 results['test_cond'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'], inplace=True)
-results['model'] = results.apply(lambda r: r['model'].split(' ')[1] if 'Head' in r['model'] else r['model'], axis=1)
+results['model'] = results.apply(lambda r: r['model'].split(' ')[1] if 'Head CNN' in r['model'] else r['model'], axis=1)
+results['model'] = results.apply(lambda r: r['model'].replace(' ','\n') if 'Transformer' in r['model'] else r['model'], axis=1)
 results['model'] = results['model'].astype('category')
-results['model'].cat.reorder_categories(['Humans', 'CNN', 'Transformer'], inplace=True)
-models = ['Humans', 'CNN', 'Transformer']
-#results['model'].cat.reorder_categories(['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer'], inplace=True)
-
+#results['model'].cat.reorder_categories(['Humans', 'CNN', 'Transformer'], inplace=True)
+#models = ['Humans', 'CNN', 'Transformer']
+results['model'].cat.reorder_categories(['Humans', 'CNN', 'HeadBody\nTransformer', 'Head\nTransformer', 'Body\nTransformer'], inplace=True)
+models = ['Humans', 'CNN', 'HeadBody\nTransformer', 'Head\nTransformer', 'Body\nTransformer']
 
 # plot_data = results[results['test_cond']=='intact']
 plot_data = results.copy()
@@ -71,7 +73,19 @@ ps = []
 for _, row in sig_results.iterrows():
     box_pairs.append(((row['model'],row['A']),(row['model'],row['B'])))
     ps.append(max(0.001, row['p-corr']))
-
+    
+    
+posthoc = aov_data.pairwise_ttests(dv='value',
+                                   between=['model'],
+                                   padjust='fdr_bh',
+                                   parametric=True).round(3)
+sig_results = posthoc[posthoc['p-corr']<0.05]
+sig_results = sig_results[sig_results['Contrast']=='model']
+box_pairs1 = []
+ps1 = []
+for _, row in sig_results.iterrows():
+    box_pairs1.append((row['A'],row['B']))
+    ps1.append(max(0.001, row['p-corr']))
 # test angular error (paird images) significance between condition: intact, Headbody transformer vs. Head transformer
 from bioinfokit.analys import stat
 res = stat()
@@ -81,7 +95,7 @@ res.tukey_summary
 
 
  # plot euclidean error
- sns_setup_small(sns, (8,6))
+ sns_setup_small(sns, (12,8))
  error = 'Euclidean_error'
  ax = sns.barplot(data = plot_data, x = 'model', y = error , hue='test_cond', palette=bluepallet)
  ax.set(xlabel='', ylabel='Euclidean Error', ylim=[0,0.4])
@@ -90,12 +104,21 @@ res.tukey_summary
  add_stat_annotation(ax, data=plot_data, x='model', y=error, hue='test_cond',
                      box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                      loc='outside', verbose=2)
+ add_stat_annotation(ax, data=plot_data, x='model', y=error,
+                     box_pairs= box_pairs1, perform_stat_test=False, pvalues=ps1,
+                     loc='inside', verbose=2)
+ add_stat_annotation(ax, data=plot_data, x='model', y=error,
+                     box_pairs= [('Body\nTransformer', 'Humans')], perform_stat_test=False, pvalues=[0.06],
+                     loc='inside',  text_format='full', verbose=2)
  ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
+ 
+
+ps1.append(0.06)
 # plt.xticks(rotation=90)
- xcen = 0.165
+ xcen = 0.1
  shade_width = 0.02
- cen_gap = 0.332
- bar_width = 0.27
+ cen_gap = 0.2
+ bar_width = 0.16
  for model in models:
      m = baseline[baseline['model']==model]
      q1 = baseline_quantile[(baseline_quantile['model']==model) & (baseline_quantile['level_2']==.025)]
