@@ -7,7 +7,7 @@ from script.matcher import *
 
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 model = Gaze_Transformer()
-for epoch in ['10_1']:
+for epoch in ['10']:
     # epoch=300,100,340
     checkpoint = torch.load('trainedmodels/headbody_vit/model_epoch{}.pt'.format(epoch), map_location='cpu')
     plt.plot(checkpoint['train_loss'][6:])
