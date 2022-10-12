@@ -571,24 +571,48 @@ for f in files:
     df.columns = [x if 'est' not in x else '_'.join(x.split('_')[1:]) for x in df.columns ]
     results = results.append(df, ignore_index=True)
 
-for model in ['Humans', 'Head CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']:
+for model in ['Humans', 'CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']:
     plot_data = results[results['model'] == model]
     if model == 'Humans':
         plot_data = plot_data.groupby(['cond', 'image', 'subj']).mean().reset_index()  # take average across gazers for each subject
-        plot_data = plot_data.groupby(['cond', 'image']).mean().reset_index() # take average across subjects
+#        plot_data = plot_data.groupby(['cond', 'image']).mean().reset_index() # take average across subjects
     else:
         plot_data = plot_data.groupby(['cond','image']).mean().reset_index() # take average across gazers
     plot_data = plot_data[['cond','image','est_x','est_y','gazed_x','gazed_y']]
+    plot_data['est2gazed_x'] = plot_data['est_x']-plot_data['gazed_x']
+    plot_data['est2gazed_y'] = plot_data['est_y']-plot_data['gazed_y']
     
-    # gazed person xy density map
-    gazed_info = plot_data[['gazed_x','gazed_y']].drop_duplicates()
-    ax = sns.kdeplot(data=plot_data, x=gazed_info["gazed_x"], y=gazed_info["gazed_y"], fill=True, alpha=.8, cmap="Blues", label='gazed person')
-    # estimation xy density map
-    ax = sns.kdeplot(data=plot_data, x="est_x", y="est_y", fill=True, alpha=.5, cmap="Reds", label='estimation')
-    handles = [mpatches.Patch(facecolor=plt.cm.Reds(100), label="estimation"),
-           mpatches.Patch(facecolor=plt.cm.Blues(100), label="gazed peron")]
-    plt.legend(handles=handles, frameon=False)
-    ax.set(xlim=[0,1],ylim=[0.2,.8])
-    ax.figure.savefig("figures/{}_raw_estimation2.png".format(model), dpi=300, bbox_inches='tight')
+    # estimation relative to gazed locaiton density map
+    plot_data['condition'] = plot_data['cond'].astype('category')
+    plot_data['condition'] = plot_data['condition'].cat.reorder_categories(['intact', 'floating heads', 'headless bodies'])
+    
+    
+    if model=='Humans':
+        ax = sns.FacetGrid(plot_data, col = "condition", height=4, aspect= 1)
+        ax.map(sns.kdeplot, "est2gazed_x", "est2gazed_y", alpha = .8, color=bluepallet[0],fill=True)
+        ax.set(xlabel='x',ylabel='y', xlim=[-.6,.6],ylim=[-.6,.6])
+        axes = ax.axes.flatten()
+        axes[0].set_title("Intact")
+        axes[1].set_title("Floating Heads")
+        axes[2].set_title("Headless Bodies")
+    else:
+        ax = sns.FacetGrid(plot_data, col = "condition", height=4, aspect= 1)
+        ax.map(sns.kdeplot, "est2gazed_x", "est2gazed_y", alpha = .8, color=bluepallet[0], fill=True)
+        ax.set(xlabel='x',ylabel='y', title='',xlim=[-.6,.6],ylim=[-.6,.6])
+        axes = ax.axes.flatten()
+        
+    
+    ax.savefig("figures/{}_est2gt.png".format(model), dpi=300, bbox_inches='tight')
     plt.close()
+#    # gazed person xy density map
+#    gazed_info = plot_data[['gazed_x','gazed_y']].drop_duplicates()
+#    ax = sns.kdeplot(data=plot_data, x=gazed_info["gazed_x"], y=gazed_info["gazed_y"], fill=True, alpha=.8, cmap="Blues", label='gazed person')
+#    # estimation xy density map
+#    ax = sns.kdeplot(data=plot_data, x="est_x", y="est_y", fill=True, alpha=.5, cmap="Reds", label='estimation')
+#    handles = [mpatches.Patch(facecolor=plt.cm.Reds(100), label="estimation"),
+#           mpatches.Patch(facecolor=plt.cm.Blues(100), label="gazed peron")]
+#    plt.legend(handles=handles, frameon=False)
+#    ax.set(xlim=[0,1],ylim=[0.2,.8])
+#    ax.figure.savefig("figures/{}_raw_estimation2.png".format(model), dpi=300, bbox_inches='tight')
+#    plt.close()
     
