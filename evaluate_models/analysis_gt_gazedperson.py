@@ -95,21 +95,21 @@ res.tukey_summary
 
 
  # plot euclidean error
- sns_setup_small(sns, (12,8))
+ sns_setup_small(sns, (12,9))
  error = 'Euclidean_error'
  ax = sns.barplot(data = plot_data, x = 'model', y = error , hue='test_cond', palette=bluepallet)
- ax.set(xlabel='', ylabel='Euclidean Error', ylim=[0,0.4])
+ ax.set(xlabel='', ylabel='Euclidean Error', ylim=[0,0.85])
  ax.spines['top'].set_color('white')
  ax.spines['right'].set_color('white')
  add_stat_annotation(ax, data=plot_data, x='model', y=error, hue='test_cond',
                      box_pairs= box_pairs, perform_stat_test=False, pvalues=ps,
                      loc='outside', verbose=2)
- add_stat_annotation(ax, data=plot_data, x='model', y=error,
-                     box_pairs= box_pairs1, perform_stat_test=False, pvalues=ps1,
-                     loc='inside', verbose=2)
- add_stat_annotation(ax, data=plot_data, x='model', y=error,
-                     box_pairs= [('Body\nTransformer', 'Humans')], perform_stat_test=False, pvalues=[0.06],
-                     loc='inside',  text_format='full', verbose=2)
+# add_stat_annotation(ax, data=plot_data, x='model', y=error,
+#                     box_pairs= box_pairs1, perform_stat_test=False, pvalues=ps1,
+#                     loc='inside', verbose=2)
+# add_stat_annotation(ax, data=plot_data, x='model', y=error,
+#                     box_pairs= [('Body\nTransformer', 'Humans')], perform_stat_test=False, pvalues=[0.06],
+#                     loc='inside',  text_format='full', verbose=2)
  ax.legend(title='', loc='upper right', frameon=False, bbox_to_anchor=[1.4, 0.9])
  
 

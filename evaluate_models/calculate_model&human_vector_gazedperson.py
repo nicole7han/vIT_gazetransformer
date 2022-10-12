@@ -35,12 +35,12 @@ def compute_angle2hori(row, model):
 basepath = '/Users/nicolehan/Documents/Research/gazetransformer'
 
 
-Trained_cond = 'HeadBody'
+Trained_cond = 'Head'
 outpath = '{}/model_eval_viu_outputs/{}_VIT'.format(basepath,Trained_cond)
 
 '''transformer results'''
 transformer = pd.DataFrame()
-for epoch in [30]: #100,120
+for epoch in [20]: #100,120
     results = glob.glob('{}/*{}_result.xlsx'.format(outpath,epoch))
     for f in results:
         df = pd.read_excel(f)
