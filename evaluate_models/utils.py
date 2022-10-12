@@ -43,11 +43,11 @@ def circular_hist(ax, x, bins=16, density=True, offset=0, gaps=True, color="#61a
         or list of such containers if there are multiple input datasets.
     """
     # Wrap angles to [-pi, pi)
-    x = (x + np.pi) % (2 * np.pi) - np.pi
+    x = (x+np.pi) % (2*np.pi) - np.pi
 
     # Force bins to partition entire circle
     if not gaps:
-        bins = np.linspace(-np.pi, np.pi, num=bins + 1)
+        bins = np.linspace(-np.pi, np.pi, num=bins+1)
 
     # Bin data and record counts
     n, bins = np.histogram(x, bins=bins)
@@ -60,19 +60,19 @@ def circular_hist(ax, x, bins=16, density=True, offset=0, gaps=True, color="#61a
         # Area to assign each bin
         area = n / x.size
         # Calculate corresponding bin radius
-        radius = (area / np.pi) ** .5
+        radius = (area/np.pi) ** .5
     # Otherwise plot frequency proportional to radius
     else:
         radius = n
 
-    #    # Plot data on ax
-    #    patches = ax.bar(bins[:-1], radius, zorder=1, align='edge', width=widths,
-    #                     edgecolor='C0', fill=False, linewidth=1)
-
-    patches = ax.bar(x=bins[:-1], height=radius, width=widths, linewidth=1,
-                     edgecolor="white", color=color, align='edge')
-    #    # Set angle label
-    #    ax.set_xticks(np.array([0, 45, 90, 135, 180, -135, -90, -45])/180*np.pi)
+#    # Plot data on ax
+#    patches = ax.bar(bins[:-1], radius, zorder=1, align='edge', width=widths,
+#                     edgecolor='C0', fill=False, linewidth=1)
+    
+    patches = ax.bar(x= bins[:-1], height=radius, width=widths, linewidth=1,
+           edgecolor="white",color=color, align='edge')
+#    # Set angle label
+#    ax.set_xticks(np.array([0, 45, 90, 135, 180, -135, -90, -45])/180*np.pi)
 
     # Set the direction of the zero angle
     ax.set_theta_offset(offset)
@@ -83,8 +83,7 @@ def circular_hist(ax, x, bins=16, density=True, offset=0, gaps=True, color="#61a
 
     return n, bins, patches
 
-
-def rotate(row, param='est'):
+def rotate(row, param='est', reference='humanvec_ang2hor'):
     """
     Rotate a point clockwise by a given angle around a given origin.
 
@@ -93,7 +92,11 @@ def rotate(row, param='est'):
 
     The angle should be given in degrees.
     """
-    angle = row['humanvec_ang2hor']
+    angle = row[reference]
+#    if row['gaze_start_x'] > row['{}_x'.format(param)]: 
+#        # if estimation is on the left side, angle needs to be reversed
+#        # e.g., right side counterclockwise closer to the horizontal, left side clockwise is closer to the horizontal
+#        angle = -angle
     # flip y coordinates before rotation because (0,0) is on top left
     ox, oy = row['gaze_start_x'], 1-row['gaze_start_y']  # origin
     px, py = row['{}_x'.format(param)], 1-row['{}_y'.format(param)]  # point to rotate

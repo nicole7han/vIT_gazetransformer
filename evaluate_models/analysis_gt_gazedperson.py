@@ -442,6 +442,7 @@ for f in files:
 results = results[results['cond']=='intact'].drop('cond',axis=1)
 results = results.groupby(['image','model','gazer']).mean().reset_index()
 
+
 # # plot individual images
 # image_names = os.listdir(img_path)
 # for img in image_names:
@@ -455,6 +456,55 @@ results = results.groupby(['image','model','gazer']).mean().reset_index()
 #             plot_vectors(image, plot_data, gazer=gazer)
 #             plt.savefig("Figures/vectors/{}_gazer{}.jpg".format(img,gazer), bbox_inches='tight')
 #             plt.close()
+
+
+# plot all images registered to groundtruth vector
+image_names = os.listdir(img_path)
+plot_data = results[['image','model','gazer','gaze_start_x','gaze_start_y','gazed_x','gazed_y','est_x','est_y']]
+# compute angular error (with signs, flip everything to the right direction)
+# 1. positive means clockwise rotation, negative means clockwise rotation
+plot_data['vec_ang2hor'] = -plot_data.apply(compute_ang2hori, axis=1) #groundtruth vector angle relative to the horizontal direction
+# 2. rotate estxy relative to gazer, in the opposite direction as groundtruth vector to cancel its effect
+plot_data['estxy_rotate'] = plot_data.apply(lambda r: rotate(r, 'est', 'vec_ang2hor'),axis=1)  # calculate estimation xy after rotation
+plot_data[['est_x1', 'est_y1']] = pd.DataFrame(plot_data['estxy_rotate'].tolist(), index=plot_data.index)
+# 3. get final estimation xy location relative to horizontal vector (groundtruth vector)
+plot_data['est_y1_2_gazer'] = plot_data['est_y1'] - plot_data['gaze_start_y']  # positive: below horizontal, negative: above horizontal
+# 4. compute estimation vector relative to groundtruth vector
+angle_errors_signed = []
+for _, r in plot_data.iterrows():
+    gaze_start_x, gaze_start_y, gazed_x, gazed_y = r['gaze_start_x'], r['gaze_start_y'],r['gazed_x'], r['gazed_y']
+    v1 = np.array([gazed_x - gaze_start_x, gazed_y - gaze_start_y])
+    unit_vector_1 = v1 / np.linalg.norm(v1)
+
+    if r['est_y1_2_gazer'] > 0:
+        sign = -1  # the relative gazer vector is below horizontal (human vector)
+    else:
+        sign = 1  # the relative gazer vector is above horizontal (human vector)
+
+    v2 = np.array([r['est_x'] - gaze_start_x, r['est_y'] - gaze_start_y])
+    unit_vector_2 = v2 / np.linalg.norm(v2)
+    dot_product = np.dot(unit_vector_1, unit_vector_2)
+    angle = np.arccos(dot_product) * 180 / np.pi
+
+    angle_errors_signed.append(sign * round(angle, 2))
+
+plot_data['signed_angle2gtvec'] = angle_errors_signed
+plot_data['ang_rad'] = plot_data['signed_angle2gtvec']*np.pi/180
+
+# plot estimation vector
+model_orders = ['Humans','CNN', 'HeadBody Transformer', 'Head Transformer', 'Body Transformer']
+colors = sns.color_palette("Set2")
+colors = colors[:4] + [colors[6]]
+
+for i, model in enumerate(model_orders):
+    tempdata = plot_data[plot_data['model']==model]
+    fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection='polar'))
+    circular_hist(ax, tempdata['ang_rad'], color=colors[i])
+    ax.figure.savefig("figures/polar_{}_vector2gt.png".format(model), dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+
 
 # plot all images registered to human mean vector
 image_names = os.listdir(img_path)
